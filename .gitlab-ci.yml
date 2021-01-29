@@ -10,21 +10,21 @@ variables:
 
 before_script:
   - rustc --version && cargo --version
-  - du -sh cargo/ */target/ || true
+  - du -sh $CARGO_HOME/ target/ || true
   - cargo install cargo-readme
   - git clone https://github.com/rust-secure-code/cargo-geiger.git $CI_BUILDS_DIR/cargo-geiger
   - (cd $CI_BUILDS_DIR/cargo-geiger/cargo-geiger ; cargo build --release --features vendored-openssl)
   - mv $CI_BUILDS_DIR/cargo-geiger/target/release/cargo-geiger $CARGO_HOME/bin/
 
 after_script:
-  - du -sh $CI_BUILDS_DIR */target/ || true
+  - du -sh $CARGO_HOME/ target/ || true
 
 cache:
   # Increment the 'gen' number to clear the caches.
   key: $CI_JOB_NAME-$CI_COMMIT_BRANCH-gen1
   paths:
     - target/
-    - $CI_BUILDS_DIR/
+    - $CARGO_HOME/
 
 rust-stable:
   stage: stage1
