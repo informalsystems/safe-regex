@@ -247,6 +247,16 @@ impl<'d> Regex<'d> for String {
     }
 }
 
+impl<'d> Regex<'d> for u8 {
+    fn match_prefix(&self, data: &'d [u8]) -> Option<usize> {
+        if !data.is_empty() && data[0] == *self {
+            Some(1)
+        } else {
+            None
+        }
+    }
+}
+
 impl<'d> Regex<'d> for &[u8] {
     fn match_prefix(&self, data: &'d [u8]) -> Option<usize> {
         let slice_len = self.len();

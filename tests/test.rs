@@ -137,6 +137,15 @@ fn test_impl_for_string() {
 }
 
 #[test]
+fn test_impl_for_u8() {
+    assert_eq!(None, b'b'.search(b""));
+    assert_eq!(None, b'b'.search(b"a"));
+    assert_eq!(Some(0..1), b'b'.search(b"b"));
+    assert_eq!(Some(1..2), b'b'.search(b"ab"));
+    assert_eq!(Some(1..2), b'b'.search(b"abc"));
+}
+
+#[test]
 fn test_impl_for_u8_slice() {
     // Empty pattern
     assert_eq!(Some(0..0), b"".as_ref().search(b""));
