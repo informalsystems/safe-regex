@@ -10,9 +10,12 @@ variables:
   CARGO_TARGET_DIR: $CI_PROJECT_DIR/target
 
 before_script:
+  - ls -alF "$CI_PROJECT_DIR"
   - rustc --version && cargo --version
+  - ls -alF "$CI_PROJECT_DIR"
   - du -sh "$CARGO_HOME"/ target/ || true
   - cargo install cargo-readme
+  - ls -alF "$CI_PROJECT_DIR"
 
 after_script:
   - du -sh "$CARGO_HOME"/ target/ || true
@@ -34,10 +37,14 @@ rust-stable:
     - git clone https://github.com/rust-secure-code/cargo-geiger.git "$CI_BUILDS_DIR"/cargo-geiger
     - (cd "$CI_BUILDS_DIR"/cargo-geiger/cargo-geiger ; cargo build --release --features vendored-openssl)
     - mv "$CARGO_TARGET_DIR"/release/cargo-geiger "$CARGO_HOME"/bin/
+    - ls -alF "$CI_PROJECT_DIR"
 
     - cargo fmt --version || rustup component add rustfmt
+    - ls -alF "$CI_PROJECT_DIR"
     - cargo clippy --version || rustup component add clippy
+    - ls -alF "$CI_PROJECT_DIR"
     - ./check.sh
+    - ls -alF "$CI_PROJECT_DIR"
 
 rust-nightly:
   stage: stage1
@@ -51,6 +58,9 @@ rust-nightly:
     # "Include rustfmt and clippy" https://github.com/rust-lang/docker-rust-nightly/issues/25
     # "Include rustfmt and clippy components by default" https://github.com/rust-lang/docker-rust/issues/37
     - cargo fmt --version || rustup component add rustfmt || cargo +nightly install --git https://github.com/rust-lang/rustfmt.git --branch master --force --features "rustfmt cargo-fmt" rustfmt-nightly
+    - ls -alF "$CI_PROJECT_DIR"
     - cargo clippy --version || rustup component add clippy || cargo install --git https://github.com/rust-lang/rust-clippy/ --force clippy
+    - ls -alF "$CI_PROJECT_DIR"
     - ./check.sh
+    - ls -alF "$CI_PROJECT_DIR"
   #allow_failure: true
