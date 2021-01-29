@@ -169,6 +169,7 @@ fn test_bytes() {
 
     let value = bytes(b"abc");
     let value_copy = value; // Copy
+    #[allow(clippy::clone_on_copy)]
     let _value_clone = value.clone(); // Clone
     assert_eq!(
         "Bytes { bytes: [97, 98, 99], phantom: PhantomData }",
@@ -187,6 +188,7 @@ fn test_seq() {
 
     let value = seq("a", "b");
     let value_copy = value; // Copy
+    #[allow(clippy::clone_on_copy)]
     let _value_clone = value.clone(); // Clone
     assert_eq!(
         "Seq { a: \"a\", b: \"b\", phantom: PhantomData }",
@@ -393,9 +395,13 @@ fn test_any_byte() {
 
     let value = any_byte();
     let value_copy = value; // Copy
+    #[allow(clippy::clone_on_copy)]
     let _value_clone = value.clone(); // Clone
     assert_eq!("AnyByte", format!("{:?}", value)); // Debug
-    assert!(!(value < any_byte())); // PartialOrd
+    assert_eq!(
+        Some(core::cmp::Ordering::Equal),
+        value.partial_cmp(&any_byte()) // PartialOrd
+    );
     assert_eq!(value, value_copy); // PartialEq
 }
 
@@ -409,6 +415,7 @@ fn test_or() {
 
     let value = or("a", "b");
     let value_copy = value; // Copy
+    #[allow(clippy::clone_on_copy)]
     let _value_clone = value.clone(); // Clone
     assert_eq!(
         "Or { a: \"a\", b: \"b\", phantom: PhantomData }",
@@ -507,6 +514,7 @@ fn test_group() {
         let cell: Cell<Option<&[u8]>> = Cell::new(None);
         let value = group(&cell, "a");
         let value_copy = value; // Copy
+        #[allow(clippy::clone_on_copy)]
         let _value_clone = value.clone(); // Clone
         assert_eq!("Group(Cell { value: None }, \"a\")", format!("{:?}", value)); // Debug
         assert!(value < group(&cell, "b")); // PartialOrd
