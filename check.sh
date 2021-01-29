@@ -27,7 +27,7 @@ check() {
   ls -alF $CI_PROJECT_DIR
   time cargo clippy --all-targets --all-features -- -D clippy::pedantic
   ls -alF $CI_PROJECT_DIR
-  time check_cargo_readme
+  #time check_cargo_readme
   ls -alF $CI_PROJECT_DIR
   time cargo publish --dry-run "$@"
   echo "$0 finished"
