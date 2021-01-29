@@ -37,6 +37,11 @@
 //! // "[0-9]"
 //! (b'0'..=b'9').match_all(b"7").unwrap();
 //!
+//! // "[^0-9]"
+//! safe_regex::not(b'0'..=b'9')
+//!     .match_all(b"a")
+//!     .unwrap();
+//!
 //! // "a?"
 //! ("a", ..=1).match_all(b"").unwrap();
 //! ("a", ..=1).match_all(b"a").unwrap();
@@ -436,6 +441,52 @@ impl<'d> Regex<'d> for AnyByte {
             None
         } else {
             Some(1)
+        }
+    }
+}
+
+/// A `Regex` pattern that matches a single byte, if that byte doesn't match
+/// the specified `re`.
+///
+/// [`not`](#method.not) return this.
+/// ```
+#[derive(Copy, Clone, Debug, PartialOrd, PartialEq)]
+pub struct Not<'d, A: Regex<'d>> {
+    re: A,
+    phantom: PhantomData<&'d ()>,
+}
+
+impl<'d, A: Regex<'d>> Not<'d, A> {
+    // TODO(https://github.com/rust-lang/rust/issues/57563)
+    //   Once `feature(const_fn)` is stable, make this `const fn`.
+    pub fn new(re: A) -> Self {
+        Self {
+            re,
+            phantom: PhantomData,
+        }
+    }
+}
+
+/// Match any single byte that does not match `re`.
+///
+/// # Example
+/// ```
+/// use safe_regex;
+/// use safe_regex::Regex;
+/// safe_regex::not("x").match_all(b"b").unwrap();
+/// assert_eq!(None, safe_regex::not("x").match_all(b"x"));
+/// ```
+pub fn not<'d, A: Regex<'d>>(re: A) -> Not<'d, A> {
+    Not::new(re)
+}
+
+//#[allow(clippy::option_if_let_else)]
+impl<'d, A: Regex<'d>> Regex<'d> for Not<'d, A> {
+    fn match_prefix(&self, data: &'d [u8]) -> Option<usize> {
+        if !data.is_empty() && self.re.match_prefix(&data[..1]).is_none() {
+            Some(1)
+        } else {
+            None
         }
     }
 }

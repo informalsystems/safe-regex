@@ -1,5 +1,4 @@
-use safe_regex::Regex;
-use safe_regex::{any_byte, bytes, group, or, or3, or4, or5, seq, seq3, seq4, seq5};
+use safe_regex::{any_byte, bytes, group, not, or, or3, or4, or5, seq, seq3, seq4, seq5, Regex};
 use std::cell::Cell;
 
 #[test]
@@ -402,6 +401,28 @@ fn test_any_byte() {
         Some(core::cmp::Ordering::Equal),
         value.partial_cmp(&any_byte()) // PartialOrd
     );
+    assert_eq!(value, value_copy); // PartialEq
+}
+
+#[test]
+fn test_not() {
+    assert_eq!(None, not("X").search(b""));
+    assert_eq!(None, not("X").search(b"X"));
+    assert_eq!(None, not("X").search(b"XX"));
+    assert_eq!(Some(0..1), not("X").search(b"ab"));
+    assert_eq!(Some(1..2), not("X").search(b"Xab"));
+    assert_eq!(Some(2..3), not("X").search(b"XXab"));
+    assert_eq!(Some(0..1), not(seq(any_byte(), "X")).search(b"aX"));
+
+    let value = not("X");
+    let value_copy = value; // Copy
+    #[allow(clippy::clone_on_copy)]
+    let _value_clone = value.clone(); // Clone
+    assert_eq!(
+        "Not { re: \"X\", phantom: PhantomData }",
+        format!("{:?}", value)
+    ); // Debug
+    assert!(value < not("Y")); // PartialOrd
     assert_eq!(value, value_copy); // PartialEq
 }
 
