@@ -6,7 +6,8 @@ stages:
   - stage1
 
 variables:
-  CARGO_HOME: $CI_BUILDS_DIR/cargo
+  CARGO_HOME: $CI_PROJECT_DIR/.cargo
+  CARGO_TARGET_DIR: $CI_PROJECT_DIR/target
 
 before_script:
   - rustc --version && cargo --version
