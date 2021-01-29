@@ -13,9 +13,6 @@ before_script:
   - rustc --version && cargo --version
   - du -sh $CARGO_HOME/ target/ || true
   - cargo install cargo-readme
-  - git clone https://github.com/rust-secure-code/cargo-geiger.git $CI_BUILDS_DIR/cargo-geiger
-  - (cd $CI_BUILDS_DIR/cargo-geiger/cargo-geiger ; cargo build --release --features vendored-openssl)
-  - mv $CI_BUILDS_DIR/cargo-geiger/target/release/cargo-geiger $CARGO_HOME/bin/
 
 after_script:
   - du -sh $CARGO_HOME/ target/ || true
@@ -31,6 +28,13 @@ rust-stable:
   stage: stage1
   image: rust:latest
   script:
+    # Once cargo-geiger-serde builds on nightly,
+    # move the build commands up to `before_script`.
+    # https://github.com/rust-secure-code/cargo-geiger/issues/181
+    - git clone https://github.com/rust-secure-code/cargo-geiger.git $CI_BUILDS_DIR/cargo-geiger
+    - (cd $CI_BUILDS_DIR/cargo-geiger/cargo-geiger ; cargo build --release --features vendored-openssl)
+    - mv $CI_BUILDS_DIR/cargo-geiger/target/release/cargo-geiger $CARGO_HOME/bin/
+
     - cargo fmt --version || rustup component add rustfmt
     - cargo clippy --version || rustup component add clippy
     - ./check.sh
