@@ -12,6 +12,9 @@ before_script:
   - rustc --version && cargo --version
   - du -sh cargo/ */target/ || true
   - cargo install cargo-readme
+  - git clone https://github.com/rust-secure-code/cargo-geiger.git
+  - (cd cargo-geiger/cargo-geiger ; cargo build --release --features vendored-openssl)
+  - mv cargo-geiger/target/release/cargo-geiger $CARGO_HOME/bin/
 
 after_script:
   - du -sh cargo/ */target/ || true

@@ -19,6 +19,25 @@ A safe regular expression library.
   For example, to match the expression `r"[a-z][0-9]"` write
   `safe_regex::seq(b'a'..b'z', b'0'..b'9')`.
 
+## Cargo Geiger Safety Report
+```
+
+Metric output format: x/y
+    x = unsafe code used by the build
+    y = total unsafe code found in the crate
+
+Symbols: 
+    🔒  = No `unsafe` usage found, declares #![forbid(unsafe_code)]
+    ❓  = No `unsafe` usage found, missing #![forbid(unsafe_code)]
+    ☢️  = `unsafe` usage found
+
+Functions  Expressions  Impls  Traits  Methods  Dependency
+
+0/0        0/0          0/0    0/0     0/0      🔒  safe-regex 0.1.0
+
+0/0        0/0          0/0    0/0     0/0    
+
+```
 ## Documentation
 <https://docs.rs/safe-regex-rs>
 
