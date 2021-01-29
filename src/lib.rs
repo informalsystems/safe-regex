@@ -257,6 +257,7 @@ impl<'d> Regex<'d> for &[u8] {
 /// `AsRef<[u8]>`.
 ///
 /// [`bytes`](#method.bytes) returns this.
+#[derive(Copy, Clone, Debug, PartialOrd, PartialEq)]
 pub struct Bytes<'d, T: AsRef<[u8]>> {
     bytes: T,
     phantom: PhantomData<&'d ()>,
@@ -299,6 +300,7 @@ impl<'d, T: AsRef<[u8]>> Regex<'d> for Bytes<'d, T> {
 /// [`seq`](#method.seq), [`seq3`](#method.seq3), [`seq4`](#method.seq4),
 /// and [`seq5`](#method.seq5) return this.
 /// ```
+#[derive(Copy, Clone, Debug, PartialOrd, PartialEq)]
 pub struct Seq<'d, A: Regex<'d>, B: Regex<'d>> {
     a: A,
     b: B,
@@ -402,6 +404,7 @@ impl<'d, A: Regex<'d>, B: Regex<'d>> Regex<'d> for Seq<'d, A, B> {
 ///
 /// [`any_byte`](#method.any_byte) returns this.
 /// ```
+#[derive(Copy, Clone, Debug, PartialOrd, PartialEq)]
 pub struct AnyByte;
 
 #[must_use]
@@ -434,6 +437,7 @@ impl<'d> Regex<'d> for AnyByte {
 /// [`or`](#method.or), [`or3`](#method.or3), [`or4`](#method.or4),
 /// and [`or5`](#method.or5) return this.
 /// ```
+#[derive(Copy, Clone, Debug, PartialOrd, PartialEq)]
 pub struct Or<'d, A: Regex<'d>, B: Regex<'d>> {
     a: A,
     b: B,
@@ -542,6 +546,7 @@ impl<'d, A: Regex<'d>, B: Regex<'d>> Regex<'d> for Or<'d, A, B> {
 ///
 /// [`group`](#method.group) returns this.
 /// ```
+#[derive(Copy, Clone, Debug, PartialOrd, PartialEq)]
 pub struct Group<'d, R: Regex<'d>>(&'d Cell<Option<&'d [u8]>>, R);
 
 /// Wrap `re`.  Whenever `re` matches a slice, save that to `cell`.

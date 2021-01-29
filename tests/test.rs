@@ -159,6 +159,16 @@ fn test_impl_for_u8_slice() {
 fn test_bytes() {
     assert_eq!(Some(0..0), bytes(b"").search(b""));
     assert_eq!(Some(1..3), bytes(b"bb").search(b"abbc"));
+
+    let value = bytes(b"abc");
+    let value_copy = value; // Copy
+    let _value_clone = value.clone(); // Clone
+    assert_eq!(
+        "Bytes { bytes: [97, 98, 99], phantom: PhantomData }",
+        format!("{:?}", value)
+    ); // Debug
+    assert!(value < bytes(b"def")); // PartialOrd
+    assert_eq!(value, value_copy); // PartialEq
 }
 
 #[test]
@@ -167,6 +177,16 @@ fn test_seq() {
     assert_eq!(Some(1..5), seq("ab", "cd").search(b"Xabcd"));
     assert_eq!(None, seq("ab", "cd").search(b"abXcd"));
     assert_eq!(Some(1..4), seq("a", seq("b", "c")).search(b"XabcY"));
+
+    let value = seq("a", "b");
+    let value_copy = value; // Copy
+    let _value_clone = value.clone(); // Clone
+    assert_eq!(
+        "Seq { a: \"a\", b: \"b\", phantom: PhantomData }",
+        format!("{:?}", value)
+    ); // Debug
+    assert!(value < seq("d", "d")); // PartialOrd
+    assert_eq!(value, value_copy); // PartialEq
 }
 
 #[test]
@@ -363,6 +383,13 @@ fn test_any_byte() {
     assert_eq!(None, any_byte().search(b""));
     assert_eq!(Some(0..1), any_byte().search(b"a"));
     assert_eq!(Some(0..1), any_byte().search(b"ab"));
+
+    let value = any_byte();
+    let value_copy = value; // Copy
+    let _value_clone = value.clone(); // Clone
+    assert_eq!("AnyByte", format!("{:?}", value)); // Debug
+    assert!(!(value < any_byte())); // PartialOrd
+    assert_eq!(value, value_copy); // PartialEq
 }
 
 #[test]
@@ -372,6 +399,16 @@ fn test_or() {
     assert_eq!(Some(1..2), or("a", "b").search(b"XbY"));
     assert_eq!(Some(0..1), or("a", "b").search(b"ab"));
     assert_eq!(None, or("a", "b").search(b"XY"));
+
+    let value = or("a", "b");
+    let value_copy = value; // Copy
+    let _value_clone = value.clone(); // Clone
+    assert_eq!(
+        "Or { a: \"a\", b: \"b\", phantom: PhantomData }",
+        format!("{:?}", value)
+    ); // Debug
+    assert!(value < or("d", "d")); // PartialOrd
+    assert_eq!(value, value_copy); // PartialEq
 }
 
 #[test]
@@ -457,5 +494,15 @@ fn test_group() {
         );
         assert_eq!(b"bb", cell_b.get().unwrap());
         assert_eq!(None, cell_d.get());
+    }
+
+    {
+        let cell: Cell<Option<&[u8]>> = Cell::new(None);
+        let value = group(&cell, "a");
+        let value_copy = value; // Copy
+        let _value_clone = value.clone(); // Clone
+        assert_eq!("Group(Cell { value: None }, \"a\")", format!("{:?}", value)); // Debug
+        assert!(value < group(&cell, "b")); // PartialOrd
+        assert_eq!(value, value_copy); // PartialEq
     }
 }
