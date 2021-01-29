@@ -119,6 +119,13 @@ fn test_match_suffix() {
 fn test_search() {}
 
 #[test]
+fn test_impl_for_char() {
+    assert_eq!(None, 'b'.search(b""));
+    assert_eq!(None, 'b'.search(b"XY"));
+    assert_eq!(Some(1..2), 'b'.search(b"abbc"));
+}
+
+#[test]
 fn test_impl_for_str() {
     assert_eq!(Some(0..0), "".search(b""));
     assert_eq!(Some(1..3), "bb".search(b"abbc"));

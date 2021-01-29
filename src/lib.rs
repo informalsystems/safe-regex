@@ -222,6 +222,14 @@ impl<'d> Regex<'d> for RangeToInclusive<u8> {
     }
 }
 
+impl<'d> Regex<'d> for char {
+    fn match_prefix(&self, data: &'d [u8]) -> Option<usize> {
+        let mut buf = [0_u8; 8];
+        let s: &str = self.encode_utf8(&mut buf);
+        s.match_prefix(data)
+    }
+}
+
 impl<'d> Regex<'d> for &str {
     fn match_prefix(&self, data: &'d [u8]) -> Option<usize> {
         self.as_bytes().match_prefix(data)
