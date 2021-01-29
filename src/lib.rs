@@ -27,41 +27,41 @@
 //!
 //! // "."
 //! safe_regex::any_byte()
-//!     .match_whole(b"a")
+//!     .match_all(b"a")
 //!     .unwrap();
 //!
 //! // "[0-9]"
-//! (b'0'..=b'9').match_whole(b"7").unwrap();
+//! (b'0'..=b'9').match_all(b"7").unwrap();
 //!
 //! // "a?"
-//! ("a", ..=1).match_whole(b"").unwrap();
-//! ("a", ..=1).match_whole(b"a").unwrap();
+//! ("a", ..=1).match_all(b"").unwrap();
+//! ("a", ..=1).match_all(b"a").unwrap();
 //!
 //! // "a+"
-//! ("a", 1..).match_whole(b"a").unwrap();
-//! ("a", 1..).match_whole(b"aaa").unwrap();
+//! ("a", 1..).match_all(b"a").unwrap();
+//! ("a", 1..).match_all(b"aaa").unwrap();
 //!
 //! // "a{3}"
-//! ("a", 3..=3).match_whole(b"aaa").unwrap();
+//! ("a", 3..=3).match_all(b"aaa").unwrap();
 //!
 //! // "a{2,3}"
-//! ("a", 2..=3).match_whole(b"aa").unwrap();
-//! ("a", 2..=3).match_whole(b"aaa").unwrap();
+//! ("a", 2..=3).match_all(b"aa").unwrap();
+//! ("a", 2..=3).match_all(b"aaa").unwrap();
 //!
 //! // "a|b"
 //! safe_regex::or("a", "b")
-//!     .match_whole(b"b")
+//!     .match_all(b"b")
 //!     .unwrap();
 //!
 //! // "a|b|c|d|e"
 //! safe_regex::or5("a", "b", "c", "d", "e")
-//!     .match_whole(b"b").unwrap();
+//!     .match_all(b"b").unwrap();
 //!
 //! // "(a|b)(c|d)"
 //! safe_regex::seq(
 //!     safe_regex::or("a", "b"),
 //!     safe_regex::or("c", "d"),
-//! ).match_whole(b"bc").unwrap();
+//! ).match_all(b"bc").unwrap();
 //!
 //! // "id([0-9]+)" capturing group
 //! use std::cell::Cell;
@@ -71,7 +71,7 @@
 //!     "id",
 //!     safe_regex::group(
 //!         &cell, (b'0'..b'9', 1..)
-//! )).match_whole(b"id42").unwrap();
+//! )).match_all(b"id42").unwrap();
 //! assert_eq!(b"42", cell.get().unwrap());
 //! ```
 //!
@@ -146,7 +146,7 @@ pub trait Regex<'d> {
     ///
     /// This is equivalent to adding '^' and '$' to the start and end of a
     /// regular expression.
-    fn match_whole(&self, data: &'d [u8]) -> Option<()> {
+    fn match_all(&self, data: &'d [u8]) -> Option<()> {
         let num_matched = self.match_prefix(data)?;
         if num_matched == data.len() {
             Some(())
@@ -277,7 +277,7 @@ impl<'d, T: AsRef<[u8]>> Bytes<'d, T> {
 /// use safe_regex;
 /// use safe_regex::Regex;
 /// safe_regex::bytes(b"ab")
-///     .match_whole(b"ab")
+///     .match_all(b"ab")
 ///     .unwrap();
 /// ```
 pub fn bytes<'d, T: AsRef<[u8]>>(b: T) -> Bytes<'d, T> {
@@ -320,7 +320,7 @@ impl<'d, A: Regex<'d>, B: Regex<'d>> Seq<'d, A, B> {
 /// use safe_regex;
 /// use safe_regex::Regex;
 /// safe_regex::seq("a", "b")
-///     .match_whole(b"ab")
+///     .match_all(b"ab")
 ///     .unwrap();
 /// ```
 pub fn seq<'d, A: Regex<'d>, B: Regex<'d>>(a: A, b: B) -> Seq<'d, A, B> {
@@ -334,7 +334,7 @@ pub fn seq<'d, A: Regex<'d>, B: Regex<'d>>(a: A, b: B) -> Seq<'d, A, B> {
 /// use safe_regex;
 /// use safe_regex::Regex;
 /// safe_regex::seq3("a", "b", "c")
-///     .match_whole(b"abc")
+///     .match_all(b"abc")
 ///     .unwrap();
 /// ```
 pub fn seq3<'d, A: Regex<'d>, B: Regex<'d>, C: Regex<'d>>(
@@ -352,7 +352,7 @@ pub fn seq3<'d, A: Regex<'d>, B: Regex<'d>, C: Regex<'d>>(
 /// use safe_regex;
 /// use safe_regex::Regex;
 /// safe_regex::seq4("a", "b", "c", "d")
-///     .match_whole(b"abcd")
+///     .match_all(b"abcd")
 ///     .unwrap();
 /// ```
 pub fn seq4<'d, A: Regex<'d>, B: Regex<'d>, C: Regex<'d>, D: Regex<'d>>(
@@ -371,7 +371,7 @@ pub fn seq4<'d, A: Regex<'d>, B: Regex<'d>, C: Regex<'d>, D: Regex<'d>>(
 /// use safe_regex;
 /// use safe_regex::Regex;
 /// safe_regex::seq5("a", "b", "c", "d", "e")
-///     .match_whole(b"abcde")
+///     .match_all(b"abcde")
 ///     .unwrap();
 /// ```
 #[allow(clippy::many_single_char_names)]
@@ -408,7 +408,7 @@ pub struct AnyByte;
 /// use safe_regex;
 /// use safe_regex::Regex;
 /// safe_regex::any_byte()
-///     .match_whole(b"a")
+///     .match_all(b"a")
 ///     .unwrap();
 /// ```
 pub fn any_byte() -> AnyByte {
@@ -455,7 +455,7 @@ impl<'d, A: Regex<'d>, B: Regex<'d>> Or<'d, A, B> {
 /// use safe_regex;
 /// use safe_regex::Regex;
 /// safe_regex::or("a", "b")
-///     .match_whole(b"b")
+///     .match_all(b"b")
 ///     .unwrap();
 /// ```
 pub fn or<'d, A: Regex<'d>, B: Regex<'d>>(a: A, b: B) -> Or<'d, A, B> {
@@ -469,7 +469,7 @@ pub fn or<'d, A: Regex<'d>, B: Regex<'d>>(a: A, b: B) -> Or<'d, A, B> {
 /// use safe_regex;
 /// use safe_regex::Regex;
 /// safe_regex::or3("a", "b", "c")
-///     .match_whole(b"c")
+///     .match_all(b"c")
 ///     .unwrap();
 /// ```
 pub fn or3<'d, A: Regex<'d>, B: Regex<'d>, C: Regex<'d>>(
@@ -487,7 +487,7 @@ pub fn or3<'d, A: Regex<'d>, B: Regex<'d>, C: Regex<'d>>(
 /// use safe_regex;
 /// use safe_regex::Regex;
 /// safe_regex::or4("a", "b", "c", "d")
-///     .match_whole(b"c")
+///     .match_all(b"c")
 ///     .unwrap();
 /// ```
 pub fn or4<'d, A: Regex<'d>, B: Regex<'d>, C: Regex<'d>, D: Regex<'d>>(
@@ -506,7 +506,7 @@ pub fn or4<'d, A: Regex<'d>, B: Regex<'d>, C: Regex<'d>, D: Regex<'d>>(
 /// use safe_regex;
 /// use safe_regex::Regex;
 /// safe_regex::or5("a", "b", "c", "d", "e")
-///     .match_whole(b"c")
+///     .match_all(b"c")
 ///     .unwrap();
 /// ```
 #[allow(clippy::many_single_char_names)]
@@ -556,7 +556,7 @@ pub struct Group<'d, R: Regex<'d>>(&'d Cell<Option<&'d [u8]>>, R);
 ///     "id",
 ///     safe_regex::group(
 ///         &cell, (b'0'..b'9', 1..))
-/// ).match_whole(b"id42").unwrap();
+/// ).match_all(b"id42").unwrap();
 /// assert_eq!(b"42", cell.get().unwrap());
 /// ```
 pub fn group<'d, R: Regex<'d>>(cell: &'d Cell<Option<&'d [u8]>>, re: R) -> Group<'d, R> {

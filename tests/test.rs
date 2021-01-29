@@ -3,24 +3,21 @@ use safe_regex::{any_byte, bytes, group, or, or3, or4, or5, seq, seq3, seq4, seq
 use std::cell::Cell;
 
 #[test]
-fn test_match_whole() {
-    assert_eq!(Some(()), "".match_whole(b""));
-    assert_eq!(None, "".match_whole(b"a"));
-    assert_eq!(Some(()), "b".match_whole(b"b"));
-    assert_eq!(None, "b".match_whole(b"a"));
-    assert_eq!(None, "b".match_whole(b"ab"));
-    assert_eq!(None, "b".match_whole(b"bc"));
-    assert_eq!(None, "b".match_whole(b"abc"));
-    assert_eq!(Some(()), "abc".match_whole(b"abc"));
-    assert_eq!(None, "abc".match_whole(b"Xabc"));
-    assert_eq!(None, "abc".match_whole(b"abcY"));
-    assert_eq!(None, "abc".match_whole(b"XabcY"));
-    assert_eq!(Some(()), seq("a", seq(("b", 0..), "c")).match_whole(b"ac"));
-    assert_eq!(Some(()), seq("a", seq(("b", 0..), "c")).match_whole(b"abc"));
-    assert_eq!(
-        Some(()),
-        seq("a", seq(("b", 0..), "c")).match_whole(b"abbbc")
-    );
+fn test_match_all() {
+    assert_eq!(Some(()), "".match_all(b""));
+    assert_eq!(None, "".match_all(b"a"));
+    assert_eq!(Some(()), "b".match_all(b"b"));
+    assert_eq!(None, "b".match_all(b"a"));
+    assert_eq!(None, "b".match_all(b"ab"));
+    assert_eq!(None, "b".match_all(b"bc"));
+    assert_eq!(None, "b".match_all(b"abc"));
+    assert_eq!(Some(()), "abc".match_all(b"abc"));
+    assert_eq!(None, "abc".match_all(b"Xabc"));
+    assert_eq!(None, "abc".match_all(b"abcY"));
+    assert_eq!(None, "abc".match_all(b"XabcY"));
+    assert_eq!(Some(()), seq("a", seq(("b", 0..), "c")).match_all(b"ac"));
+    assert_eq!(Some(()), seq("a", seq(("b", 0..), "c")).match_all(b"abc"));
+    assert_eq!(Some(()), seq("a", seq(("b", 0..), "c")).match_all(b"abbbc"));
 }
 
 #[test]

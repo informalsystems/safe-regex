@@ -29,41 +29,41 @@ use safe_regex::Regex;
 
 // "."
 safe_regex::any_byte()
-    .match_whole(b"a")
+    .match_all(b"a")
     .unwrap();
 
 // "[0-9]"
-(b'0'..=b'9').match_whole(b"7").unwrap();
+(b'0'..=b'9').match_all(b"7").unwrap();
 
 // "a?"
-("a", ..=1).match_whole(b"").unwrap();
-("a", ..=1).match_whole(b"a").unwrap();
+("a", ..=1).match_all(b"").unwrap();
+("a", ..=1).match_all(b"a").unwrap();
 
 // "a+"
-("a", 1..).match_whole(b"a").unwrap();
-("a", 1..).match_whole(b"aaa").unwrap();
+("a", 1..).match_all(b"a").unwrap();
+("a", 1..).match_all(b"aaa").unwrap();
 
 // "a{3}"
-("a", 3..=3).match_whole(b"aaa").unwrap();
+("a", 3..=3).match_all(b"aaa").unwrap();
 
 // "a{2,3}"
-("a", 2..=3).match_whole(b"aa").unwrap();
-("a", 2..=3).match_whole(b"aaa").unwrap();
+("a", 2..=3).match_all(b"aa").unwrap();
+("a", 2..=3).match_all(b"aaa").unwrap();
 
 // "a|b"
 safe_regex::or("a", "b")
-    .match_whole(b"b")
+    .match_all(b"b")
     .unwrap();
 
 // "a|b|c|d|e"
 safe_regex::or5("a", "b", "c", "d", "e")
-    .match_whole(b"b").unwrap();
+    .match_all(b"b").unwrap();
 
 // "(a|b)(c|d)"
 safe_regex::seq(
     safe_regex::or("a", "b"),
     safe_regex::or("c", "d"),
-).match_whole(b"bc").unwrap();
+).match_all(b"bc").unwrap();
 
 // "id([0-9]+)" capturing group
 use std::cell::Cell;
@@ -73,7 +73,7 @@ safe_regex::seq(
     "id",
     safe_regex::group(
         &cell, (b'0'..b'9', 1..)
-)).match_whole(b"id42").unwrap();
+)).match_all(b"id42").unwrap();
 assert_eq!(b"42", cell.get().unwrap());
 ```
 
