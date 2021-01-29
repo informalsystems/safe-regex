@@ -5,6 +5,7 @@
 
 check_cargo_readme() {
   cargo readme >Readme.md.tmp
+  cargo geiger --update-readme --readme-path Readme.md.tmp --output-format GitHubMarkdown
   diff Readme.md Readme.md.tmp || (
     echo "Readme.md is stale" >&2
     exit 1
