@@ -21,11 +21,11 @@
 //!
 //! # Examples
 //! ```rust
-//! use safe_regex;
-//! use safe_regex::Regex;
+//! use safe_regex::simple;
+//! use safe_regex::simple::Regex;
 //!
 //! // "."
-//! safe_regex::any_byte()
+//! simple::any_byte()
 //!     .match_all(b"a")
 //!     .unwrap();
 //!
@@ -33,7 +33,7 @@
 //! (b'0'..=b'9').match_all(b"7").unwrap();
 //!
 //! // "[^0-9]"
-//! safe_regex::not(b'0'..=b'9')
+//! simple::not(b'0'..=b'9')
 //!     .match_all(b"a")
 //!     .unwrap();
 //!
@@ -53,27 +53,27 @@
 //! ("a", 2..=3).match_all(b"aaa").unwrap();
 //!
 //! // "a|b"
-//! safe_regex::or("a", "b")
+//! simple::or("a", "b")
 //!     .match_all(b"b")
 //!     .unwrap();
 //!
 //! // "a|b|c|d|e"
-//! safe_regex::or5("a", "b", "c", "d", "e")
+//! simple::or5("a", "b", "c", "d", "e")
 //!     .match_all(b"b").unwrap();
 //!
 //! // "(a|b)(c|d)"
-//! safe_regex::seq(
-//!     safe_regex::or("a", "b"),
-//!     safe_regex::or("c", "d"),
+//! simple::seq(
+//!     simple::or("a", "b"),
+//!     simple::or("c", "d"),
 //! ).match_all(b"bc").unwrap();
 //!
 //! // "id([0-9]+)" capturing group
 //! use std::cell::Cell;
 //! let cell: Cell<Option<&[u8]>> =
 //!     Cell::new(None);
-//! safe_regex::seq(
+//! simple::seq(
 //!     "id",
-//!     safe_regex::group(
+//!     simple::group(
 //!         &cell, (b'0'..b'9', 1..)
 //! )).match_all(b"id42").unwrap();
 //! assert_eq!(b"42", cell.get().unwrap());
@@ -276,9 +276,9 @@ impl<'d, T: AsRef<[u8]>> Bytes<'d, T> {
 ///
 /// # Example
 /// ```
-/// use safe_regex;
-/// use safe_regex::Regex;
-/// safe_regex::bytes(b"ab")
+/// use safe_regex::simple;
+/// use safe_regex::simple::Regex;
+/// simple::bytes(b"ab")
 ///     .match_all(b"ab")
 ///     .unwrap();
 /// ```
@@ -320,9 +320,9 @@ impl<'d, A: Regex<'d>, B: Regex<'d>> Seq<'d, A, B> {
 ///
 /// # Example
 /// ```
-/// use safe_regex;
-/// use safe_regex::Regex;
-/// safe_regex::seq("a", "b")
+/// use safe_regex::simple;
+/// use safe_regex::simple::Regex;
+/// simple::seq("a", "b")
 ///     .match_all(b"ab")
 ///     .unwrap();
 /// ```
@@ -334,9 +334,9 @@ pub fn seq<'d, A: Regex<'d>, B: Regex<'d>>(a: A, b: B) -> Seq<'d, A, B> {
 ///
 /// # Example
 /// ```
-/// use safe_regex;
-/// use safe_regex::Regex;
-/// safe_regex::seq3("a", "b", "c")
+/// use safe_regex::simple;
+/// use safe_regex::simple::Regex;
+/// simple::seq3("a", "b", "c")
 ///     .match_all(b"abc")
 ///     .unwrap();
 /// ```
@@ -352,9 +352,9 @@ pub fn seq3<'d, A: Regex<'d>, B: Regex<'d>, C: Regex<'d>>(
 ///
 /// # Example
 /// ```
-/// use safe_regex;
-/// use safe_regex::Regex;
-/// safe_regex::seq4("a", "b", "c", "d")
+/// use safe_regex::simple;
+/// use safe_regex::simple::Regex;
+/// simple::seq4("a", "b", "c", "d")
 ///     .match_all(b"abcd")
 ///     .unwrap();
 /// ```
@@ -371,9 +371,9 @@ pub fn seq4<'d, A: Regex<'d>, B: Regex<'d>, C: Regex<'d>, D: Regex<'d>>(
 ///
 /// # Example
 /// ```
-/// use safe_regex;
-/// use safe_regex::Regex;
-/// safe_regex::seq5("a", "b", "c", "d", "e")
+/// use safe_regex::simple;
+/// use safe_regex::simple::Regex;
+/// simple::seq5("a", "b", "c", "d", "e")
 ///     .match_all(b"abcde")
 ///     .unwrap();
 /// ```
@@ -409,9 +409,9 @@ pub struct AnyByte;
 ///
 /// # Example
 /// ```
-/// use safe_regex;
-/// use safe_regex::Regex;
-/// safe_regex::any_byte()
+/// use safe_regex::simple;
+/// use safe_regex::simple::Regex;
+/// simple::any_byte()
 ///     .match_all(b"a")
 ///     .unwrap();
 /// ```
@@ -455,10 +455,10 @@ impl<'d, A: Regex<'d>> Not<'d, A> {
 ///
 /// # Example
 /// ```
-/// use safe_regex;
-/// use safe_regex::Regex;
-/// safe_regex::not("x").match_all(b"b").unwrap();
-/// assert_eq!(None, safe_regex::not("x").match_all(b"x"));
+/// use safe_regex::simple;
+/// use safe_regex::simple::Regex;
+/// simple::not("x").match_all(b"b").unwrap();
+/// assert_eq!(None, simple::not("x").match_all(b"x"));
 /// ```
 pub fn not<'d, A: Regex<'d>>(re: A) -> Not<'d, A> {
     Not::new(re)
@@ -503,9 +503,9 @@ impl<'d, A: Regex<'d>, B: Regex<'d>> Or<'d, A, B> {
 ///
 /// # Example
 /// ```
-/// use safe_regex;
-/// use safe_regex::Regex;
-/// safe_regex::or("a", "b")
+/// use safe_regex::simple;
+/// use safe_regex::simple::Regex;
+/// simple::or("a", "b")
 ///     .match_all(b"b")
 ///     .unwrap();
 /// ```
@@ -517,9 +517,9 @@ pub fn or<'d, A: Regex<'d>, B: Regex<'d>>(a: A, b: B) -> Or<'d, A, B> {
 ///
 /// # Example
 /// ```
-/// use safe_regex;
-/// use safe_regex::Regex;
-/// safe_regex::or3("a", "b", "c")
+/// use safe_regex::simple;
+/// use safe_regex::simple::Regex;
+/// simple::or3("a", "b", "c")
 ///     .match_all(b"c")
 ///     .unwrap();
 /// ```
@@ -535,9 +535,9 @@ pub fn or3<'d, A: Regex<'d>, B: Regex<'d>, C: Regex<'d>>(
 ///
 /// # Example
 /// ```
-/// use safe_regex;
-/// use safe_regex::Regex;
-/// safe_regex::or4("a", "b", "c", "d")
+/// use safe_regex::simple;
+/// use safe_regex::simple::Regex;
+/// simple::or4("a", "b", "c", "d")
 ///     .match_all(b"c")
 ///     .unwrap();
 /// ```
@@ -554,9 +554,9 @@ pub fn or4<'d, A: Regex<'d>, B: Regex<'d>, C: Regex<'d>, D: Regex<'d>>(
 ///
 /// # Example
 /// ```
-/// use safe_regex;
-/// use safe_regex::Regex;
-/// safe_regex::or5("a", "b", "c", "d", "e")
+/// use safe_regex::simple;
+/// use safe_regex::simple::Regex;
+/// simple::or5("a", "b", "c", "d", "e")
 ///     .match_all(b"c")
 ///     .unwrap();
 /// ```
@@ -598,15 +598,15 @@ pub struct Group<'d, R: Regex<'d>>(&'d Cell<Option<&'d [u8]>>, R);
 ///
 /// # Example
 /// ```
-/// use safe_regex;
-/// use safe_regex::Regex;
+/// use safe_regex::simple;
+/// use safe_regex::simple::Regex;
 /// // "id([0-9]+)" capturing group
 /// use std::cell::Cell;
 /// let cell: Cell<Option<&[u8]>> =
 ///     Cell::new(None);
-/// safe_regex::seq(
+/// simple::seq(
 ///     "id",
-///     safe_regex::group(
+///     simple::group(
 ///         &cell, (b'0'..b'9', 1..))
 /// ).match_all(b"id42").unwrap();
 /// assert_eq!(b"42", cell.get().unwrap());
