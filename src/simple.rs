@@ -1,9 +1,4 @@
-//! [![crates.io version](https://img.shields.io/crates/v/essie-tls.svg)](https://crates.io/crates/safe-regex)
-//! [![license: Apache 2.0](https://gitlab.com/leonhard-llc/safe-regex-rs/-/raw/main/license-apache-2.0.svg)](http://www.apache.org/licenses/LICENSE-2.0)
-//! [![unsafe forbidden](https://gitlab.com/leonhard-llc/safe-regex-rs/-/raw/main/unsafe-forbidden-success.svg)](https://github.com/rust-secure-code/safety-dance/)
-//! [![pipeline status](https://gitlab.com/leonhard-llc/safe-regex-rs/badges/main/pipeline.svg)](https://gitlab.com/leonhard-llc/safe-regex-rs/-/pipelines)
-//!
-//! A safe regular expression library.
+//! Simple safe regular expression library.
 //!
 //! # Features
 //! - `forbid(unsafe_code)`
@@ -16,13 +11,13 @@
 //! - You must write expressions using Rust syntax.
 //!   For example, to match the expression `r"[a-z][0-9]"` write
 //!   `safe_regex::seq(b'a'..b'z', b'0'..b'9')`.
-//!
-//! # Cargo Geiger Safety Report
-//! `update_readme.sh` generates `Readme.md`
-//! and replaces this section with the report.
-//!
-//! # Documentation
-//! <https://docs.rs/safe-regex-rs>
+//! - No backtracking.  All optional or repeating elements are possessive.
+//!   Input bytes consumed by one part of the pattern are not available to
+//!   later parts of the pattern.
+//!   This means a pattern like `"[a-z]*abc"` can never match.
+//!   If you need to parse patterns like this, you can do it with two regexes.
+//!   Because of this limitation, the library has very good runtime performance:
+//!   O(input_len * pattern_len).
 //!
 //! # Examples
 //! ```rust
@@ -84,37 +79,11 @@
 //! assert_eq!(b"42", cell.get().unwrap());
 //! ```
 //!
-//! # Alternatives
-//! - [`regex`](https://crates.io/crates/regex)
-//!   - Mature
-//!   - Popular
-//!   - Maintained by the core Rust language developers
-//!   - Contains `unsafe` code.
-//! - [`pcre2`](https://crates.io/crates/pcre2)
-//!   - Uses PCRE library which is written in unsafe C.
-//! - [`regular-expression`](https://crates.io/crates/regular-expression)
-//!   - No documentation
-//! - [`rec`](https://crates.io/crates/rec)
-//!
-//! # Changelog
-//! - v0.1.0 - First published version
-//!
 //! # TO DO
 //! - DONE - Match byte slices
 //! - Match strings
 //! - Macro, `regex!(r"[a-z][0-9]")`
 //! - Common character classes: whitespace, letters, punctuation, etc.
-//!
-//! # Release Process
-//! 1. Edit `Cargo.toml` and bump version number.
-//! 1. Run `./release.sh`
-
-// Here's an overview of regular expressions and an efficient algorithm:
-// https://swtch.com/~rsc/regexp/regexp1.html
-
-#![forbid(unsafe_code)]
-pub mod simple;
-
 use core::cell::Cell;
 use core::marker::PhantomData;
 use core::ops::{
@@ -123,7 +92,7 @@ use core::ops::{
 
 /// Implements regular expression matching on byte slices.
 ///
-/// See the [crate docs](index.html) for examples.
+/// See the [module docs](index.html) for examples.
 pub trait Regex<'d> {
     /// Checks if `data` starts with the pattern.
     ///
