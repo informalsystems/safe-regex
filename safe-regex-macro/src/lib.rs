@@ -65,149 +65,70 @@ enum Token {
     CloseBracket,
 }
 
+fn invalid_escape(bytes: impl AsRef<[u8]>) -> String {
+    format!("invalid escape sequence `\\{}`", escape_ascii(bytes))
+}
+
 fn tokenize_raw_byte_string(data: &[u8]) -> Result<Vec<Token>, String> {
     println!("tokenize {:?} {}", data, escape_ascii(data));
     let mut result = Vec::new();
-    let mut iter = data.iter().map(|b| *b);
-    let mut windows = Vec::new();
-    let mut item0 = iter.next();
-    let mut item1 = iter.next();
-    let mut item2 = iter.next();
-    let mut item3 = iter.next();
-    while item0.is_some() {
-        windows.push((item0.unwrap(), item1, item2, item3));
-        item0 = item1;
-        item1 = item2;
-        item2 = item3;
-        item3 = iter.next();
-    }
-    let mut windows_iter = windows.iter().map(|v| *v);
-    while let Some(window) = windows_iter.next() {
-        println!("tokenize process {:?}", window);
-        let token = match window {
-            (b'\\', None, _, _) => return Err("incomplete escape sequence `\\`".to_string()),
-            (b'\\', Some(b'x'), None, _) => {
-                return Err("incomplete escape sequence `\\x`".to_string())
+    let mut iter = data.iter().copied();
+    while let Some(b0) = iter.next() {
+        println!("tokenize b0 {:?} {}", b0, escape_ascii([b0]));
+        let token = match b0 {
+            b'\\' => {
+                let b1 = iter.next().ok_or_else(|| invalid_escape([]))?;
+                println!("tokenize b1 {:?} {}", b1, escape_ascii([b1]));
+                match b1 {
+                    b'x' => {
+                        let b2 = iter.next().ok_or_else(|| invalid_escape([b1]))?;
+                        println!("tokenize b2 {:?} {}", b2, escape_ascii([b2]));
+                        let b3 = iter.next().ok_or_else(|| invalid_escape([b1, b2]))?;
+                        println!("tokenize b3 {:?} {}", b3, escape_ascii([b3]));
+                        if !b2.is_ascii_hexdigit() || !b3.is_ascii_hexdigit() {
+                            return Err(invalid_escape([b1, b2, b3]));
+                        }
+                        let string = String::from_utf8(vec![b2, b3]).unwrap();
+                        let byte = u8::from_str_radix(&string, 16).unwrap();
+                        Token::Byte(byte)
+                    }
+                    b'n' => Token::Byte(b'\n'),
+                    b'r' => Token::Byte(b'\r'),
+                    b't' => Token::Byte(b'\t'),
+                    b'\\' => Token::Byte(b'\\'),
+                    b'0' => Token::Byte(0),
+                    b'\'' => Token::Byte(b'\''),
+                    b'"' => Token::Byte(b'"'),
+                    b'?' => Token::Byte(b'?'),
+                    b'+' => Token::Byte(b'+'),
+                    b'.' => Token::Byte(b'.'),
+                    b'*' => Token::Byte(b'*'),
+                    b'^' => Token::Byte(b'^'),
+                    b'$' => Token::Byte(b'$'),
+                    b'|' => Token::Byte(b'|'),
+                    b'(' => Token::Byte(b'('),
+                    b')' => Token::Byte(b')'),
+                    b'{' => Token::Byte(b'{'),
+                    b'}' => Token::Byte(b'}'),
+                    b'[' => Token::Byte(b'['),
+                    b']' => Token::Byte(b']'),
+                    _ => return Err(invalid_escape([b1])),
+                }
             }
-            (b'\\', Some(b'x'), Some(b), None) => {
-                return Err(format!(
-                    "incomplete escape sequence `\\x{}`",
-                    escape_ascii([b])
-                ))
-            }
-            (b'\\', Some(b'x'), Some(digit1), Some(digit0))
-                if digit1.is_ascii_hexdigit() && digit0.is_ascii_hexdigit() =>
-            {
-                windows_iter.next().unwrap();
-                windows_iter.next().unwrap();
-                windows_iter.next().unwrap();
-                let string = String::from_utf8(vec![digit1, digit0]).unwrap();
-                let byte = u8::from_str_radix(&string, 16).unwrap();
-                Token::Byte(byte)
-            }
-            (b'\\', Some(b'x'), Some(digit1), Some(digit0)) => {
-                return Err(format!(
-                    "invalid escape sequence `\\x{}`",
-                    escape_ascii([digit1, digit0])
-                ))
-            }
-            (b'\\', Some(b'n'), _, _) => {
-                windows_iter.next().unwrap();
-                Token::Byte(b'\n')
-            }
-            (b'\\', Some(b'r'), _, _) => {
-                windows_iter.next().unwrap();
-                Token::Byte(b'\r')
-            }
-            (b'\\', Some(b't'), _, _) => {
-                windows_iter.next().unwrap();
-                Token::Byte(b'\t')
-            }
-            (b'\\', Some(b'\\'), _, _) => {
-                windows_iter.next().unwrap();
-                Token::Byte(b'\\')
-            }
-            (b'\\', Some(b'0'), _, _) => {
-                windows_iter.next().unwrap();
-                Token::Byte(0)
-            }
-            (b'\\', Some(b'\''), _, _) => {
-                windows_iter.next().unwrap();
-                Token::Byte(b'\'')
-            }
-            (b'\\', Some(b'"'), _, _) => {
-                windows_iter.next().unwrap();
-                Token::Byte(b'"')
-            }
-            (b'\\', Some(b'?'), _, _) => {
-                windows_iter.next().unwrap();
-                Token::Byte(b'?')
-            }
-            (b'\\', Some(b'+'), _, _) => {
-                windows_iter.next().unwrap();
-                Token::Byte(b'+')
-            }
-            (b'\\', Some(b'.'), _, _) => {
-                windows_iter.next().unwrap();
-                Token::Byte(b'.')
-            }
-            (b'\\', Some(b'*'), _, _) => {
-                windows_iter.next().unwrap();
-                Token::Byte(b'*')
-            }
-            (b'\\', Some(b'^'), _, _) => {
-                windows_iter.next().unwrap();
-                Token::Byte(b'^')
-            }
-            (b'\\', Some(b'$'), _, _) => {
-                windows_iter.next().unwrap();
-                Token::Byte(b'$')
-            }
-            (b'\\', Some(b'|'), _, _) => {
-                windows_iter.next().unwrap();
-                Token::Byte(b'|')
-            }
-            (b'\\', Some(b'('), _, _) => {
-                windows_iter.next().unwrap();
-                Token::Byte(b'(')
-            }
-            (b'\\', Some(b')'), _, _) => {
-                windows_iter.next().unwrap();
-                Token::Byte(b')')
-            }
-            (b'\\', Some(b'{'), _, _) => {
-                windows_iter.next().unwrap();
-                Token::Byte(b'{')
-            }
-            (b'\\', Some(b'}'), _, _) => {
-                windows_iter.next().unwrap();
-                Token::Byte(b'}')
-            }
-            (b'\\', Some(b'['), _, _) => {
-                windows_iter.next().unwrap();
-                Token::Byte(b'[')
-            }
-            (b'\\', Some(b']'), _, _) => {
-                windows_iter.next().unwrap();
-                Token::Byte(b']')
-            }
-            (b'\\', Some(b), _, _) => {
-                return Err(format!("invalid escape sequence `\\{}`", escape_ascii([b])))
-            }
-            (b'?', _, _, _) => Token::QMark,
-            (b'+', _, _, _) => Token::Plus,
-            (b'.', _, _, _) => Token::Dot,
-            (b'*', _, _, _) => Token::Star,
-            (b'^', _, _, _) => Token::Caret,
-            (b'$', _, _, _) => Token::Dollar,
-            (b'|', _, _, _) => Token::Bar,
-            (b'(', _, _, _) => Token::OpenParen,
-            (b')', _, _, _) => Token::CloseParen,
-            (b'{', _, _, _) => Token::OpenBrace,
-            (b'}', _, _, _) => Token::CloseBrace,
-            (b'[', _, _, _) => Token::OpenBracket,
-            (b']', _, _, _) => Token::CloseBracket,
-            (b, _, _, _) => Token::Byte(b),
+            b'?' => Token::QMark,
+            b'+' => Token::Plus,
+            b'.' => Token::Dot,
+            b'*' => Token::Star,
+            b'^' => Token::Caret,
+            b'$' => Token::Dollar,
+            b'|' => Token::Bar,
+            b'(' => Token::OpenParen,
+            b')' => Token::CloseParen,
+            b'{' => Token::OpenBrace,
+            b'}' => Token::CloseBrace,
+            b'[' => Token::OpenBracket,
+            b']' => Token::CloseBracket,
+            b => Token::Byte(b),
         };
         println!("tokenize push {:?}", token);
         result.push(token);
@@ -231,7 +152,7 @@ fn test_tokenize() {
         tokenize_raw_byte_string(br"abc")
     );
     assert_eq!(
-        Err(r"incomplete escape sequence `\`".to_string()),
+        Err(r"invalid escape sequence `\`".to_string()),
         tokenize_raw_byte_string(br"\")
     );
     assert_eq!(
@@ -241,11 +162,11 @@ fn test_tokenize() {
     // Rust byte escapes
     // https://doc.rust-lang.org/reference/tokens.html#byte-escapes
     assert_eq!(
-        Err(r"incomplete escape sequence `\x`".to_string()),
+        Err(r"invalid escape sequence `\x`".to_string()),
         tokenize_raw_byte_string(br"\x")
     );
     assert_eq!(
-        Err(r"incomplete escape sequence `\x0`".to_string()),
+        Err(r"invalid escape sequence `\x0`".to_string()),
         tokenize_raw_byte_string(br"\x0")
     );
     assert_eq!(
