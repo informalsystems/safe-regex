@@ -224,16 +224,532 @@ fn test_tokenize() {
     assert_eq!(Ok(vec![CloseSquare]), tokenize(br"]"));
 }
 
+#[derive(Clone, Debug, PartialOrd, PartialEq)]
 enum Node {
-    Literal(u8),
-    Class(Vec<u8>),
-    NegativeClass(Vec<u8>),
     AnyByte,
-    Group(Box<Node>),
+    Literal(u8),
     Or(Vec<Node>),
     Seq(Vec<Node>),
-    Repeat(usize, Option<usize>),
+    Class(Vec<u8>),
+    NegativeClass(Vec<u8>),
+    Group(Box<Node>),
+    Repeat(Box<Node>, usize, Option<usize>),
 }
+
+// fn parse_repeat(target: Node, iter: &mut impl Iterator<Item=Token>) -> Result<Node, String> {
+//     let mut tokens: Vec<Token> = iter.take_while(|t| t != Token::CloseCurly).collect();
+//     if tokens.is_empty() {
+//         return Err("missing `}` symbol".to_string());
+//     }
+//     let mut parts = tokens.split(|t| t == Token::Byte(b','));
+//     let min_str = String::from_utf8(Vec::from(parts.next().unwrap_or(&[]))).unwrap();
+//     let min = usize::from_str().map_err(|_| )?;
+//     let mut min_digits = Vec::new();
+//     while let Some(token) = iter.next() {
+//         match token {
+//             Token::Byte(b) if (b'0'..=b'9').contains(&b) => min_digits.push(b),
+//             Token::Byte(b',') => break,
+//         }
+//         let min = match iter.next().ok_or_else()? {
+//             Token::Byte(b) if (b'0'..=b'9').contains(&b) => {}
+//         };
+//         Node::Repeat(Box::new(target), 1, None)
+//     }
+// }
+
+fn parse_next_node(iter: &mut impl Iterator<Item = Token>) -> Result<Option<Node>, String> {
+    while let Some(t0) = iter.next() {
+        let node = match t0 {
+            Token::Dot => Node::AnyByte,
+            Token::Byte(b) => Node::Literal(b),
+            Token::QMark => {
+                let target = result
+                    .pop()
+                    .ok_or_else(|| "missing element before `?` symbol".to_string())?;
+                Node::Repeat(Box::new(target), 0, Some(1))
+            }
+            Token::Plus => {
+                let target = result
+                    .pop()
+                    .ok_or_else(|| "missing element before `+` symbol".to_string())?;
+                Node::Repeat(Box::new(target), 1, Some(1))
+            }
+            Token::Star => {
+                let target = result
+                    .pop()
+                    .ok_or_else(|| "missing element before `*` symbol".to_string())?;
+                Node::Repeat(Box::new(target), 1, None)
+            }
+            // Token::OpenCurly => {
+            //     let target = result
+            //         .pop()
+            //         .ok_or_else(|| "missing element before `{` symbol".to_string())?;
+            //     // parse_repeat(target, &mut iter)?
+            // }
+            // Token::CloseCurly => return Err("unmatched `}` symbol".to_string()),
+            // Token::CloseRound => return Err("unmatched `)` symbol".to_string()),
+            // Token::CloseSquare => return Err("unmatched `]` symbol".to_string()),
+            // Token::Caret => {}
+            // Token::Dollar => {}
+            // Token::Bar => {}
+            // Token::OpenRound => {}
+            // Token::OpenSquare => {}
+            _ => Node::Empty,
+        };
+        result.push(node);
+    }
+}
+
+fn parse(mut tokens: Vec<Token>) -> Result<Node, String> {
+    let starts_with_caret = {
+        if let Some(Token::Caret) = tokens.first() {
+            tokens.remove(0);
+            true
+        } else {
+            false
+        }
+    };
+    let ends_with_dollar = {
+        if let Some(Token::Dollar) = tokens.last() {
+            tokens.pop().unwrap();
+            true
+        } else {
+            false
+        }
+    };
+    let mut stack = Vec::new();
+    let mut node = Node::Seq(Vec::new());
+    let mut iter = tokens.iter().copied();
+    while let Some(node) = parse_next_node(&mut iter)? {
+        result.push(node);
+    }
+    if let Some(n) = stack.last() {}
+    if result.len() == 1 {
+        Ok(result.remove(0))
+    } else {
+        Ok(Node::Seq(result))
+    }
+}
+
+#[cfg(test)]
+#[test]
+fn test_parse() {
+    // TODO(mleonhard) Test precedence.
+    use Token::{Bar, Byte, Dot};
+
+    assert_eq!(Ok(Seq(vec![])), parse(vec![]));
+
+    use Node::AnyByte;
+    assert_eq!(Ok(AnyByte), parse(vec![Dot]));
+
+    use Node::Literal;
+    assert_eq!(Ok(Literal(b'a')), parse(vec![Byte(b'a')]));
+
+    use Node::Or;
+    assert_eq!(
+        Ok(Or(vec![Literal(b'a'), Literal(b'b')])),
+        parse(vec![Byte(b'a'), Bar, Byte(b'b')])
+    );
+    assert_eq!(
+        Ok(Or(vec![Literal(b'a'), Literal(b'b'), Literal(b'c')])),
+        parse(vec![Byte(b'a'), Bar, Byte(b'b'), Bar, Byte(b'c')])
+    );
+
+    use Node::Seq;
+    assert_eq!(
+        Ok(Seq(vec![Literal(b'a'), Literal(b'b')])),
+        parse(vec![Byte(b'a'), Byte(b'b')])
+    );
+}
+
+#[cfg(test)]
+#[test]
+fn test_parse_class() {
+    use Node::Class;
+    use Token::{
+        Bar, Byte, Caret, CloseCurly, CloseRound, CloseSquare, Dollar, Dot, OpenCurly, OpenRound,
+        OpenSquare, Plus, QMark, Star,
+    };
+    assert_eq!(
+        Ok(Class(vec![b'a'])),
+        parse(vec![OpenSquare, Byte(b'a'), CloseSquare])
+    );
+    assert_eq!(
+        Ok(Class(vec![b'a', b'b', b'c'])),
+        parse(vec![
+            OpenSquare,
+            Byte(b'a'),
+            Byte(b'b'),
+            Byte(b'c'),
+            CloseSquare
+        ])
+    );
+    // ?+.*^$|(){}[]
+    assert_eq!(
+        Ok(Class(vec![
+            b'?', b'+', b'.', b'*', b'^', b'$', b'|', b'(', b')', b'{', b'}', b'[', b']'
+        ])),
+        parse(vec![
+            OpenSquare,
+            QMark,
+            Plus,
+            Dot,
+            Star,
+            Caret,
+            Dollar,
+            Bar,
+            OpenRound,
+            CloseRound,
+            OpenCurly,
+            CloseCurly,
+            OpenSquare,
+            Byte(b']'),
+            CloseSquare
+        ])
+    );
+    assert_eq!(
+        Err("character class ends with `-`".to_string()),
+        parse(vec![OpenSquare, Byte(b'a'), Byte(b'-'), CloseSquare])
+    );
+    assert_eq!(
+        Ok(Class(vec![b'a', b'b', b'c'])),
+        parse(vec![
+            OpenSquare,
+            Byte(b'a'),
+            Byte(b'-'),
+            Byte(b'c'),
+            CloseSquare
+        ])
+    );
+    assert_eq!(
+        Ok(Class(vec![b'a', b'b', b'c', b'g', b'g', b'h'])),
+        parse(vec![
+            OpenSquare,
+            Byte(b'a'),
+            Byte(b'-'),
+            Byte(b'c'),
+            Byte(b'g'),
+            Byte(b'-'),
+            Byte(b'h'),
+            CloseSquare
+        ])
+    );
+    assert_eq!(
+        Ok(Class(vec![b'-', b'a', b'b'])),
+        parse(vec![
+            OpenSquare,
+            Byte(b'-'),
+            Byte(b'a'),
+            Byte(b'b'),
+            CloseSquare
+        ])
+    );
+}
+
+#[cfg(test)]
+#[test]
+fn test_parse_negative_class() {
+    use Node::NegativeClass;
+    use Token::{
+        Bar, Byte, Caret, CloseCurly, CloseRound, CloseSquare, Dollar, Dot, OpenCurly, OpenRound,
+        OpenSquare, Plus, QMark, Star,
+    };
+    assert_eq!(
+        Ok(NegativeClass(vec![b'a'])),
+        parse(vec![OpenSquare, Caret, Byte(b'a'), CloseSquare])
+    );
+    assert_eq!(
+        Ok(NegativeClass(vec![b'a', b'b', b'c'])),
+        parse(vec![
+            OpenSquare,
+            Caret,
+            Byte(b'a'),
+            Byte(b'b'),
+            Byte(b'c'),
+            CloseSquare
+        ])
+    );
+    assert_eq!(
+        Ok(NegativeClass(vec![
+            b'?', b'+', b'.', b'*', b'^', b'$', b'|', b'(', b')', b'{', b'}', b'[', b']'
+        ])),
+        parse(vec![
+            OpenSquare,
+            Caret,
+            QMark,
+            Plus,
+            Dot,
+            Star,
+            Caret,
+            Dollar,
+            Bar,
+            OpenRound,
+            CloseRound,
+            OpenCurly,
+            CloseCurly,
+            OpenSquare,
+            Byte(b']'),
+            CloseSquare
+        ])
+    );
+    assert_eq!(
+        Err("character class ends with `-`".to_string()),
+        parse(vec![OpenSquare, Caret, Byte(b'a'), Byte(b'-'), CloseSquare])
+    );
+    assert_eq!(
+        Ok(NegativeClass(vec![b'a', b'b', b'c'])),
+        parse(vec![
+            OpenSquare,
+            Caret,
+            Byte(b'a'),
+            Byte(b'-'),
+            Byte(b'c'),
+            CloseSquare
+        ])
+    );
+    assert_eq!(
+        Ok(NegativeClass(vec![b'a', b'b', b'c', b'g', b'g', b'h'])),
+        parse(vec![
+            OpenSquare,
+            Caret,
+            Byte(b'a'),
+            Byte(b'-'),
+            Byte(b'c'),
+            Byte(b'g'),
+            Byte(b'-'),
+            Byte(b'h'),
+            CloseSquare
+        ])
+    );
+    assert_eq!(
+        Ok(NegativeClass(vec![b'-', b'a', b'b'])),
+        parse(vec![
+            OpenSquare,
+            Caret,
+            Byte(b'-'),
+            Byte(b'a'),
+            Byte(b'b'),
+            CloseSquare
+        ])
+    );
+}
+
+#[cfg(test)]
+#[test]
+fn test_parse_group() {
+    use Node::{AnyByte, Empty, Group, Seq};
+    use Token::{CloseRound, Dot, OpenRound};
+    assert_eq!(
+        Err("group is missing closing `)` symbol".to_string()),
+        parse(vec![OpenRound, Dot])
+    );
+    assert_eq!(
+        Ok(Group(Box::new(Empty))),
+        parse(vec![OpenRound, CloseRound])
+    );
+    assert_eq!(
+        Ok(Group(Box::new(AnyByte))),
+        parse(vec![OpenRound, Dot, CloseRound])
+    );
+    assert_eq!(
+        Ok(Group(Box::new(Group(Box::new(AnyByte))))),
+        parse(vec![OpenRound, OpenRound, Dot, CloseRound, CloseRound])
+    );
+    assert_eq!(
+        Ok(Group(Box::new(Seq(vec![
+            AnyByte,
+            Group(Box::new(AnyByte))
+        ])))),
+        parse(vec![OpenRound, Dot, OpenRound, Dot, CloseRound, CloseRound])
+    );
+}
+
+#[cfg(test)]
+#[test]
+fn test_parse_repeat() {
+    use Node::{AnyByte, Repeat};
+    use Token::{Byte, CloseCurly, Dot, OpenCurly, Plus, QMark, Star};
+    // ?
+    assert_eq!(
+        Err("missing element before `?` symbol".to_string()),
+        parse(vec![QMark])
+    );
+    assert_eq!(
+        Ok(Repeat(Box::new(AnyByte), 0, Some(1))),
+        parse(vec![Dot, QMark])
+    );
+
+    // *
+    assert_eq!(
+        Err("missing element before `*` symbol".to_string()),
+        parse(vec![Star])
+    );
+    assert_eq!(
+        Ok(Repeat(Box::new(AnyByte), 0, None)),
+        parse(vec![Dot, Star])
+    );
+
+    // +
+    assert_eq!(
+        Err("missing element before `+` symbol".to_string()),
+        parse(vec![Plus])
+    );
+    assert_eq!(
+        Ok(Repeat(Box::new(AnyByte), 1, None)),
+        parse(vec![Dot, Plus])
+    );
+
+    // {1}
+    assert_eq!(
+        Err("missing element before `{` symbol".to_string()),
+        parse(vec![OpenCurly, Byte(b'1'), CloseCurly])
+    );
+    assert_eq!(
+        Err("missing `}` symbol".to_string()),
+        parse(vec![Dot, OpenCurly, Byte(b'1')])
+    );
+    assert_eq!(
+        Ok(Repeat(Box::new(AnyByte), 0, Some(0))),
+        parse(vec![Dot, OpenCurly, Byte(b'0'), CloseCurly])
+    );
+    assert_eq!(
+        Ok(Repeat(Box::new(AnyByte), 1, Some(1))),
+        parse(vec![Dot, OpenCurly, Byte(b'1'), CloseCurly])
+    );
+    assert_eq!(
+        Ok(Repeat(Box::new(AnyByte), 99, Some(99))),
+        parse(vec![Dot, OpenCurly, Byte(b'9'), Byte(b'9'), CloseCurly])
+    );
+
+    // {,}
+    assert_eq!(
+        Err("missing element before `{` symbol".to_string()),
+        parse(vec![OpenCurly, Byte(b','), CloseCurly])
+    );
+    assert_eq!(
+        Err("missing `}` symbol".to_string()),
+        parse(vec![Dot, OpenCurly, Byte(b',')])
+    );
+    assert_eq!(
+        Ok(Repeat(Box::new(AnyByte), 0, None)),
+        parse(vec![Dot, OpenCurly, Byte(b','), CloseCurly])
+    );
+
+    // {1,}
+    assert_eq!(
+        Err("missing element before `{` symbol".to_string()),
+        parse(vec![OpenCurly, Byte(b'1'), Byte(b','), CloseCurly])
+    );
+    assert_eq!(
+        Err("missing `}` symbol".to_string()),
+        parse(vec![Dot, OpenCurly, Byte(b'1'), Byte(b',')])
+    );
+    assert_eq!(
+        Ok(Repeat(Box::new(AnyByte), 0, None)),
+        parse(vec![Dot, OpenCurly, Byte(b'0'), Byte(b','), CloseCurly])
+    );
+    assert_eq!(
+        Ok(Repeat(Box::new(AnyByte), 1, None)),
+        parse(vec![Dot, OpenCurly, Byte(b'1'), Byte(b','), CloseCurly])
+    );
+    assert_eq!(
+        Ok(Repeat(Box::new(AnyByte), 99, None)),
+        parse(vec![
+            Dot,
+            OpenCurly,
+            Byte(b'9'),
+            Byte(b'9'),
+            Byte(b','),
+            CloseCurly
+        ])
+    );
+
+    // {,1}
+    assert_eq!(
+        Err("missing element before `{` symbol".to_string()),
+        parse(vec![OpenCurly, Byte(b','), Byte(b'1'), CloseCurly])
+    );
+    assert_eq!(
+        Err("missing `}` symbol".to_string()),
+        parse(vec![Dot, OpenCurly, Byte(b','), Byte(b'1')])
+    );
+    assert_eq!(
+        Ok(Repeat(Box::new(AnyByte), 0, Some(0))),
+        parse(vec![Dot, OpenCurly, Byte(b','), Byte(b'0'), CloseCurly])
+    );
+    assert_eq!(
+        Ok(Repeat(Box::new(AnyByte), 0, Some(1))),
+        parse(vec![Dot, OpenCurly, Byte(b','), Byte(b'1'), CloseCurly])
+    );
+    assert_eq!(
+        Ok(Repeat(Box::new(AnyByte), 0, Some(99))),
+        parse(vec![
+            Dot,
+            OpenCurly,
+            Byte(b','),
+            Byte(b'9'),
+            Byte(b'9'),
+            CloseCurly
+        ])
+    );
+
+    // {1,2}
+    assert_eq!(
+        Err("missing element before `{` symbol".to_string()),
+        parse(vec![
+            OpenCurly,
+            Byte(b'1'),
+            Byte(b','),
+            Byte(b'2'),
+            CloseCurly
+        ])
+    );
+    assert_eq!(
+        Err("missing `}` symbol".to_string()),
+        parse(vec![Dot, OpenCurly, Byte(b'1'), Byte(b','), Byte(b'2')])
+    );
+    assert_eq!(
+        Err("repeating element has max that is smaller than min: {2,1}".to_string()),
+        parse(vec![Dot, OpenCurly, Byte(b'2'), Byte(b','), Byte(b'1')])
+    );
+    assert_eq!(
+        Ok(Repeat(Box::new(AnyByte), 0, Some(0))),
+        parse(vec![
+            Dot,
+            OpenCurly,
+            Byte(b'0'),
+            Byte(b','),
+            Byte(b'0'),
+            CloseCurly
+        ])
+    );
+    assert_eq!(
+        Ok(Repeat(Box::new(AnyByte), 1, Some(2))),
+        parse(vec![
+            Dot,
+            OpenCurly,
+            Byte(b'1'),
+            Byte(b','),
+            Byte(b'2'),
+            CloseCurly
+        ])
+    );
+    assert_eq!(
+        Ok(Repeat(Box::new(AnyByte), 10, Some(99))),
+        parse(vec![
+            Dot,
+            OpenCurly,
+            Byte(b'1'),
+            Byte(b'0'),
+            Byte(b','),
+            Byte(b'9'),
+            Byte(b'9'),
+            CloseCurly
+        ])
+    );
+}
+
+// ?+.*^$|(){}[]
 
 fn impl_regex(stream: TokenStream) -> Result<TokenStream, String> {
     // Literal { kind: ByteStrRaw(0), symbol: "abc\\x20", suffix: None, span: #0 bytes(741..752) }
