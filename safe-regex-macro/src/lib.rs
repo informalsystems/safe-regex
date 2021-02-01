@@ -20,23 +20,6 @@
 use proc_macro2::{Ident, TokenStream, TokenTree};
 use quote::quote_spanned;
 
-#[proc_macro]
-pub fn regex(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    let input2 = proc_macro2::TokenStream::from(input);
-    let output2 = match impl_regex(input2) {
-        Ok(output2) => output2,
-        Err(reason) => panic!("{}", reason),
-    };
-    panic!(
-        "output2: {}",
-        output2
-            .into_iter()
-            .map(|tree| format!("tree: {:?}\n", tree))
-            .collect::<String>()
-    );
-    proc_macro::TokenStream::from(output2)
-}
-
 fn escape_ascii(input: impl AsRef<[u8]>) -> String {
     let mut result = String::new();
     for byte in input.as_ref() {
@@ -315,4 +298,21 @@ fn impl_regex(stream: TokenStream) -> Result<TokenStream, String> {
     //     return quote_spanned!(tree.span()=>compile_error!("expected async fn"););
     // }
     // panic!("expected async fn");
+}
+
+#[proc_macro]
+pub fn regex(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let input2 = proc_macro2::TokenStream::from(input);
+    let output2 = match impl_regex(input2) {
+        Ok(output2) => output2,
+        Err(reason) => panic!("{}", reason),
+    };
+    panic!(
+        "output2: {}",
+        output2
+            .into_iter()
+            .map(|tree| format!("tree: {:?}\n", tree))
+            .collect::<String>()
+    );
+    proc_macro::TokenStream::from(output2)
 }
