@@ -49,6 +49,7 @@ fn escape_ascii(input: impl AsRef<[u8]>) -> String {
 
 #[derive(Copy, Clone, Debug, PartialOrd, PartialEq)]
 enum Token {
+    EscapedByte(u8),
     Byte(u8),
     QMark,
     Plus,
@@ -57,61 +58,61 @@ enum Token {
     Caret,
     Dollar,
     Bar,
-    OpenParen,
-    CloseParen,
-    OpenBrace,
-    CloseBrace,
-    OpenBracket,
-    CloseBracket,
+    OpenRound,
+    CloseRound,
+    OpenCurly,
+    CloseCurly,
+    OpenSquare,
+    CloseSquare,
 }
 
 fn invalid_escape(bytes: impl AsRef<[u8]>) -> String {
     format!("invalid escape sequence `\\{}`", escape_ascii(bytes))
 }
 
-fn tokenize_raw_byte_string(data: &[u8]) -> Result<Vec<Token>, String> {
-    println!("tokenize {:?} {}", data, escape_ascii(data));
+fn tokenize(data: &[u8]) -> Result<Vec<Token>, String> {
+    // println!("tokenize {:?} {}", data, escape_ascii(data));
     let mut result = Vec::new();
     let mut iter = data.iter().copied();
     while let Some(b0) = iter.next() {
-        println!("tokenize b0 {:?} {}", b0, escape_ascii([b0]));
+        // println!("tokenize b0 {:?} {}", b0, escape_ascii([b0]));
         let token = match b0 {
             b'\\' => {
                 let b1 = iter.next().ok_or_else(|| invalid_escape([]))?;
-                println!("tokenize b1 {:?} {}", b1, escape_ascii([b1]));
+                // println!("tokenize b1 {:?} {}", b1, escape_ascii([b1]));
                 match b1 {
                     b'x' => {
                         let b2 = iter.next().ok_or_else(|| invalid_escape([b1]))?;
-                        println!("tokenize b2 {:?} {}", b2, escape_ascii([b2]));
+                        // println!("tokenize b2 {:?} {}", b2, escape_ascii([b2]));
                         let b3 = iter.next().ok_or_else(|| invalid_escape([b1, b2]))?;
-                        println!("tokenize b3 {:?} {}", b3, escape_ascii([b3]));
+                        // println!("tokenize b3 {:?} {}", b3, escape_ascii([b3]));
                         if !b2.is_ascii_hexdigit() || !b3.is_ascii_hexdigit() {
                             return Err(invalid_escape([b1, b2, b3]));
                         }
                         let string = String::from_utf8(vec![b2, b3]).unwrap();
                         let byte = u8::from_str_radix(&string, 16).unwrap();
-                        Token::Byte(byte)
+                        Token::EscapedByte(byte)
                     }
-                    b'n' => Token::Byte(b'\n'),
-                    b'r' => Token::Byte(b'\r'),
-                    b't' => Token::Byte(b'\t'),
-                    b'\\' => Token::Byte(b'\\'),
-                    b'0' => Token::Byte(0),
-                    b'\'' => Token::Byte(b'\''),
-                    b'"' => Token::Byte(b'"'),
-                    b'?' => Token::Byte(b'?'),
-                    b'+' => Token::Byte(b'+'),
-                    b'.' => Token::Byte(b'.'),
-                    b'*' => Token::Byte(b'*'),
-                    b'^' => Token::Byte(b'^'),
-                    b'$' => Token::Byte(b'$'),
-                    b'|' => Token::Byte(b'|'),
-                    b'(' => Token::Byte(b'('),
-                    b')' => Token::Byte(b')'),
-                    b'{' => Token::Byte(b'{'),
-                    b'}' => Token::Byte(b'}'),
-                    b'[' => Token::Byte(b'['),
-                    b']' => Token::Byte(b']'),
+                    b'n' => Token::EscapedByte(b'\n'),
+                    b'r' => Token::EscapedByte(b'\r'),
+                    b't' => Token::EscapedByte(b'\t'),
+                    b'\\' => Token::EscapedByte(b'\\'),
+                    b'0' => Token::EscapedByte(0),
+                    b'\'' => Token::EscapedByte(b'\''),
+                    b'"' => Token::EscapedByte(b'"'),
+                    b'?' => Token::EscapedByte(b'?'),
+                    b'+' => Token::EscapedByte(b'+'),
+                    b'.' => Token::EscapedByte(b'.'),
+                    b'*' => Token::EscapedByte(b'*'),
+                    b'^' => Token::EscapedByte(b'^'),
+                    b'$' => Token::EscapedByte(b'$'),
+                    b'|' => Token::EscapedByte(b'|'),
+                    b'(' => Token::EscapedByte(b'('),
+                    b')' => Token::EscapedByte(b')'),
+                    b'{' => Token::EscapedByte(b'{'),
+                    b'}' => Token::EscapedByte(b'}'),
+                    b'[' => Token::EscapedByte(b'['),
+                    b']' => Token::EscapedByte(b']'),
                     _ => return Err(invalid_escape([b1])),
                 }
             }
@@ -122,18 +123,18 @@ fn tokenize_raw_byte_string(data: &[u8]) -> Result<Vec<Token>, String> {
             b'^' => Token::Caret,
             b'$' => Token::Dollar,
             b'|' => Token::Bar,
-            b'(' => Token::OpenParen,
-            b')' => Token::CloseParen,
-            b'{' => Token::OpenBrace,
-            b'}' => Token::CloseBrace,
-            b'[' => Token::OpenBracket,
-            b']' => Token::CloseBracket,
+            b'(' => Token::OpenRound,
+            b')' => Token::CloseRound,
+            b'{' => Token::OpenCurly,
+            b'}' => Token::CloseCurly,
+            b'[' => Token::OpenSquare,
+            b']' => Token::CloseSquare,
             b => Token::Byte(b),
         };
-        println!("tokenize push {:?}", token);
+        // println!("tokenize push {:?}", token);
         result.push(token);
     }
-    println!("tokenize result {:?}", result);
+    // println!("tokenize result {:?}", result);
     Ok(result)
 }
 
@@ -141,103 +142,103 @@ fn tokenize_raw_byte_string(data: &[u8]) -> Result<Vec<Token>, String> {
 #[test]
 fn test_tokenize() {
     use Token::{
-        Bar, Byte, Caret, CloseBrace, CloseBracket, CloseParen, Dollar, Dot, OpenBrace,
-        OpenBracket, OpenParen, Plus, QMark, Star,
+        Bar, Byte, Caret, CloseCurly, CloseRound, CloseSquare, Dollar, Dot, EscapedByte, OpenCurly,
+        OpenRound, OpenSquare, Plus, QMark, Star,
     };
     let empty: Vec<Token> = Vec::new();
-    assert_eq!(Ok(empty), tokenize_raw_byte_string(br""));
-    assert_eq!(Ok(vec![Byte(b'a')]), tokenize_raw_byte_string(br"a"));
+    assert_eq!(Ok(empty), tokenize(br""));
+    assert_eq!(Ok(vec![Byte(b'a')]), tokenize(br"a"));
     assert_eq!(
         Ok(vec![Byte(b'a'), Byte(b'b'), Byte(b'c')]),
-        tokenize_raw_byte_string(br"abc")
+        tokenize(br"abc")
     );
     assert_eq!(
         Err(r"invalid escape sequence `\`".to_string()),
-        tokenize_raw_byte_string(br"\")
+        tokenize(br"\")
     );
     assert_eq!(
         Err(r"invalid escape sequence `\e`".to_string()),
-        tokenize_raw_byte_string(br"\e")
+        tokenize(br"\e")
     );
     // Rust byte escapes
     // https://doc.rust-lang.org/reference/tokens.html#byte-escapes
     assert_eq!(
         Err(r"invalid escape sequence `\x`".to_string()),
-        tokenize_raw_byte_string(br"\x")
+        tokenize(br"\x")
     );
     assert_eq!(
         Err(r"invalid escape sequence `\x0`".to_string()),
-        tokenize_raw_byte_string(br"\x0")
+        tokenize(br"\x0")
     );
     assert_eq!(
         Err(r"invalid escape sequence `\xg0`".to_string()),
-        tokenize_raw_byte_string(br"\xg0")
+        tokenize(br"\xg0")
     );
     assert_eq!(
         Err(r"invalid escape sequence `\x0g`".to_string()),
-        tokenize_raw_byte_string(br"\x0g")
+        tokenize(br"\x0g")
     );
-    assert_eq!(Ok(vec![Byte(0)]), tokenize_raw_byte_string(br"\x00"));
-    assert_eq!(Ok(vec![Byte(0x12)]), tokenize_raw_byte_string(br"\x12"));
-    assert_eq!(Ok(vec![Byte(0x34)]), tokenize_raw_byte_string(br"\x34"));
-    assert_eq!(Ok(vec![Byte(0x56)]), tokenize_raw_byte_string(br"\x56"));
-    assert_eq!(Ok(vec![Byte(0x78)]), tokenize_raw_byte_string(br"\x78"));
-    assert_eq!(Ok(vec![Byte(0x90)]), tokenize_raw_byte_string(br"\x90"));
-    assert_eq!(Ok(vec![Byte(0xAB)]), tokenize_raw_byte_string(br"\xab"));
-    assert_eq!(Ok(vec![Byte(0xAB)]), tokenize_raw_byte_string(br"\xAB"));
-    assert_eq!(Ok(vec![Byte(0xCD)]), tokenize_raw_byte_string(br"\xcd"));
-    assert_eq!(Ok(vec![Byte(0xCD)]), tokenize_raw_byte_string(br"\xCD"));
-    assert_eq!(Ok(vec![Byte(0xEF)]), tokenize_raw_byte_string(br"\xef"));
-    assert_eq!(Ok(vec![Byte(0xEF)]), tokenize_raw_byte_string(br"\xEF"));
-    assert_eq!(Ok(vec![Byte(0xFF)]), tokenize_raw_byte_string(br"\xFF"));
+    assert_eq!(Ok(vec![EscapedByte(0)]), tokenize(br"\x00"));
+    assert_eq!(Ok(vec![EscapedByte(0x12)]), tokenize(br"\x12"));
+    assert_eq!(Ok(vec![EscapedByte(0x34)]), tokenize(br"\x34"));
+    assert_eq!(Ok(vec![EscapedByte(0x56)]), tokenize(br"\x56"));
+    assert_eq!(Ok(vec![EscapedByte(0x78)]), tokenize(br"\x78"));
+    assert_eq!(Ok(vec![EscapedByte(0x90)]), tokenize(br"\x90"));
+    assert_eq!(Ok(vec![EscapedByte(0xAB)]), tokenize(br"\xab"));
+    assert_eq!(Ok(vec![EscapedByte(0xAB)]), tokenize(br"\xAB"));
+    assert_eq!(Ok(vec![EscapedByte(0xCD)]), tokenize(br"\xcd"));
+    assert_eq!(Ok(vec![EscapedByte(0xCD)]), tokenize(br"\xCD"));
+    assert_eq!(Ok(vec![EscapedByte(0xEF)]), tokenize(br"\xef"));
+    assert_eq!(Ok(vec![EscapedByte(0xEF)]), tokenize(br"\xEF"));
+    assert_eq!(Ok(vec![EscapedByte(0xFF)]), tokenize(br"\xFF"));
     assert_eq!(
-        Ok(vec![Byte(b'a'), Byte(0x00), Byte(b'b')]),
-        tokenize_raw_byte_string(br"a\x00b")
+        Ok(vec![Byte(b'a'), EscapedByte(0x00), Byte(b'b')]),
+        tokenize(br"a\x00b")
     );
     assert_eq!(
         Ok(vec![
-            Byte(b'\n'),
-            Byte(b'\r'),
-            Byte(b'\t'),
-            Byte(b'\\'),
-            Byte(0),
+            EscapedByte(b'\n'),
+            EscapedByte(b'\r'),
+            EscapedByte(b'\t'),
+            EscapedByte(b'\\'),
+            EscapedByte(0),
         ]),
-        tokenize_raw_byte_string(br"\n\r\t\\\0")
+        tokenize(br"\n\r\t\\\0")
     );
     // Rust quote escapes
     //
     assert_eq!(
-        Ok(vec![Byte(b'\''), Byte(b'"'),]),
-        tokenize_raw_byte_string(br#"\'\""#)
+        Ok(vec![EscapedByte(b'\''), EscapedByte(b'"'),]),
+        tokenize(br#"\'\""#)
     );
     // Regex escapes
-    assert_eq!(Ok(vec![Byte(b'?')]), tokenize_raw_byte_string(br"\?"));
-    assert_eq!(Ok(vec![Byte(b'+')]), tokenize_raw_byte_string(br"\+"));
-    assert_eq!(Ok(vec![Byte(b'.')]), tokenize_raw_byte_string(br"\."));
-    assert_eq!(Ok(vec![Byte(b'*')]), tokenize_raw_byte_string(br"\*"));
-    assert_eq!(Ok(vec![Byte(b'^')]), tokenize_raw_byte_string(br"\^"));
-    assert_eq!(Ok(vec![Byte(b'$')]), tokenize_raw_byte_string(br"\$"));
-    assert_eq!(Ok(vec![Byte(b'|')]), tokenize_raw_byte_string(br"\|"));
-    assert_eq!(Ok(vec![Byte(b'(')]), tokenize_raw_byte_string(br"\("));
-    assert_eq!(Ok(vec![Byte(b')')]), tokenize_raw_byte_string(br"\)"));
-    assert_eq!(Ok(vec![Byte(b'{')]), tokenize_raw_byte_string(br"\{"));
-    assert_eq!(Ok(vec![Byte(b'}')]), tokenize_raw_byte_string(br"\}"));
-    assert_eq!(Ok(vec![Byte(b'[')]), tokenize_raw_byte_string(br"\["));
-    assert_eq!(Ok(vec![Byte(b']')]), tokenize_raw_byte_string(br"\]"));
+    assert_eq!(Ok(vec![EscapedByte(b'?')]), tokenize(br"\?"));
+    assert_eq!(Ok(vec![EscapedByte(b'+')]), tokenize(br"\+"));
+    assert_eq!(Ok(vec![EscapedByte(b'.')]), tokenize(br"\."));
+    assert_eq!(Ok(vec![EscapedByte(b'*')]), tokenize(br"\*"));
+    assert_eq!(Ok(vec![EscapedByte(b'^')]), tokenize(br"\^"));
+    assert_eq!(Ok(vec![EscapedByte(b'$')]), tokenize(br"\$"));
+    assert_eq!(Ok(vec![EscapedByte(b'|')]), tokenize(br"\|"));
+    assert_eq!(Ok(vec![EscapedByte(b'(')]), tokenize(br"\("));
+    assert_eq!(Ok(vec![EscapedByte(b')')]), tokenize(br"\)"));
+    assert_eq!(Ok(vec![EscapedByte(b'{')]), tokenize(br"\{"));
+    assert_eq!(Ok(vec![EscapedByte(b'}')]), tokenize(br"\}"));
+    assert_eq!(Ok(vec![EscapedByte(b'[')]), tokenize(br"\["));
+    assert_eq!(Ok(vec![EscapedByte(b']')]), tokenize(br"\]"));
     // Regex tokens
-    assert_eq!(Ok(vec![QMark]), tokenize_raw_byte_string(br"?"));
-    assert_eq!(Ok(vec![Plus]), tokenize_raw_byte_string(br"+"));
-    assert_eq!(Ok(vec![Dot]), tokenize_raw_byte_string(br"."));
-    assert_eq!(Ok(vec![Star]), tokenize_raw_byte_string(br"*"));
-    assert_eq!(Ok(vec![Caret]), tokenize_raw_byte_string(br"^"));
-    assert_eq!(Ok(vec![Dollar]), tokenize_raw_byte_string(br"$"));
-    assert_eq!(Ok(vec![Bar]), tokenize_raw_byte_string(br"|"));
-    assert_eq!(Ok(vec![OpenParen]), tokenize_raw_byte_string(br"("));
-    assert_eq!(Ok(vec![CloseParen]), tokenize_raw_byte_string(br")"));
-    assert_eq!(Ok(vec![OpenBrace]), tokenize_raw_byte_string(br"{"));
-    assert_eq!(Ok(vec![CloseBrace]), tokenize_raw_byte_string(br"}"));
-    assert_eq!(Ok(vec![OpenBracket]), tokenize_raw_byte_string(br"["));
-    assert_eq!(Ok(vec![CloseBracket]), tokenize_raw_byte_string(br"]"));
+    assert_eq!(Ok(vec![QMark]), tokenize(br"?"));
+    assert_eq!(Ok(vec![Plus]), tokenize(br"+"));
+    assert_eq!(Ok(vec![Dot]), tokenize(br"."));
+    assert_eq!(Ok(vec![Star]), tokenize(br"*"));
+    assert_eq!(Ok(vec![Caret]), tokenize(br"^"));
+    assert_eq!(Ok(vec![Dollar]), tokenize(br"$"));
+    assert_eq!(Ok(vec![Bar]), tokenize(br"|"));
+    assert_eq!(Ok(vec![OpenRound]), tokenize(br"("));
+    assert_eq!(Ok(vec![CloseRound]), tokenize(br")"));
+    assert_eq!(Ok(vec![OpenCurly]), tokenize(br"{"));
+    assert_eq!(Ok(vec![CloseCurly]), tokenize(br"}"));
+    assert_eq!(Ok(vec![OpenSquare]), tokenize(br"["));
+    assert_eq!(Ok(vec![CloseSquare]), tokenize(br"]"));
 }
 
 enum Node {
@@ -277,7 +278,7 @@ fn impl_regex(stream: TokenStream) -> Result<TokenStream, String> {
     // The compiler guarantees that a literal byte string contains only ASCII.
     // > regex!(br"€"); // error: raw byte string must be ASCII
     // Therefore, we can slice the string at any byte offset.
-    let tokens = tokenize_raw_byte_string(raw_byte_string.as_bytes())?;
+    let tokens = tokenize(raw_byte_string.as_bytes())?;
 
     // panic!("literal: {:?} str={:?}", literal, literal.to_string());
     // if let Some(tree) = attr.into_iter().next() {
