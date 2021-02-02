@@ -30,726 +30,280 @@ fn escape_ascii(input: impl AsRef<[u8]>) -> String {
     result
 }
 
-#[derive(Copy, Clone, Debug, PartialOrd, PartialEq)]
-enum Token {
-    EscapedByte(u8),
+#[derive(Clone, Debug, PartialOrd, PartialEq)]
+enum Node {
+    FinalNode(Final),
+    NonFinalNode(NonFinal),
+}
+impl Node {
+    pub fn is_final_node(&self) -> bool {
+        match self {
+            Node::FinalNode(_) => true,
+            Node::NonFinalNode(_) => false,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialOrd, PartialEq)]
+enum NonFinal {
+    Escape,
+    HexEscape0,
+    HexEscape1(u8),
+    OpenGroup,
+    RepeatMin(Box<Final>, String),
+    RepeatMax(Box<Final>, String, String),
+    OpenOr(Vec<Final>),
+}
+
+#[derive(Clone, Debug, PartialOrd, PartialEq)]
+enum Final {
     Byte(u8),
-    QMark,
-    Plus,
-    Dot,
-    Star,
-    Caret,
-    Dollar,
-    Bar,
-    OpenRound,
-    CloseRound,
-    OpenCurly,
-    CloseCurly,
-    OpenSquare,
-    CloseSquare,
+    AnyByte,
+    Seq(Vec<Final>),
+    Group(Box<Final>),
+    Or(Vec<Final>),
+    Repeat(Box<Final>, usize, Option<usize>),
 }
 
 fn invalid_escape(bytes: impl AsRef<[u8]>) -> String {
     format!("invalid escape sequence `\\{}`", escape_ascii(bytes))
 }
 
-fn tokenize(data: &[u8]) -> Result<Vec<Token>, String> {
-    // println!("tokenize {:?} {}", data, escape_ascii(data));
-    let mut result = Vec::new();
+fn parse(mut data: &[u8]) -> Result<Final, String> {
+    use Final::{AnyByte, Byte, Group, Or, Repeat, Seq};
+    use Node::{FinalNode, NonFinalNode};
+    use NonFinal::{Escape, HexEscape0, HexEscape1, OpenGroup, OpenOr, RepeatMax, RepeatMin};
+    if data.is_empty() {
+        return Ok(Seq(Vec::new()));
+    }
     let mut iter = data.iter().copied();
-    while let Some(b0) = iter.next() {
-        // println!("tokenize b0 {:?} {}", b0, escape_ascii([b0]));
-        let token = match b0 {
-            b'\\' => {
-                let b1 = iter.next().ok_or_else(|| invalid_escape([]))?;
-                // println!("tokenize b1 {:?} {}", b1, escape_ascii([b1]));
-                match b1 {
-                    b'x' => {
-                        let b2 = iter.next().ok_or_else(|| invalid_escape([b1]))?;
-                        // println!("tokenize b2 {:?} {}", b2, escape_ascii([b2]));
-                        let b3 = iter.next().ok_or_else(|| invalid_escape([b1, b2]))?;
-                        // println!("tokenize b3 {:?} {}", b3, escape_ascii([b3]));
-                        if !b2.is_ascii_hexdigit() || !b3.is_ascii_hexdigit() {
-                            return Err(invalid_escape([b1, b2, b3]));
-                        }
-                        let string = String::from_utf8(vec![b2, b3]).unwrap();
-                        let byte = u8::from_str_radix(&string, 16).unwrap();
-                        Token::EscapedByte(byte)
+    let mut stack: Vec<Node> = Vec::new();
+    while let Some(b) = iter.next() {
+        let top = stack.pop();
+        match (stack.last_mut(), top, b) {
+            (_, Some(NonFinalNode(Escape)), b'\\') => stack.push(FinalNode(Byte(b'\\'))),
+            (_, opt_top, b'\\') => {
+                opt_top.map(|top| stack.push(top));
+                stack.push(NonFinalNode(Escape))
+            }
+            (_, Some(NonFinalNode(Escape)), b'n') => stack.push(FinalNode(Byte(b'\n'))),
+            (_, Some(NonFinalNode(Escape)), b'r') => stack.push(FinalNode(Byte(b'\r'))),
+            (_, Some(NonFinalNode(Escape)), b't') => stack.push(FinalNode(Byte(b'\t'))),
+            (_, Some(NonFinalNode(Escape)), b'0') => stack.push(FinalNode(Byte(0))),
+            (_, Some(NonFinalNode(Escape)), b'\'') => stack.push(FinalNode(Byte(b'\''))),
+            (_, Some(NonFinalNode(Escape)), b'"') => stack.push(FinalNode(Byte(b'"'))),
+            (_, Some(NonFinalNode(Escape)), b'?') => stack.push(FinalNode(Byte(b'?'))),
+            (_, Some(NonFinalNode(Escape)), b'+') => stack.push(FinalNode(Byte(b'+'))),
+            (_, Some(NonFinalNode(Escape)), b'.') => stack.push(FinalNode(Byte(b'.'))),
+            (_, Some(NonFinalNode(Escape)), b'*') => stack.push(FinalNode(Byte(b'*'))),
+            (_, Some(NonFinalNode(Escape)), b'^') => stack.push(FinalNode(Byte(b'^'))),
+            (_, Some(NonFinalNode(Escape)), b'$') => stack.push(FinalNode(Byte(b'$'))),
+            (_, Some(NonFinalNode(Escape)), b'|') => stack.push(FinalNode(Byte(b'|'))),
+            (_, Some(NonFinalNode(Escape)), b'(') => stack.push(FinalNode(Byte(b'('))),
+            (_, Some(NonFinalNode(Escape)), b')') => stack.push(FinalNode(Byte(b')'))),
+            (_, Some(NonFinalNode(Escape)), b'{') => stack.push(FinalNode(Byte(b'{'))),
+            (_, Some(NonFinalNode(Escape)), b'}') => stack.push(FinalNode(Byte(b'}'))),
+            (_, Some(NonFinalNode(Escape)), b'[') => stack.push(FinalNode(Byte(b'['))),
+            (_, Some(NonFinalNode(Escape)), b']') => stack.push(FinalNode(Byte(b']'))),
+            (_, Some(NonFinalNode(Escape)), b'x') => stack.push(NonFinalNode(HexEscape0)),
+            (_, Some(NonFinalNode(Escape)), d) => return Err(invalid_escape([d])),
+            (_, Some(NonFinalNode(HexEscape0)), d) => stack.push(NonFinalNode(HexEscape1(d))),
+            (_, Some(NonFinalNode(HexEscape1(d1))), d0)
+                if d1.is_ascii_hexdigit() && d0.is_ascii_hexdigit() =>
+            {
+                let string = String::from_utf8(vec![d1, d0]).unwrap();
+                let byte = u8::from_str_radix(&string, 16).unwrap();
+                stack.push(FinalNode(Byte(byte)))
+            }
+            (_, Some(NonFinalNode(HexEscape1(d1))), d0) => {
+                return Err(invalid_escape([b'x', d1, d0]))
+            }
+            (_, Some(FinalNode(item)), b'?') => {
+                stack.push(FinalNode(Repeat(Box::new(item), 0, Some(1))))
+            }
+            (_, Some(FinalNode(item)), b'+') => {
+                stack.push(FinalNode(Repeat(Box::new(item), 1, None)))
+            }
+            (_, Some(FinalNode(item)), b'*') => {
+                stack.push(FinalNode(Repeat(Box::new(item), 0, None)))
+            }
+            (_, opt_top, b'.') => {
+                opt_top.map(|top| stack.push(top));
+                stack.push(FinalNode(AnyByte))
+            }
+            (_, Some(FinalNode(item)), b'|') => stack.push(NonFinalNode(OpenOr(vec![item]))),
+            (_, opt_top, b'(') => {
+                opt_top.map(|top| stack.push(top));
+                stack.push(NonFinalNode(OpenGroup));
+            }
+            (Some(NonFinalNode(OpenGroup)), Some(FinalNode(item)), b')') => {
+                stack.pop();
+                stack.push(FinalNode(Group(Box::new(item))));
+            }
+            (_, opt_top, byte) => {
+                opt_top.map(|top| stack.push(top));
+                stack.push(FinalNode(Byte(byte)));
+            }
+            _ => unimplemented!(),
+            // ?+.*^$|(){}[]
+        };
+        while stack.len() >= 2 && stack.last().unwrap().is_final_node() {
+            let top = stack.pop().unwrap();
+            match (stack.last_mut(), top) {
+                (_, NonFinalNode(non_final)) => stack.push(NonFinalNode(non_final)),
+                (Some(NonFinalNode(OpenOr(items))), FinalNode(item)) => {
+                    if let Some(NonFinalNode(OpenOr(mut items))) = stack.pop() {
+                        items.push(item);
+                        stack.push(FinalNode(Or(items)))
+                    } else {
+                        unreachable!()
                     }
-                    b'n' => Token::EscapedByte(b'\n'),
-                    b'r' => Token::EscapedByte(b'\r'),
-                    b't' => Token::EscapedByte(b'\t'),
-                    b'\\' => Token::EscapedByte(b'\\'),
-                    b'0' => Token::EscapedByte(0),
-                    b'\'' => Token::EscapedByte(b'\''),
-                    b'"' => Token::EscapedByte(b'"'),
-                    b'?' => Token::EscapedByte(b'?'),
-                    b'+' => Token::EscapedByte(b'+'),
-                    b'.' => Token::EscapedByte(b'.'),
-                    b'*' => Token::EscapedByte(b'*'),
-                    b'^' => Token::EscapedByte(b'^'),
-                    b'$' => Token::EscapedByte(b'$'),
-                    b'|' => Token::EscapedByte(b'|'),
-                    b'(' => Token::EscapedByte(b'('),
-                    b')' => Token::EscapedByte(b')'),
-                    b'{' => Token::EscapedByte(b'{'),
-                    b'}' => Token::EscapedByte(b'}'),
-                    b'[' => Token::EscapedByte(b'['),
-                    b']' => Token::EscapedByte(b']'),
-                    _ => return Err(invalid_escape([b1])),
                 }
+                (Some(FinalNode(Or(items))), FinalNode(item)) => match items.last_mut().unwrap() {
+                    Seq(seq_items) => seq_items.push(item),
+                    _ => {
+                        let prev_item = items.pop().unwrap();
+                        items.push(Seq(vec![prev_item, item]))
+                    }
+                },
+                (Some(NonFinalNode(OpenGroup)), FinalNode(item)) => {
+                    stack.push(FinalNode(item));
+                    break;
+                }
+                (Some(FinalNode(Seq(ref mut items))), FinalNode(item)) => items.push(item),
+                (Some(FinalNode(_)), FinalNode(top)) => {
+                    if let Some(FinalNode(prev)) = stack.pop() {
+                        stack.push(FinalNode(Seq(vec![prev, top])))
+                    } else {
+                        unreachable!()
+                    }
+                }
+                (prev, top) => panic!("{:?} {:?}", prev, top),
             }
-            b'?' => Token::QMark,
-            b'+' => Token::Plus,
-            b'.' => Token::Dot,
-            b'*' => Token::Star,
-            b'^' => Token::Caret,
-            b'$' => Token::Dollar,
-            b'|' => Token::Bar,
-            b'(' => Token::OpenRound,
-            b')' => Token::CloseRound,
-            b'{' => Token::OpenCurly,
-            b'}' => Token::CloseCurly,
-            b'[' => Token::OpenSquare,
-            b']' => Token::CloseSquare,
-            b => Token::Byte(b),
-        };
-        // println!("tokenize push {:?}", token);
-        result.push(token);
-    }
-    // println!("tokenize result {:?}", result);
-    Ok(result)
-}
-
-#[cfg(test)]
-#[test]
-fn test_tokenize() {
-    use Token::{
-        Bar, Byte, Caret, CloseCurly, CloseRound, CloseSquare, Dollar, Dot, EscapedByte, OpenCurly,
-        OpenRound, OpenSquare, Plus, QMark, Star,
-    };
-    let empty: Vec<Token> = Vec::new();
-    assert_eq!(Ok(empty), tokenize(br""));
-    assert_eq!(Ok(vec![Byte(b'a')]), tokenize(br"a"));
-    assert_eq!(
-        Ok(vec![Byte(b'a'), Byte(b'b'), Byte(b'c')]),
-        tokenize(br"abc")
-    );
-    assert_eq!(
-        Err(r"invalid escape sequence `\`".to_string()),
-        tokenize(br"\")
-    );
-    assert_eq!(
-        Err(r"invalid escape sequence `\e`".to_string()),
-        tokenize(br"\e")
-    );
-    // Rust byte escapes
-    // https://doc.rust-lang.org/reference/tokens.html#byte-escapes
-    assert_eq!(
-        Err(r"invalid escape sequence `\x`".to_string()),
-        tokenize(br"\x")
-    );
-    assert_eq!(
-        Err(r"invalid escape sequence `\x0`".to_string()),
-        tokenize(br"\x0")
-    );
-    assert_eq!(
-        Err(r"invalid escape sequence `\xg0`".to_string()),
-        tokenize(br"\xg0")
-    );
-    assert_eq!(
-        Err(r"invalid escape sequence `\x0g`".to_string()),
-        tokenize(br"\x0g")
-    );
-    assert_eq!(Ok(vec![EscapedByte(0)]), tokenize(br"\x00"));
-    assert_eq!(Ok(vec![EscapedByte(0x12)]), tokenize(br"\x12"));
-    assert_eq!(Ok(vec![EscapedByte(0x34)]), tokenize(br"\x34"));
-    assert_eq!(Ok(vec![EscapedByte(0x56)]), tokenize(br"\x56"));
-    assert_eq!(Ok(vec![EscapedByte(0x78)]), tokenize(br"\x78"));
-    assert_eq!(Ok(vec![EscapedByte(0x90)]), tokenize(br"\x90"));
-    assert_eq!(Ok(vec![EscapedByte(0xAB)]), tokenize(br"\xab"));
-    assert_eq!(Ok(vec![EscapedByte(0xAB)]), tokenize(br"\xAB"));
-    assert_eq!(Ok(vec![EscapedByte(0xCD)]), tokenize(br"\xcd"));
-    assert_eq!(Ok(vec![EscapedByte(0xCD)]), tokenize(br"\xCD"));
-    assert_eq!(Ok(vec![EscapedByte(0xEF)]), tokenize(br"\xef"));
-    assert_eq!(Ok(vec![EscapedByte(0xEF)]), tokenize(br"\xEF"));
-    assert_eq!(Ok(vec![EscapedByte(0xFF)]), tokenize(br"\xFF"));
-    assert_eq!(
-        Ok(vec![Byte(b'a'), EscapedByte(0x00), Byte(b'b')]),
-        tokenize(br"a\x00b")
-    );
-    assert_eq!(
-        Ok(vec![
-            EscapedByte(b'\n'),
-            EscapedByte(b'\r'),
-            EscapedByte(b'\t'),
-            EscapedByte(b'\\'),
-            EscapedByte(0),
-        ]),
-        tokenize(br"\n\r\t\\\0")
-    );
-    // Rust quote escapes
-    //
-    assert_eq!(
-        Ok(vec![EscapedByte(b'\''), EscapedByte(b'"'),]),
-        tokenize(br#"\'\""#)
-    );
-    // Regex escapes
-    assert_eq!(Ok(vec![EscapedByte(b'?')]), tokenize(br"\?"));
-    assert_eq!(Ok(vec![EscapedByte(b'+')]), tokenize(br"\+"));
-    assert_eq!(Ok(vec![EscapedByte(b'.')]), tokenize(br"\."));
-    assert_eq!(Ok(vec![EscapedByte(b'*')]), tokenize(br"\*"));
-    assert_eq!(Ok(vec![EscapedByte(b'^')]), tokenize(br"\^"));
-    assert_eq!(Ok(vec![EscapedByte(b'$')]), tokenize(br"\$"));
-    assert_eq!(Ok(vec![EscapedByte(b'|')]), tokenize(br"\|"));
-    assert_eq!(Ok(vec![EscapedByte(b'(')]), tokenize(br"\("));
-    assert_eq!(Ok(vec![EscapedByte(b')')]), tokenize(br"\)"));
-    assert_eq!(Ok(vec![EscapedByte(b'{')]), tokenize(br"\{"));
-    assert_eq!(Ok(vec![EscapedByte(b'}')]), tokenize(br"\}"));
-    assert_eq!(Ok(vec![EscapedByte(b'[')]), tokenize(br"\["));
-    assert_eq!(Ok(vec![EscapedByte(b']')]), tokenize(br"\]"));
-    // Regex tokens
-    assert_eq!(Ok(vec![QMark]), tokenize(br"?"));
-    assert_eq!(Ok(vec![Plus]), tokenize(br"+"));
-    assert_eq!(Ok(vec![Dot]), tokenize(br"."));
-    assert_eq!(Ok(vec![Star]), tokenize(br"*"));
-    assert_eq!(Ok(vec![Caret]), tokenize(br"^"));
-    assert_eq!(Ok(vec![Dollar]), tokenize(br"$"));
-    assert_eq!(Ok(vec![Bar]), tokenize(br"|"));
-    assert_eq!(Ok(vec![OpenRound]), tokenize(br"("));
-    assert_eq!(Ok(vec![CloseRound]), tokenize(br")"));
-    assert_eq!(Ok(vec![OpenCurly]), tokenize(br"{"));
-    assert_eq!(Ok(vec![CloseCurly]), tokenize(br"}"));
-    assert_eq!(Ok(vec![OpenSquare]), tokenize(br"["));
-    assert_eq!(Ok(vec![CloseSquare]), tokenize(br"]"));
-}
-
-#[derive(Clone, Debug, PartialOrd, PartialEq)]
-enum Node {
-    AnyByte,
-    Literal(u8),
-    Or(Vec<Node>),
-    Seq(Vec<Node>),
-    Class(Vec<u8>),
-    NegativeClass(Vec<u8>),
-    Group(Box<Node>),
-    Repeat(Box<Node>, usize, Option<usize>),
-}
-
-// fn parse_repeat(target: Node, iter: &mut impl Iterator<Item=Token>) -> Result<Node, String> {
-//     let mut tokens: Vec<Token> = iter.take_while(|t| t != Token::CloseCurly).collect();
-//     if tokens.is_empty() {
-//         return Err("missing `}` symbol".to_string());
-//     }
-//     let mut parts = tokens.split(|t| t == Token::Byte(b','));
-//     let min_str = String::from_utf8(Vec::from(parts.next().unwrap_or(&[]))).unwrap();
-//     let min = usize::from_str().map_err(|_| )?;
-//     let mut min_digits = Vec::new();
-//     while let Some(token) = iter.next() {
-//         match token {
-//             Token::Byte(b) if (b'0'..=b'9').contains(&b) => min_digits.push(b),
-//             Token::Byte(b',') => break,
-//         }
-//         let min = match iter.next().ok_or_else()? {
-//             Token::Byte(b) if (b'0'..=b'9').contains(&b) => {}
-//         };
-//         Node::Repeat(Box::new(target), 1, None)
-//     }
-// }
-
-fn parse_next_node(iter: &mut impl Iterator<Item = Token>) -> Result<Option<Node>, String> {
-    while let Some(t0) = iter.next() {
-        let node = match t0 {
-            Token::Dot => Node::AnyByte,
-            Token::Byte(b) => Node::Literal(b),
-            Token::QMark => {
-                let target = result
-                    .pop()
-                    .ok_or_else(|| "missing element before `?` symbol".to_string())?;
-                Node::Repeat(Box::new(target), 0, Some(1))
-            }
-            Token::Plus => {
-                let target = result
-                    .pop()
-                    .ok_or_else(|| "missing element before `+` symbol".to_string())?;
-                Node::Repeat(Box::new(target), 1, Some(1))
-            }
-            Token::Star => {
-                let target = result
-                    .pop()
-                    .ok_or_else(|| "missing element before `*` symbol".to_string())?;
-                Node::Repeat(Box::new(target), 1, None)
-            }
-            // Token::OpenCurly => {
-            //     let target = result
-            //         .pop()
-            //         .ok_or_else(|| "missing element before `{` symbol".to_string())?;
-            //     // parse_repeat(target, &mut iter)?
-            // }
-            // Token::CloseCurly => return Err("unmatched `}` symbol".to_string()),
-            // Token::CloseRound => return Err("unmatched `)` symbol".to_string()),
-            // Token::CloseSquare => return Err("unmatched `]` symbol".to_string()),
-            // Token::Caret => {}
-            // Token::Dollar => {}
-            // Token::Bar => {}
-            // Token::OpenRound => {}
-            // Token::OpenSquare => {}
-            _ => Node::Empty,
-        };
-        result.push(node);
-    }
-}
-
-fn parse(mut tokens: Vec<Token>) -> Result<Node, String> {
-    let starts_with_caret = {
-        if let Some(Token::Caret) = tokens.first() {
-            tokens.remove(0);
-            true
-        } else {
-            false
         }
-    };
-    let ends_with_dollar = {
-        if let Some(Token::Dollar) = tokens.last() {
-            tokens.pop().unwrap();
-            true
-        } else {
-            false
-        }
-    };
-    let mut stack = Vec::new();
-    let mut node = Node::Seq(Vec::new());
-    let mut iter = tokens.iter().copied();
-    while let Some(node) = parse_next_node(&mut iter)? {
-        result.push(node);
     }
-    if let Some(n) = stack.last() {}
-    if result.len() == 1 {
-        Ok(result.remove(0))
+    for node in stack.iter().rev() {
+        match node {
+            NonFinalNode(OpenGroup) => return Err("group missing closing `)`".to_string()),
+            NonFinalNode(Escape) => return Err("incomplete escape sequence `\\`".to_string()),
+            NonFinalNode(HexEscape0) => return Err("incomplete escape sequence `\\x`".to_string()),
+            NonFinalNode(HexEscape1(d)) => {
+                return Err(format!(
+                    "incomplete escape sequence `\\x{}`",
+                    escape_ascii([*d])
+                ))
+            }
+            NonFinalNode(RepeatMin(_, s)) => {
+                return Err(format!("incomplete repeat mark `{{{}`", s))
+            }
+            NonFinalNode(RepeatMax(_, min, max)) => {
+                return Err(format!("incomplete repeat mark `{{{},{}`", min, max))
+            }
+            NonFinalNode(OpenOr(_)) => return Err("missing item after bar `|`".to_string()),
+            FinalNode(_) => {}
+        }
+    }
+    assert_eq!(1, stack.len());
+    if let FinalNode(node) = stack.pop().unwrap() {
+        Ok(node)
     } else {
-        Ok(Node::Seq(result))
+        unreachable!()
     }
 }
 
 #[cfg(test)]
 #[test]
 fn test_parse() {
-    // TODO(mleonhard) Test precedence.
-    use Token::{Bar, Byte, Dot};
-
-    assert_eq!(Ok(Seq(vec![])), parse(vec![]));
-
-    use Node::AnyByte;
-    assert_eq!(Ok(AnyByte), parse(vec![Dot]));
-
-    use Node::Literal;
-    assert_eq!(Ok(Literal(b'a')), parse(vec![Byte(b'a')]));
-
-    use Node::Or;
+    use Final::{AnyByte, Byte, Group, Or, Repeat, Seq};
+    use Node::{FinalNode, NonFinalNode};
+    use NonFinal::{Escape, HexEscape0, HexEscape1, OpenGroup, OpenOr, RepeatMax, RepeatMin};
+    assert_eq!(Ok(Seq(Vec::new())), parse(br""));
+    assert_eq!(Ok(Byte(b'a')), parse(br"a"));
     assert_eq!(
-        Ok(Or(vec![Literal(b'a'), Literal(b'b')])),
-        parse(vec![Byte(b'a'), Bar, Byte(b'b')])
+        Ok(Seq(vec![Byte(b'a'), Byte(b'b'), Byte(b'c')])),
+        parse(br"abc")
     );
     assert_eq!(
-        Ok(Or(vec![Literal(b'a'), Literal(b'b'), Literal(b'c')])),
-        parse(vec![Byte(b'a'), Bar, Byte(b'b'), Bar, Byte(b'c')])
-    );
-
-    use Node::Seq;
-    assert_eq!(
-        Ok(Seq(vec![Literal(b'a'), Literal(b'b')])),
-        parse(vec![Byte(b'a'), Byte(b'b')])
-    );
-}
-
-#[cfg(test)]
-#[test]
-fn test_parse_class() {
-    use Node::Class;
-    use Token::{
-        Bar, Byte, Caret, CloseCurly, CloseRound, CloseSquare, Dollar, Dot, OpenCurly, OpenRound,
-        OpenSquare, Plus, QMark, Star,
-    };
-    assert_eq!(
-        Ok(Class(vec![b'a'])),
-        parse(vec![OpenSquare, Byte(b'a'), CloseSquare])
+        Err(r"incomplete escape sequence `\`".to_string()),
+        parse(br"\")
     );
     assert_eq!(
-        Ok(Class(vec![b'a', b'b', b'c'])),
-        parse(vec![
-            OpenSquare,
-            Byte(b'a'),
-            Byte(b'b'),
-            Byte(b'c'),
-            CloseSquare
-        ])
+        Err(r"invalid escape sequence `\e`".to_string()),
+        parse(br"\e")
     );
-    // ?+.*^$|(){}[]
+    // Rust byte escapes
+    // https://doc.rust-lang.org/reference/tokens.html#byte-escapes
     assert_eq!(
-        Ok(Class(vec![
-            b'?', b'+', b'.', b'*', b'^', b'$', b'|', b'(', b')', b'{', b'}', b'[', b']'
+        Err(r"incomplete escape sequence `\x`".to_string()),
+        parse(br"\x")
+    );
+    assert_eq!(
+        Err(r"incomplete escape sequence `\x0`".to_string()),
+        parse(br"\x0")
+    );
+    assert_eq!(
+        Err(r"invalid escape sequence `\xg0`".to_string()),
+        parse(br"\xg0")
+    );
+    assert_eq!(
+        Err(r"invalid escape sequence `\x0g`".to_string()),
+        parse(br"\x0g")
+    );
+    assert_eq!(Ok(Byte(0)), parse(br"\x00"));
+    assert_eq!(Ok(Byte(0x12)), parse(br"\x12"));
+    assert_eq!(Ok(Byte(0x34)), parse(br"\x34"));
+    assert_eq!(Ok(Byte(0x56)), parse(br"\x56"));
+    assert_eq!(Ok(Byte(0x78)), parse(br"\x78"));
+    assert_eq!(Ok(Byte(0x90)), parse(br"\x90"));
+    assert_eq!(Ok(Byte(0xAB)), parse(br"\xab"));
+    assert_eq!(Ok(Byte(0xAB)), parse(br"\xAB"));
+    assert_eq!(Ok(Byte(0xCD)), parse(br"\xcd"));
+    assert_eq!(Ok(Byte(0xCD)), parse(br"\xCD"));
+    assert_eq!(Ok(Byte(0xEF)), parse(br"\xef"));
+    assert_eq!(Ok(Byte(0xEF)), parse(br"\xEF"));
+    assert_eq!(Ok(Byte(0xFF)), parse(br"\xFF"));
+    assert_eq!(
+        Ok(Seq(vec![Byte(b'a'), Byte(0x00), Byte(b'b')])),
+        parse(br"a\x00b")
+    );
+    assert_eq!(
+        Ok(Seq(vec![
+            Byte(b'\n'),
+            Byte(b'\r'),
+            Byte(b'\t'),
+            Byte(b'\\'),
+            Byte(0),
         ])),
-        parse(vec![
-            OpenSquare,
-            QMark,
-            Plus,
-            Dot,
-            Star,
-            Caret,
-            Dollar,
-            Bar,
-            OpenRound,
-            CloseRound,
-            OpenCurly,
-            CloseCurly,
-            OpenSquare,
-            Byte(b']'),
-            CloseSquare
-        ])
+        parse(br"\n\r\t\\\0")
     );
+    // Rust quote escapes
+    //
+    assert_eq!(Ok(Seq(vec![Byte(b'\''), Byte(b'"')])), parse(br#"\'\""#));
+    // Regex escapes
+    assert_eq!(Ok(Byte(b'?')), parse(br"\?"));
+    assert_eq!(Ok(Byte(b'+')), parse(br"\+"));
+    assert_eq!(Ok(Byte(b'.')), parse(br"\."));
+    assert_eq!(Ok(Byte(b'*')), parse(br"\*"));
+    assert_eq!(Ok(Byte(b'^')), parse(br"\^"));
+    assert_eq!(Ok(Byte(b'$')), parse(br"\$"));
+    assert_eq!(Ok(Byte(b'|')), parse(br"\|"));
+    assert_eq!(Ok(Byte(b'(')), parse(br"\("));
+    assert_eq!(Ok(Byte(b')')), parse(br"\)"));
+    assert_eq!(Ok(Byte(b'{')), parse(br"\{"));
+    assert_eq!(Ok(Byte(b'}')), parse(br"\}"));
+    assert_eq!(Ok(Byte(b'[')), parse(br"\["));
+    assert_eq!(Ok(Byte(b']')), parse(br"\]"));
+    // Regex tokens
+    assert_eq!(Ok(Repeat(Box::new(Byte(b'a')), 0, Some(1))), parse(br"a?"));
+    assert_eq!(Ok(Repeat(Box::new(Byte(b'a')), 1, None)), parse(br"a+"));
+    assert_eq!(Ok(Repeat(Box::new(Byte(b'a')), 0, None)), parse(br"a*"));
+    assert_eq!(Ok(AnyByte), parse(br"."));
+    assert_eq!(Ok(Or(vec![Byte(b'a'), Byte(b'b')])), parse(br"a|b"));
     assert_eq!(
-        Err("character class ends with `-`".to_string()),
-        parse(vec![OpenSquare, Byte(b'a'), Byte(b'-'), CloseSquare])
-    );
-    assert_eq!(
-        Ok(Class(vec![b'a', b'b', b'c'])),
-        parse(vec![
-            OpenSquare,
-            Byte(b'a'),
-            Byte(b'-'),
-            Byte(b'c'),
-            CloseSquare
-        ])
-    );
-    assert_eq!(
-        Ok(Class(vec![b'a', b'b', b'c', b'g', b'g', b'h'])),
-        parse(vec![
-            OpenSquare,
-            Byte(b'a'),
-            Byte(b'-'),
-            Byte(b'c'),
-            Byte(b'g'),
-            Byte(b'-'),
-            Byte(b'h'),
-            CloseSquare
-        ])
-    );
-    assert_eq!(
-        Ok(Class(vec![b'-', b'a', b'b'])),
-        parse(vec![
-            OpenSquare,
-            Byte(b'-'),
-            Byte(b'a'),
-            Byte(b'b'),
-            CloseSquare
-        ])
+        Ok(Group(Box::new(Seq(vec![Byte(b'a'), Byte(b'b')])))),
+        parse(br"(ab)")
     );
 }
-
-#[cfg(test)]
-#[test]
-fn test_parse_negative_class() {
-    use Node::NegativeClass;
-    use Token::{
-        Bar, Byte, Caret, CloseCurly, CloseRound, CloseSquare, Dollar, Dot, OpenCurly, OpenRound,
-        OpenSquare, Plus, QMark, Star,
-    };
-    assert_eq!(
-        Ok(NegativeClass(vec![b'a'])),
-        parse(vec![OpenSquare, Caret, Byte(b'a'), CloseSquare])
-    );
-    assert_eq!(
-        Ok(NegativeClass(vec![b'a', b'b', b'c'])),
-        parse(vec![
-            OpenSquare,
-            Caret,
-            Byte(b'a'),
-            Byte(b'b'),
-            Byte(b'c'),
-            CloseSquare
-        ])
-    );
-    assert_eq!(
-        Ok(NegativeClass(vec![
-            b'?', b'+', b'.', b'*', b'^', b'$', b'|', b'(', b')', b'{', b'}', b'[', b']'
-        ])),
-        parse(vec![
-            OpenSquare,
-            Caret,
-            QMark,
-            Plus,
-            Dot,
-            Star,
-            Caret,
-            Dollar,
-            Bar,
-            OpenRound,
-            CloseRound,
-            OpenCurly,
-            CloseCurly,
-            OpenSquare,
-            Byte(b']'),
-            CloseSquare
-        ])
-    );
-    assert_eq!(
-        Err("character class ends with `-`".to_string()),
-        parse(vec![OpenSquare, Caret, Byte(b'a'), Byte(b'-'), CloseSquare])
-    );
-    assert_eq!(
-        Ok(NegativeClass(vec![b'a', b'b', b'c'])),
-        parse(vec![
-            OpenSquare,
-            Caret,
-            Byte(b'a'),
-            Byte(b'-'),
-            Byte(b'c'),
-            CloseSquare
-        ])
-    );
-    assert_eq!(
-        Ok(NegativeClass(vec![b'a', b'b', b'c', b'g', b'g', b'h'])),
-        parse(vec![
-            OpenSquare,
-            Caret,
-            Byte(b'a'),
-            Byte(b'-'),
-            Byte(b'c'),
-            Byte(b'g'),
-            Byte(b'-'),
-            Byte(b'h'),
-            CloseSquare
-        ])
-    );
-    assert_eq!(
-        Ok(NegativeClass(vec![b'-', b'a', b'b'])),
-        parse(vec![
-            OpenSquare,
-            Caret,
-            Byte(b'-'),
-            Byte(b'a'),
-            Byte(b'b'),
-            CloseSquare
-        ])
-    );
-}
-
-#[cfg(test)]
-#[test]
-fn test_parse_group() {
-    use Node::{AnyByte, Empty, Group, Seq};
-    use Token::{CloseRound, Dot, OpenRound};
-    assert_eq!(
-        Err("group is missing closing `)` symbol".to_string()),
-        parse(vec![OpenRound, Dot])
-    );
-    assert_eq!(
-        Ok(Group(Box::new(Empty))),
-        parse(vec![OpenRound, CloseRound])
-    );
-    assert_eq!(
-        Ok(Group(Box::new(AnyByte))),
-        parse(vec![OpenRound, Dot, CloseRound])
-    );
-    assert_eq!(
-        Ok(Group(Box::new(Group(Box::new(AnyByte))))),
-        parse(vec![OpenRound, OpenRound, Dot, CloseRound, CloseRound])
-    );
-    assert_eq!(
-        Ok(Group(Box::new(Seq(vec![
-            AnyByte,
-            Group(Box::new(AnyByte))
-        ])))),
-        parse(vec![OpenRound, Dot, OpenRound, Dot, CloseRound, CloseRound])
-    );
-}
-
-#[cfg(test)]
-#[test]
-fn test_parse_repeat() {
-    use Node::{AnyByte, Repeat};
-    use Token::{Byte, CloseCurly, Dot, OpenCurly, Plus, QMark, Star};
-    // ?
-    assert_eq!(
-        Err("missing element before `?` symbol".to_string()),
-        parse(vec![QMark])
-    );
-    assert_eq!(
-        Ok(Repeat(Box::new(AnyByte), 0, Some(1))),
-        parse(vec![Dot, QMark])
-    );
-
-    // *
-    assert_eq!(
-        Err("missing element before `*` symbol".to_string()),
-        parse(vec![Star])
-    );
-    assert_eq!(
-        Ok(Repeat(Box::new(AnyByte), 0, None)),
-        parse(vec![Dot, Star])
-    );
-
-    // +
-    assert_eq!(
-        Err("missing element before `+` symbol".to_string()),
-        parse(vec![Plus])
-    );
-    assert_eq!(
-        Ok(Repeat(Box::new(AnyByte), 1, None)),
-        parse(vec![Dot, Plus])
-    );
-
-    // {1}
-    assert_eq!(
-        Err("missing element before `{` symbol".to_string()),
-        parse(vec![OpenCurly, Byte(b'1'), CloseCurly])
-    );
-    assert_eq!(
-        Err("missing `}` symbol".to_string()),
-        parse(vec![Dot, OpenCurly, Byte(b'1')])
-    );
-    assert_eq!(
-        Ok(Repeat(Box::new(AnyByte), 0, Some(0))),
-        parse(vec![Dot, OpenCurly, Byte(b'0'), CloseCurly])
-    );
-    assert_eq!(
-        Ok(Repeat(Box::new(AnyByte), 1, Some(1))),
-        parse(vec![Dot, OpenCurly, Byte(b'1'), CloseCurly])
-    );
-    assert_eq!(
-        Ok(Repeat(Box::new(AnyByte), 99, Some(99))),
-        parse(vec![Dot, OpenCurly, Byte(b'9'), Byte(b'9'), CloseCurly])
-    );
-
-    // {,}
-    assert_eq!(
-        Err("missing element before `{` symbol".to_string()),
-        parse(vec![OpenCurly, Byte(b','), CloseCurly])
-    );
-    assert_eq!(
-        Err("missing `}` symbol".to_string()),
-        parse(vec![Dot, OpenCurly, Byte(b',')])
-    );
-    assert_eq!(
-        Ok(Repeat(Box::new(AnyByte), 0, None)),
-        parse(vec![Dot, OpenCurly, Byte(b','), CloseCurly])
-    );
-
-    // {1,}
-    assert_eq!(
-        Err("missing element before `{` symbol".to_string()),
-        parse(vec![OpenCurly, Byte(b'1'), Byte(b','), CloseCurly])
-    );
-    assert_eq!(
-        Err("missing `}` symbol".to_string()),
-        parse(vec![Dot, OpenCurly, Byte(b'1'), Byte(b',')])
-    );
-    assert_eq!(
-        Ok(Repeat(Box::new(AnyByte), 0, None)),
-        parse(vec![Dot, OpenCurly, Byte(b'0'), Byte(b','), CloseCurly])
-    );
-    assert_eq!(
-        Ok(Repeat(Box::new(AnyByte), 1, None)),
-        parse(vec![Dot, OpenCurly, Byte(b'1'), Byte(b','), CloseCurly])
-    );
-    assert_eq!(
-        Ok(Repeat(Box::new(AnyByte), 99, None)),
-        parse(vec![
-            Dot,
-            OpenCurly,
-            Byte(b'9'),
-            Byte(b'9'),
-            Byte(b','),
-            CloseCurly
-        ])
-    );
-
-    // {,1}
-    assert_eq!(
-        Err("missing element before `{` symbol".to_string()),
-        parse(vec![OpenCurly, Byte(b','), Byte(b'1'), CloseCurly])
-    );
-    assert_eq!(
-        Err("missing `}` symbol".to_string()),
-        parse(vec![Dot, OpenCurly, Byte(b','), Byte(b'1')])
-    );
-    assert_eq!(
-        Ok(Repeat(Box::new(AnyByte), 0, Some(0))),
-        parse(vec![Dot, OpenCurly, Byte(b','), Byte(b'0'), CloseCurly])
-    );
-    assert_eq!(
-        Ok(Repeat(Box::new(AnyByte), 0, Some(1))),
-        parse(vec![Dot, OpenCurly, Byte(b','), Byte(b'1'), CloseCurly])
-    );
-    assert_eq!(
-        Ok(Repeat(Box::new(AnyByte), 0, Some(99))),
-        parse(vec![
-            Dot,
-            OpenCurly,
-            Byte(b','),
-            Byte(b'9'),
-            Byte(b'9'),
-            CloseCurly
-        ])
-    );
-
-    // {1,2}
-    assert_eq!(
-        Err("missing element before `{` symbol".to_string()),
-        parse(vec![
-            OpenCurly,
-            Byte(b'1'),
-            Byte(b','),
-            Byte(b'2'),
-            CloseCurly
-        ])
-    );
-    assert_eq!(
-        Err("missing `}` symbol".to_string()),
-        parse(vec![Dot, OpenCurly, Byte(b'1'), Byte(b','), Byte(b'2')])
-    );
-    assert_eq!(
-        Err("repeating element has max that is smaller than min: {2,1}".to_string()),
-        parse(vec![Dot, OpenCurly, Byte(b'2'), Byte(b','), Byte(b'1')])
-    );
-    assert_eq!(
-        Ok(Repeat(Box::new(AnyByte), 0, Some(0))),
-        parse(vec![
-            Dot,
-            OpenCurly,
-            Byte(b'0'),
-            Byte(b','),
-            Byte(b'0'),
-            CloseCurly
-        ])
-    );
-    assert_eq!(
-        Ok(Repeat(Box::new(AnyByte), 1, Some(2))),
-        parse(vec![
-            Dot,
-            OpenCurly,
-            Byte(b'1'),
-            Byte(b','),
-            Byte(b'2'),
-            CloseCurly
-        ])
-    );
-    assert_eq!(
-        Ok(Repeat(Box::new(AnyByte), 10, Some(99))),
-        parse(vec![
-            Dot,
-            OpenCurly,
-            Byte(b'1'),
-            Byte(b'0'),
-            Byte(b','),
-            Byte(b'9'),
-            Byte(b'9'),
-            CloseCurly
-        ])
-    );
-}
-
-// ?+.*^$|(){}[]
 
 fn impl_regex(stream: TokenStream) -> Result<TokenStream, String> {
     // Literal { kind: ByteStrRaw(0), symbol: "abc\\x20", suffix: None, span: #0 bytes(741..752) }
@@ -777,7 +331,7 @@ fn impl_regex(stream: TokenStream) -> Result<TokenStream, String> {
     // The compiler guarantees that a literal byte string contains only ASCII.
     // > regex!(br"€"); // error: raw byte string must be ASCII
     // Therefore, we can slice the string at any byte offset.
-    let tokens = tokenize(raw_byte_string.as_bytes())?;
+    let ast = parse(raw_byte_string.as_bytes())?;
 
     // panic!("literal: {:?} str={:?}", literal, literal.to_string());
     // if let Some(tree) = attr.into_iter().next() {
