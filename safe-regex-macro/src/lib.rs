@@ -151,21 +151,9 @@ fn parse(data: &[u8]) -> Result<FinalNode, String> {
             (_, Some(NonFinal(Escape)), b'r') => replace_top(&mut stack, Final(Byte(b'\r'))),
             (_, Some(NonFinal(Escape)), b't') => replace_top(&mut stack, Final(Byte(b'\t'))),
             (_, Some(NonFinal(Escape)), b'0') => replace_top(&mut stack, Final(Byte(0))),
-            (_, Some(NonFinal(Escape)), b'\'') => replace_top(&mut stack, Final(Byte(b'\''))),
-            (_, Some(NonFinal(Escape)), b'"') => replace_top(&mut stack, Final(Byte(b'"'))),
-            (_, Some(NonFinal(Escape)), b'?') => replace_top(&mut stack, Final(Byte(b'?'))),
-            (_, Some(NonFinal(Escape)), b'+') => replace_top(&mut stack, Final(Byte(b'+'))),
-            (_, Some(NonFinal(Escape)), b'.') => replace_top(&mut stack, Final(Byte(b'.'))),
-            (_, Some(NonFinal(Escape)), b'*') => replace_top(&mut stack, Final(Byte(b'*'))),
-            (_, Some(NonFinal(Escape)), b'^') => replace_top(&mut stack, Final(Byte(b'^'))),
-            (_, Some(NonFinal(Escape)), b'$') => replace_top(&mut stack, Final(Byte(b'$'))),
-            (_, Some(NonFinal(Escape)), b'|') => replace_top(&mut stack, Final(Byte(b'|'))),
-            (_, Some(NonFinal(Escape)), b'(') => replace_top(&mut stack, Final(Byte(b'('))),
-            (_, Some(NonFinal(Escape)), b')') => replace_top(&mut stack, Final(Byte(b')'))),
-            (_, Some(NonFinal(Escape)), b'{') => replace_top(&mut stack, Final(Byte(b'{'))),
-            (_, Some(NonFinal(Escape)), b'}') => replace_top(&mut stack, Final(Byte(b'}'))),
-            (_, Some(NonFinal(Escape)), b'[') => replace_top(&mut stack, Final(Byte(b'['))),
-            (_, Some(NonFinal(Escape)), b']') => replace_top(&mut stack, Final(Byte(b']'))),
+            (_, Some(NonFinal(Escape)), b) if b"'\"?+.*^$|(){}[]".contains(&b) => {
+                replace_top(&mut stack, Final(Byte(b)))
+            }
             // Hex characters `\x20`
             (_, Some(NonFinal(Escape)), b'x') => replace_top(&mut stack, NonFinal(HexEscape0)),
             (_, Some(NonFinal(Escape)), d) => return Err(invalid_escape([d])),
