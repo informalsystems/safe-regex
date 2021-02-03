@@ -50,9 +50,28 @@ impl Node {
     pub fn unwrap_final(self) -> FinalNode {
         match self {
             Node::Final(node) => node,
-            Node::NonFinal(node) => {
-                panic!("unwrap_final() called on value: {:?}", Node::NonFinal(node))
-            }
+            other => panic!("unwrap_final() called on value: {:?}", other),
+        }
+    }
+
+    pub fn unwrap_final_mut(&mut self) -> &mut FinalNode {
+        match self {
+            Node::Final(node) => node,
+            other => panic!("unwrap_final_mut() called on value: {:?}", other),
+        }
+    }
+
+    pub fn unwrap_non_final(self) -> NonFinalNode {
+        match self {
+            Node::NonFinal(node) => node,
+            other => panic!("unwrap_non_final() called on value: {:?}", other),
+        }
+    }
+
+    pub fn unwrap_non_final_mut(&mut self) -> &mut NonFinalNode {
+        match self {
+            Node::NonFinal(node) => node,
+            other => panic!("unwrap_non_final_mut() called on value: {:?}", other),
         }
     }
 }
@@ -74,8 +93,9 @@ enum NonFinalNode {
     OpenByteRange(u8),
     OpenGroup,
     OpenOr(Vec<FinalNode>),
-    RepeatMin(Box<FinalNode>, String),
-    RepeatMax(Box<FinalNode>, String, String),
+    RepeatMin(String),
+    RepeatMax(String, String),
+    RepeatToken(String, usize, Option<usize>),
 }
 impl NonFinalNode {
     pub fn reason(&self) -> String {
@@ -93,12 +113,71 @@ impl NonFinalNode {
             }
             NonFinalNode::OpenGroup => "missing closing `)`".to_string(),
             NonFinalNode::OpenOr(_) => "missing element after bar `|`".to_string(),
-            NonFinalNode::RepeatMin(_, s) => {
-                format!("missing closing `}}` symbol: `{{{}`", s)
+            NonFinalNode::RepeatMin(min) => {
+                format!("missing closing `}}` symbol: `{{{}`", min)
             }
-            NonFinalNode::RepeatMax(_, min, max) => {
+            NonFinalNode::RepeatMax(min, max) => {
                 format!("missing closing `}}` symbol: `{{{},{}`", min, max)
             }
+            NonFinalNode::RepeatToken(printable, _, _) => {
+                format!("missing element before `{}` symbol", printable)
+            }
+        }
+    }
+
+    pub fn unwrap_open_class(self) -> (bool, Vec<ClassItem>) {
+        match self {
+            NonFinalNode::OpenClass(incl, items) => (incl, items),
+            other => panic!("unwrap_open_class() called on value: {:?}", other),
+        }
+    }
+
+    pub fn unwrap_open_class_mut(&mut self) -> (&mut bool, &mut Vec<ClassItem>) {
+        match self {
+            NonFinalNode::OpenClass(incl, items) => (incl, items),
+            other => panic!("unwrap_open_class_mut() called on value: {:?}", other),
+        }
+    }
+
+    pub fn unwrap_open_or(self) -> Vec<FinalNode> {
+        match self {
+            NonFinalNode::OpenOr(nodes) => nodes,
+            other => panic!("unwrap_open_or() called on value: {:?}", other),
+        }
+    }
+
+    pub fn unwrap_repeat_min(self) -> String {
+        match self {
+            NonFinalNode::RepeatMin(min) => min,
+            other => panic!("unwrap_repeat_min() called on value: {:?}", other),
+        }
+    }
+
+    pub fn unwrap_repeat_min_mut(&mut self) -> &mut String {
+        match self {
+            NonFinalNode::RepeatMin(min) => min,
+            other => panic!("unwrap_repeat_min_mut() called on value: {:?}", other),
+        }
+    }
+
+    pub fn unwrap_repeat_max(self) -> (String, String) {
+        match self {
+            NonFinalNode::RepeatMax(min, max) => (min, max),
+            other => panic!("unwrap_repeat_max() called on value: {:?}", other),
+        }
+    }
+
+    pub fn unwrap_repeat_max_mut(&mut self) -> (&mut String, &mut String) {
+        match self {
+            NonFinalNode::RepeatMax(min, max) => (min, max),
+            other => panic!("unwrap_repeat_max_mut() called on value: {:?}", other),
+        }
+    }
+
+    pub fn unwrap_repeat_token(self) -> (String, usize, Option<usize>) {
+        match self {
+            NonFinalNode::RepeatToken(printable, min, opt_max) => (printable, min, opt_max),
+            other => panic!("unwrap_repeat_token() called on value: {:?}", other),
         }
     }
 }
@@ -114,6 +193,28 @@ enum FinalNode {
     Or(Vec<FinalNode>),
     Repeat(Box<FinalNode>, usize, Option<usize>),
 }
+impl FinalNode {
+    pub fn unwrap_or(self) -> Vec<FinalNode> {
+        match self {
+            FinalNode::Or(nodes) => nodes,
+            other => panic!("unwrap_or() called on value: {:?}", other),
+        }
+    }
+
+    pub fn unwrap_or_mut(&mut self) -> &mut Vec<FinalNode> {
+        match self {
+            FinalNode::Or(nodes) => nodes,
+            other => panic!("unwrap_or_mut() called on value: {:?}", other),
+        }
+    }
+
+    pub fn unwrap_seq_mut(&mut self) -> &mut Vec<FinalNode> {
+        match self {
+            FinalNode::Seq(nodes) => nodes,
+            other => panic!("unwrap_seq_mut() called on value: {:?}", other),
+        }
+    }
+}
 
 fn invalid_escape(bytes: impl AsRef<[u8]>) -> String {
     format!("invalid escape sequence `\\{}`", escape_ascii(bytes))
@@ -125,18 +226,27 @@ fn replace_top(stack: &mut Vec<Node>, node: Node) {
 }
 
 fn parse(data: &[u8]) -> Result<FinalNode, String> {
+    // This parser works, but it is very hard to understand.
+    // We should separate the parser and the grammar declarations.
+    //
+    // Working with the stack is ugly because of Rust's borrowing rules.
+    // Idea for making it cleaner: In each loop iteration, keep the top and
+    // second-from-top token in a `mut Option<Node>`.  Then code can call `take`
+    // to discard a token and assign new values to replace.
     use FinalNode::{AnyByte, Byte, ByteRange, Class, Group, Or, Repeat, Seq};
     use Node::{Final, NonFinal};
     use NonFinalNode::{
         Escape, HexEscape0, HexEscape1, OpenByteRange, OpenClass, OpenClass0, OpenClassNeg,
-        OpenGroup, OpenOr, RepeatMax, RepeatMin,
+        OpenGroup, OpenOr, RepeatMax, RepeatMin, RepeatToken,
     };
     if data.is_empty() {
         return Ok(Seq(Vec::new()));
     }
-    let mut iter = data.iter().copied();
+    let mut iter = data.iter().copied().peekable();
     let mut stack: Vec<Node> = Vec::new();
     while let Some(b) = iter.next() {
+        //println!("stack {:?}", stack);
+        //println!("process {}", escape_ascii([b]));
         // Process the new byte.
         let prev = if stack.len() < 2 {
             None
@@ -175,23 +285,24 @@ fn parse(data: &[u8]) -> Result<FinalNode, String> {
                 replace_top(&mut stack, NonFinal(OpenClassNeg))
             }
             (_, Some(NonFinal(OpenClass(..))), b'-') => {
-                if let Some(NonFinal(OpenClass(_, items))) = stack.last_mut() {
-                    match items.pop().unwrap() {
-                        // "[a-"
-                        ClassItem::Byte(b) => {
-                            stack.push(NonFinal(OpenByteRange(b)));
-                        }
-                        // "[a-b-"
-                        ClassItem::ByteRange(a, b) => {
-                            return Err(format!(
-                                "expected byte before '-' symbol, not range: `{}-{}-`",
-                                escape_ascii([a]),
-                                escape_ascii([b])
-                            ))
-                        }
+                let (_, items) = stack
+                    .last_mut()
+                    .unwrap()
+                    .unwrap_non_final_mut()
+                    .unwrap_open_class_mut();
+                match items.pop().unwrap() {
+                    // "[a-"
+                    ClassItem::Byte(b) => {
+                        stack.push(NonFinal(OpenByteRange(b)));
                     }
-                } else {
-                    unreachable!()
+                    // "[a-b-"
+                    ClassItem::ByteRange(a, b) => {
+                        return Err(format!(
+                            "expected byte before '-' symbol, not range: `{}-{}-`",
+                            escape_ascii([a]),
+                            escape_ascii([b])
+                        ))
+                    }
                 }
             }
             (_, Some(NonFinal(OpenClass0)), b']') => {
@@ -201,11 +312,8 @@ fn parse(data: &[u8]) -> Result<FinalNode, String> {
                 replace_top(&mut stack, Final(Class(false, Vec::new())))
             }
             (_, Some(NonFinal(OpenClass(..))), b']') => {
-                if let Some(NonFinal(OpenClass(incl, items))) = stack.pop() {
-                    stack.push(Final(Class(incl, items)))
-                } else {
-                    unreachable!()
-                }
+                let (incl, items) = stack.pop().unwrap().unwrap_non_final().unwrap_open_class();
+                stack.push(Final(Class(incl, items)))
             }
             (Some(NonFinal(OpenClass(..))), Some(NonFinal(non_final)), b']') => {
                 return Err(non_final.reason())
@@ -218,96 +326,89 @@ fn parse(data: &[u8]) -> Result<FinalNode, String> {
             {
                 stack.push(Final(Byte(b)))
             }
-            // Single-character postfix operators
+            // Any byte `.`
+            (_, _, b'.') => stack.push(Final(AnyByte)),
+            // Single-character postfix operators `?` `+` `*`
             (_, None, b'?') => return Err("missing element before `?` symbol".to_string()),
             (_, None, b'+') => return Err("missing element before `+` symbol".to_string()),
             (_, None, b'*') => return Err("missing element before `*` symbol".to_string()),
+            (_, Some(NonFinal(non_final)), b'?') => return Err(non_final.reason()),
+            (_, Some(NonFinal(non_final)), b'+') => return Err(non_final.reason()),
+            (_, Some(NonFinal(non_final)), b'*') => return Err(non_final.reason()),
             (_, Some(Final(_)), b'?') => {
-                let node = stack.pop().unwrap().unwrap_final();
-                stack.push(Final(Repeat(Box::new(node), 0, Some(1))))
-            }
-            (_, Some(Final(_)), b'+') => {
-                let node = stack.pop().unwrap().unwrap_final();
-                stack.push(Final(Repeat(Box::new(node), 1, None)))
+                stack.push(NonFinal(RepeatToken("?".to_string(), 0, Some(1))))
             }
             (_, Some(Final(_)), b'*') => {
-                let node = stack.pop().unwrap().unwrap_final();
-                stack.push(Final(Repeat(Box::new(node), 0, None)))
+                stack.push(NonFinal(RepeatToken("*".to_string(), 0, None)))
             }
-            // Any byte `.`
-            (_, _, b'.') => stack.push(Final(AnyByte)),
-            // Repeat `{n}` `{n,}` `{,m}` `{n,m}`
+            (_, Some(Final(_)), b'+') => {
+                stack.push(NonFinal(RepeatToken("+".to_string(), 1, None)))
+            }
+            // Repeat postfix operators `{n}` `{n,}` `{,m}` `{n,m}`
             (_, None, b'{') => return Err("missing element before `{` symbol".to_string()),
             (_, Some(NonFinal(non_final)), b'{') => return Err(non_final.reason()),
-            (_, Some(Final(_)), b'{') => {
-                let node = stack.pop().unwrap().unwrap_final();
-                stack.push(NonFinal(RepeatMin(Box::new(node), String::new())))
+            (_, Some(Final(_)), b'{') => stack.push(NonFinal(RepeatMin(String::new()))),
+            (_, Some(NonFinal(RepeatMin(_))), b',') => {
+                let min = stack.pop().unwrap().unwrap_non_final().unwrap_repeat_min();
+                stack.push(NonFinal(RepeatMax(min, String::new())))
             }
-            (_, Some(NonFinal(RepeatMin(..))), b',') => {
-                if let Some(NonFinal(RepeatMin(box_node, min))) = stack.pop() {
-                    stack.push(NonFinal(RepeatMax(box_node, min, String::new())))
-                } else {
-                    unreachable!()
-                }
+            (_, Some(NonFinal(RepeatMin(_))), b'}') => {
+                let min = stack.pop().unwrap().unwrap_non_final().unwrap_repeat_min();
+                let min_usize = usize::from_str_radix(&min, 10)
+                    .map_err(|_| format!("invalid repetition value: `{{{}}}`", min))?;
+                stack.push(NonFinal(RepeatToken(
+                    format!("{{{}}}", min),
+                    min_usize,
+                    Some(min_usize),
+                )))
             }
-            (_, Some(NonFinal(RepeatMin(..))), b'}') => {
-                if let Some(NonFinal(RepeatMin(box_node, min))) = stack.pop() {
-                    let min_usize = usize::from_str_radix(&min, 10)
-                        .map_err(|_| format!("invalid repetition value: `{{{}}}`", min))?;
-                    stack.push(Final(Repeat(box_node, min_usize, Some(min_usize))))
-                } else {
-                    unreachable!()
-                }
-            }
-            (_, Some(NonFinal(RepeatMin(..))), b) => {
-                if let Some(NonFinal(RepeatMin(_, min))) = stack.last_mut() {
-                    min.push(char::from(b))
-                } else {
-                    unreachable!()
-                }
+            (_, Some(NonFinal(RepeatMin(_))), b) => {
+                let min = stack
+                    .last_mut()
+                    .unwrap()
+                    .unwrap_non_final_mut()
+                    .unwrap_repeat_min_mut();
+                min.push(char::from(b))
             }
             (_, Some(NonFinal(RepeatMax(..))), b'}') => {
-                if let Some(NonFinal(RepeatMax(box_node, min, max))) = stack.pop() {
-                    let min_usize = if min.is_empty() {
-                        0
-                    } else {
-                        usize::from_str_radix(&min, 10).map_err(|_| {
-                            format!("invalid repetition value: `{{{},{}}}`", min, max)
-                        })?
-                    };
-                    let max_opt_usize = if max.is_empty() {
-                        None
-                    } else {
-                        let max_usize = usize::from_str_radix(&max, 10).map_err(|_| {
-                            format!("invalid repetition value: `{{{},{}}}`", min, max)
-                        })?;
-                        if max_usize < min_usize {
-                            return Err(format!(
-                                "repeating element has max that is smaller than min: `{{{},{}}}`",
-                                min, max
-                            ));
-                        }
-                        Some(max_usize)
-                    };
-                    stack.push(Final(Repeat(box_node, min_usize, max_opt_usize)))
+                let (min, max) = stack.pop().unwrap().unwrap_non_final().unwrap_repeat_max();
+                let min_usize = if min.is_empty() {
+                    0
                 } else {
-                    unreachable!()
-                }
+                    usize::from_str_radix(&min, 10)
+                        .map_err(|_| format!("invalid repetition value: `{{{},{}}}`", min, max))?
+                };
+                let max_opt_usize = if max.is_empty() {
+                    None
+                } else {
+                    let max_usize = usize::from_str_radix(&max, 10)
+                        .map_err(|_| format!("invalid repetition value: `{{{},{}}}`", min, max))?;
+                    if max_usize < min_usize {
+                        return Err(format!(
+                            "repeating element has max that is smaller than min: `{{{},{}}}`",
+                            min, max
+                        ));
+                    }
+                    Some(max_usize)
+                };
+                stack.push(NonFinal(RepeatToken(
+                    format!("{{{},{}}}", min, max),
+                    min_usize,
+                    max_opt_usize,
+                )))
             }
             (_, Some(NonFinal(RepeatMax(..))), b) => {
-                if let Some(NonFinal(RepeatMax(_, _, max))) = stack.last_mut() {
-                    max.push(char::from(b));
-                } else {
-                    unreachable!()
-                }
+                let (_, max) = stack
+                    .last_mut()
+                    .unwrap()
+                    .unwrap_non_final_mut()
+                    .unwrap_repeat_max_mut();
+                max.push(char::from(b));
             }
             // Alternation (Or) `a|b|c`
             (_, Some(Final(Or(_))), b'|') => {
-                if let Some(Final(Or(nodes))) = stack.pop() {
-                    stack.push(NonFinal(OpenOr(nodes)))
-                } else {
-                    unreachable!()
-                }
+                let nodes = stack.pop().unwrap().unwrap_final().unwrap_or();
+                stack.push(NonFinal(OpenOr(nodes)))
             }
             (_, Some(Final(_)), b'|') => {
                 let node = stack.pop().unwrap().unwrap_final();
@@ -329,97 +430,114 @@ fn parse(data: &[u8]) -> Result<FinalNode, String> {
             // Other bytes
             (_, _, byte) => stack.push(Final(Byte(byte))),
         };
+        //println!("stack {:?}", stack);
 
         // Combine and reduce tokens.
         while stack.len() >= 2 {
-            match (stack.get(stack.len() - 2).unwrap(), stack.last().unwrap()) {
-                // Do not transform non-final nodes.
-                (_, NonFinal(_)) => break,
-                // Alternation (Or) `a|b|c`
-                (NonFinal(OpenOr(_)), Final(_)) => {
-                    let node = stack.pop().unwrap().unwrap_final();
-                    if let Some(NonFinal(OpenOr(mut nodes))) = stack.pop() {
-                        nodes.push(node);
-                        stack.push(Final(Or(nodes)));
-                    } else {
-                        unreachable!()
-                    }
+            match (
+                stack.get(stack.len() - 2).unwrap(),
+                stack.last().unwrap(),
+                iter.peek(),
+            ) {
+                (Final(_), Final(_), Some(b)) | (NonFinal(OpenOr(_)), Final(_), Some(b))
+                    if *b == b'?' || *b == b'*' || *b == b'+' || *b == b'{' =>
+                {
+                    break
                 }
-                (Final(Or(_)), Final(_)) => {
+                (Final(_), NonFinal(RepeatToken(..)), _) => {
+                    let (_, min, opt_max) = stack
+                        .pop()
+                        .unwrap()
+                        .unwrap_non_final()
+                        .unwrap_repeat_token();
                     let node = stack.pop().unwrap().unwrap_final();
-                    if let Some(Final(Or(ref mut nodes))) = stack.last_mut() {
-                        match nodes.last_mut().unwrap() {
-                            Seq(ref mut seq_nodes) => seq_nodes.push(node),
-                            _ => {
-                                let prev_node = nodes.pop().unwrap();
-                                nodes.push(Seq(vec![prev_node, node]))
-                            }
+                    stack.push(Final(Repeat(Box::new(node), min, opt_max)))
+                }
+                // Do not transform other non-final nodes.
+                (_, NonFinal(_), _) => break,
+                // Alternation (Or) `a|b|c`
+                (NonFinal(OpenOr(_)), Final(_), _) => {
+                    let node = stack.pop().unwrap().unwrap_final();
+                    let mut nodes = stack.pop().unwrap().unwrap_non_final().unwrap_open_or();
+                    nodes.push(node);
+                    stack.push(Final(Or(nodes)));
+                }
+                (Final(Or(_)), Final(_), _) => {
+                    let node = stack.pop().unwrap().unwrap_final();
+                    let nodes = stack.last_mut().unwrap().unwrap_final_mut().unwrap_or_mut();
+                    match nodes.last_mut().unwrap() {
+                        Seq(ref mut seq_nodes) => seq_nodes.push(node),
+                        _ => {
+                            let prev_node = nodes.pop().unwrap();
+                            nodes.push(Seq(vec![prev_node, node]))
                         }
-                    } else {
-                        unreachable!()
                     }
                 }
                 // Class `[ab0-9]`, `[^-ab0-9]`
-                (NonFinal(OpenByteRange(a)), Final(Byte(b))) => {
+                (NonFinal(OpenByteRange(a)), Final(Byte(b)), _) => {
                     let node = Final(ByteRange(*a, *b));
                     stack.pop().unwrap();
                     stack.pop().unwrap();
                     stack.push(node);
                 }
-                (NonFinal(OpenClass0), Final(Byte(b))) => {
+                (NonFinal(OpenClass0), Final(Byte(b)), _) => {
                     let node = NonFinal(OpenClass(true, vec![ClassItem::Byte(*b)]));
                     stack.pop().unwrap();
                     stack.pop().unwrap();
                     stack.push(node);
                 }
-                (NonFinal(OpenClassNeg), Final(Byte(b))) => {
+                (NonFinal(OpenClassNeg), Final(Byte(b)), _) => {
                     let node = NonFinal(OpenClass(false, vec![ClassItem::Byte(*b)]));
                     stack.pop().unwrap();
                     stack.pop().unwrap();
                     stack.push(node);
                 }
-                (NonFinal(OpenClass(..)), Final(Byte(b))) => {
+                (NonFinal(OpenClass(..)), Final(Byte(b)), _) => {
                     let item = ClassItem::Byte(*b);
                     stack.pop().unwrap();
-                    if let Some(NonFinal(OpenClass(_, ref mut items))) = stack.last_mut() {
-                        items.push(item);
-                    } else {
-                        unreachable!()
-                    }
+                    let (_, ref mut items) = stack
+                        .last_mut()
+                        .unwrap()
+                        .unwrap_non_final_mut()
+                        .unwrap_open_class_mut();
+                    items.push(item);
                 }
-                (NonFinal(OpenClass(..)), Final(ByteRange(a, b))) => {
+                (NonFinal(OpenClass(..)), Final(ByteRange(a, b)), _) => {
                     let item = ClassItem::ByteRange(*a, *b);
                     stack.pop().unwrap();
-                    if let Some(NonFinal(OpenClass(_, ref mut items))) = stack.last_mut() {
-                        items.push(item);
-                    } else {
-                        unreachable!()
-                    }
+                    let (_, ref mut items) = stack
+                        .last_mut()
+                        .unwrap()
+                        .unwrap_non_final_mut()
+                        .unwrap_open_class_mut();
+                    items.push(item);
                 }
                 // Group `(ab)`
-                (NonFinal(OpenGroup), Final(_)) => break,
-                (Final(Seq(_)), Final(_)) => {
+                (NonFinal(OpenGroup), Final(_), _) => break,
+                (Final(Seq(_)), Final(_), _) => {
                     let node = stack.pop().unwrap().unwrap_final();
-                    if let Some(Final(Seq(nodes))) = stack.last_mut() {
-                        nodes.push(node)
-                    } else {
-                        unreachable!()
-                    }
+                    let nodes = stack
+                        .last_mut()
+                        .unwrap()
+                        .unwrap_final_mut()
+                        .unwrap_seq_mut();
+                    nodes.push(node)
                 }
-                (Final(_), Final(_)) => {
+                (Final(_), Final(_), _) => {
                     let node = stack.pop().unwrap().unwrap_final();
                     let prev = stack.pop().unwrap().unwrap_final();
                     stack.push(Final(Seq(vec![prev, node])))
                 }
-                (NonFinal(Escape), Final(_))
-                | (NonFinal(HexEscape0), Final(_))
-                | (NonFinal(HexEscape1(_)), Final(_))
-                | (NonFinal(RepeatMin(..)), Final(_))
-                | (NonFinal(RepeatMax(..)), Final(_))
-                | (NonFinal(OpenClass0), Final(_))
-                | (NonFinal(OpenClassNeg), Final(_))
-                | (NonFinal(OpenClass(..)), Final(_))
-                | (NonFinal(OpenByteRange(_)), Final(_)) => unreachable!(),
+                (NonFinal(Escape), Final(_), _)
+                | (NonFinal(HexEscape0), Final(_), _)
+                | (NonFinal(HexEscape1(_)), Final(_), _)
+                | (NonFinal(RepeatMin(..)), Final(_), _)
+                | (NonFinal(RepeatMax(..)), Final(_), _)
+                | (NonFinal(OpenClass0), Final(_), _)
+                | (NonFinal(OpenClassNeg), Final(_), _)
+                | (NonFinal(OpenClass(..)), Final(_), _)
+                | (NonFinal(OpenByteRange(_)), Final(_), _)
+                | (NonFinal(RepeatToken(..)), Final(_), _) => unreachable!(),
             }
         }
     }
@@ -430,11 +548,7 @@ fn parse(data: &[u8]) -> Result<FinalNode, String> {
         }
     }
     assert_eq!(1, stack.len());
-    if let Final(node) = stack.pop().unwrap() {
-        Ok(node)
-    } else {
-        unreachable!()
-    }
+    Ok(stack.pop().unwrap().unwrap_final())
 }
 
 #[cfg(test)]
@@ -552,8 +666,6 @@ fn test_parse_or() {
         parse(br"ab|cde|fg")
     );
 }
-
-// TODO(mleonhard) Test precedence.
 
 #[cfg(test)]
 #[test]
@@ -707,6 +819,13 @@ fn test_parse_repeat() {
         Err("missing element before `?` symbol".to_string()),
         parse(br"?")
     );
+    // TODO(mleonhard) Return "missing element before `?` symbol" error.
+    assert_eq!(
+        Err("missing element after bar `|`".to_string()),
+        parse(br"b|?")
+    );
+    // TODO(mleonhard) Return "missing element before `{` symbol" error.
+    assert_eq!(Err("missing closing `)`".to_string()), parse(br"(?)"));
     assert_eq!(Ok(Repeat(Box::new(AnyByte), 0, Some(1))), parse(br".?"));
 
     // *
@@ -728,6 +847,13 @@ fn test_parse_repeat() {
         Err("missing element before `{` symbol".to_string()),
         parse(br"{1}")
     );
+    // TODO(mleonhard) Return "missing element before `{` symbol" error.
+    assert_eq!(
+        Err("missing element after bar `|`".to_string()),
+        parse(br"(ab|{1})")
+    );
+    // TODO(mleonhard) Return "missing element before `{` symbol" error.
+    assert_eq!(Err("missing closing `)`".to_string()), parse(br"({1})"));
     assert_eq!(
         Err("missing closing `}` symbol: `{1`".to_string()),
         parse(br".{1")
@@ -825,6 +951,46 @@ fn test_parse_repeat() {
     assert_eq!(
         Ok(Repeat(Box::new(AnyByte), 10, Some(99))),
         parse(br".{10,99}")
+    );
+}
+
+#[cfg(test)]
+#[test]
+fn test_parse_precedence() {
+    // Regular expressions have four types of syntax:
+    // - Discrete tokens: . a [abc]
+    // - Postfix operators: a? a* a+ a{n}.  These are unambiguous.
+    // - Concatenation: ab
+    // - Alternation/Or: a|b
+    // We will test all combinations of these types to confirm correct parsing.
+    // For example, we want to make sure that `a|bc` gets parsed as `a|(bc)` and
+    // and not `(a|b)c`.
+    use FinalNode::{Byte, Or, Repeat, Seq};
+    // Postfix & Concatenation
+    assert_eq!(
+        Ok(Seq(vec![
+            Byte(b'a'),
+            Repeat(Box::new(Byte(b'b')), 0, Some(1))
+        ])),
+        parse(br"ab?")
+    );
+    // Postfix & Alternation
+    assert_eq!(
+        Ok(Or(vec![
+            Repeat(Box::new(Byte(b'a')), 0, None),
+            Repeat(Box::new(Byte(b'b')), 0, None),
+            Repeat(Box::new(Byte(b'c')), 0, None),
+        ])),
+        parse(br"a*|b*|c*")
+    );
+    // Concatenation & Alternation
+    assert_eq!(
+        Ok(Or(vec![
+            Seq(vec![Byte(b'a'), Byte(b'b')]),
+            Seq(vec![Byte(b'c'), Byte(b'd')]),
+            Seq(vec![Byte(b'e'), Byte(b'f')]),
+        ])),
+        parse(br"ab|cd|ef")
     );
 }
 
