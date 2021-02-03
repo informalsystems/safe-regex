@@ -47,13 +47,6 @@ enum Node {
     NonFinal(NonFinalNode),
 }
 impl Node {
-    pub fn is_final(&self) -> bool {
-        match self {
-            Node::Final(_) => true,
-            Node::NonFinal(_) => false,
-        }
-    }
-
     pub fn unwrap_final(self) -> FinalNode {
         match self {
             Node::Final(node) => node,
@@ -144,6 +137,7 @@ fn parse(data: &[u8]) -> Result<FinalNode, String> {
     let mut iter = data.iter().copied();
     let mut stack: Vec<Node> = Vec::new();
     while let Some(b) = iter.next() {
+        // Process the new byte.
         let prev = if stack.len() < 2 {
             None
         } else {
@@ -347,62 +341,97 @@ fn parse(data: &[u8]) -> Result<FinalNode, String> {
             // Other bytes
             (_, _, byte) => stack.push(Final(Byte(byte))),
         };
-        while stack.len() >= 2 && stack.last().unwrap().is_final() {
-            let top = stack.pop().unwrap();
-            match (stack.last_mut(), top) {
+
+        // Combine and reduce tokens.
+        while stack.len() >= 2 {
+            match (stack.get(stack.len() - 2).unwrap(), stack.last().unwrap()) {
                 // Do not transform non-final nodes.
-                (_, NonFinal(non_final)) => stack.push(NonFinal(non_final)),
+                (_, NonFinal(_)) => break,
                 // Alternation (Or) `a|b|c`
-                (Some(NonFinal(OpenOr(_))), Final(node)) => {
+                (NonFinal(OpenOr(_)), Final(_)) => {
+                    let node = stack.pop().unwrap().unwrap_final();
                     if let Some(NonFinal(OpenOr(mut nodes))) = stack.pop() {
                         nodes.push(node);
-                        stack.push(Final(Or(nodes)))
+                        stack.push(Final(Or(nodes)));
                     } else {
                         unreachable!()
                     }
                 }
-                (Some(Final(Or(nodes))), Final(node)) => match nodes.last_mut().unwrap() {
-                    Seq(seq_nodes) => seq_nodes.push(node),
-                    _ => {
-                        let prev_node = nodes.pop().unwrap();
-                        nodes.push(Seq(vec![prev_node, node]))
+                (Final(Or(_)), Final(_)) => {
+                    let node = stack.pop().unwrap().unwrap_final();
+                    if let Some(Final(Or(ref mut nodes))) = stack.last_mut() {
+                        match nodes.last_mut().unwrap() {
+                            Seq(ref mut seq_nodes) => seq_nodes.push(node),
+                            _ => {
+                                let prev_node = nodes.pop().unwrap();
+                                nodes.push(Seq(vec![prev_node, node]))
+                            }
+                        }
+                    } else {
+                        unreachable!()
                     }
-                },
+                }
                 // Class `[ab0-9]`, `[^-ab0-9]`
-                (Some(NonFinal(OpenByteRange(a))), Final(Byte(b))) => {
-                    *(stack.last_mut().unwrap()) = Final(ByteRange(*a, b));
+                (NonFinal(OpenByteRange(a)), Final(Byte(b))) => {
+                    let node = Final(ByteRange(*a, *b));
+                    stack.pop().unwrap();
+                    stack.pop().unwrap();
+                    stack.push(node);
                 }
-                (Some(NonFinal(OpenClass0)), Final(Byte(b))) => {
-                    *(stack.last_mut().unwrap()) =
-                        NonFinal(OpenClass(true, vec![ClassItem::Byte(b)]));
+                (NonFinal(OpenClass0), Final(Byte(b))) => {
+                    let node = NonFinal(OpenClass(true, vec![ClassItem::Byte(*b)]));
+                    stack.pop().unwrap();
+                    stack.pop().unwrap();
+                    stack.push(node);
                 }
-                (Some(NonFinal(OpenClassNeg)), Final(Byte(b))) => {
-                    *(stack.last_mut().unwrap()) =
-                        NonFinal(OpenClass(false, vec![ClassItem::Byte(b)]));
+                (NonFinal(OpenClassNeg), Final(Byte(b))) => {
+                    let node = NonFinal(OpenClass(false, vec![ClassItem::Byte(*b)]));
+                    stack.pop().unwrap();
+                    stack.pop().unwrap();
+                    stack.push(node);
                 }
-                (Some(NonFinal(OpenClass(_, ref mut items))), Final(Byte(b))) => {
-                    items.push(ClassItem::Byte(b));
+                (NonFinal(OpenClass(..)), Final(Byte(b))) => {
+                    let item = ClassItem::Byte(*b);
+                    stack.pop().unwrap();
+                    if let Some(NonFinal(OpenClass(_, ref mut items))) = stack.last_mut() {
+                        items.push(item);
+                    } else {
+                        unreachable!()
+                    }
                 }
-                (Some(NonFinal(OpenClass(_, ref mut items))), Final(ByteRange(a, b))) => {
-                    items.push(ClassItem::ByteRange(a, b));
+                (NonFinal(OpenClass(..)), Final(ByteRange(a, b))) => {
+                    let item = ClassItem::ByteRange(*a, *b);
+                    stack.pop().unwrap();
+                    if let Some(NonFinal(OpenClass(_, ref mut items))) = stack.last_mut() {
+                        items.push(item);
+                    } else {
+                        unreachable!()
+                    }
                 }
                 // Group `(ab)`
-                (Some(NonFinal(OpenGroup)), Final(node)) => {
-                    stack.push(Final(node));
-                    break;
-                }
-                (Some(Final(Seq(ref mut nodes))), Final(node)) => nodes.push(node),
-                (Some(Final(_)), Final(top)) => {
-                    if let Some(Final(prev)) = stack.pop() {
-                        stack.push(Final(Seq(vec![prev, top])))
+                (NonFinal(OpenGroup), Final(_)) => break,
+                (Final(Seq(_)), Final(_)) => {
+                    let node = stack.pop().unwrap().unwrap_final();
+                    if let Some(Final(Seq(nodes))) = stack.last_mut() {
+                        nodes.push(node)
                     } else {
                         unreachable!()
                     }
                 }
-                (prev, top) => panic!(
-                    "internal parser error: unmatched pattern {:?} {:?}",
-                    prev, top
-                ),
+                (Final(_), Final(_)) => {
+                    let node = stack.pop().unwrap().unwrap_final();
+                    let prev = stack.pop().unwrap().unwrap_final();
+                    stack.push(Final(Seq(vec![prev, node])))
+                }
+                (NonFinal(Escape), Final(_))
+                | (NonFinal(HexEscape0), Final(_))
+                | (NonFinal(HexEscape1(_)), Final(_))
+                | (NonFinal(RepeatMin(..)), Final(_))
+                | (NonFinal(RepeatMax(..)), Final(_))
+                | (NonFinal(OpenClass0), Final(_))
+                | (NonFinal(OpenClassNeg), Final(_))
+                | (NonFinal(OpenClass(..)), Final(_))
+                | (NonFinal(OpenByteRange(_)), Final(_)) => unreachable!(),
             }
         }
     }
