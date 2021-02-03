@@ -194,20 +194,17 @@ fn parse(data: &[u8]) -> Result<FinalNode, String> {
             }
             (_, Some(NonFinal(OpenClass(..))), b'-') => {
                 if let Some(NonFinal(OpenClass(_, items))) = stack.last_mut() {
-                    match items.pop() {
-                        // "[-"
-                        None => {
-                            items.push(ClassItem::Byte(b'-'));
-                        }
+                    match items.pop().unwrap() {
                         // "[a-"
-                        Some(ClassItem::Byte(b)) => {
+                        ClassItem::Byte(b) => {
                             stack.push(NonFinal(OpenByteRange(b)));
                         }
                         // "[a-b-"
-                        Some(ClassItem::ByteRange(a, b)) => {
+                        ClassItem::ByteRange(a, b) => {
                             return Err(format!(
                                 "expected byte before '-' symbol, not range: `{}-{}-`",
-                                a, b
+                                escape_ascii([a]),
+                                escape_ascii([b])
                             ))
                         }
                     }
@@ -228,9 +225,7 @@ fn parse(data: &[u8]) -> Result<FinalNode, String> {
                     unreachable!()
                 }
             }
-            (Some(NonFinal(OpenClass0)), Some(NonFinal(non_final)), b']')
-            | (Some(NonFinal(OpenClassNeg)), Some(NonFinal(non_final)), b']')
-            | (Some(NonFinal(OpenClass(..))), Some(NonFinal(non_final)), b']') => {
+            (Some(NonFinal(OpenClass(..))), Some(NonFinal(non_final)), b']') => {
                 return Err(non_final.reason())
             }
             // Other characters inside character classes
@@ -266,13 +261,6 @@ fn parse(data: &[u8]) -> Result<FinalNode, String> {
                 let node = stack.pop().unwrap().unwrap_final();
                 stack.push(NonFinal(RepeatMin(Box::new(node), String::new())))
             }
-            (_, Some(NonFinal(RepeatMin(..))), b) if b.is_ascii_digit() => {
-                if let Some(NonFinal(RepeatMin(_, min))) = stack.last_mut() {
-                    min.push(char::from(b))
-                } else {
-                    unreachable!()
-                }
-            }
             (_, Some(NonFinal(RepeatMin(..))), b',') => {
                 if let Some(NonFinal(RepeatMin(box_node, min))) = stack.pop() {
                     stack.push(NonFinal(RepeatMax(box_node, min, String::new())))
@@ -282,20 +270,16 @@ fn parse(data: &[u8]) -> Result<FinalNode, String> {
             }
             (_, Some(NonFinal(RepeatMin(..))), b'}') => {
                 if let Some(NonFinal(RepeatMin(box_node, min))) = stack.pop() {
-                    let min_usize = if min.is_empty() {
-                        0
-                    } else {
-                        usize::from_str_radix(&min, 10)
-                            .map_err(|_| format!("invalid repetition value: `{{{}}}`", min))?
-                    };
+                    let min_usize = usize::from_str_radix(&min, 10)
+                        .map_err(|_| format!("invalid repetition value: `{{{}}}`", min))?;
                     stack.push(Final(Repeat(box_node, min_usize, Some(min_usize))))
                 } else {
                     unreachable!()
                 }
             }
-            (_, Some(NonFinal(RepeatMax(..))), b) if b.is_ascii_digit() => {
-                if let Some(NonFinal(RepeatMax(_, _, max))) = stack.last_mut() {
-                    max.push(char::from(b));
+            (_, Some(NonFinal(RepeatMin(..))), b) => {
+                if let Some(NonFinal(RepeatMin(_, min))) = stack.last_mut() {
+                    min.push(char::from(b))
                 } else {
                     unreachable!()
                 }
@@ -313,7 +297,7 @@ fn parse(data: &[u8]) -> Result<FinalNode, String> {
                         None
                     } else {
                         let max_usize = usize::from_str_radix(&max, 10).map_err(|_| {
-                            format!("invalid repetition value: `{{{},{}}}`", min_usize, max)
+                            format!("invalid repetition value: `{{{},{}}}`", min, max)
                         })?;
                         if max_usize < min_usize {
                             return Err(format!(
@@ -324,6 +308,13 @@ fn parse(data: &[u8]) -> Result<FinalNode, String> {
                         Some(max_usize)
                     };
                     stack.push(Final(Repeat(box_node, min_usize, max_opt_usize)))
+                } else {
+                    unreachable!()
+                }
+            }
+            (_, Some(NonFinal(RepeatMax(..))), b) => {
+                if let Some(NonFinal(RepeatMax(_, _, max))) = stack.last_mut() {
+                    max.push(char::from(b));
                 } else {
                     unreachable!()
                 }
@@ -392,14 +383,6 @@ fn parse(data: &[u8]) -> Result<FinalNode, String> {
                 (Some(NonFinal(OpenClass(_, ref mut items))), Final(Byte(b))) => {
                     items.push(ClassItem::Byte(b));
                 }
-                (Some(NonFinal(OpenClass0)), Final(ByteRange(a, b))) => {
-                    *(stack.last_mut().unwrap()) =
-                        NonFinal(OpenClass(true, vec![ClassItem::ByteRange(a, b)]));
-                }
-                (Some(NonFinal(OpenClassNeg)), Final(ByteRange(a, b))) => {
-                    *(stack.last_mut().unwrap()) =
-                        NonFinal(OpenClass(false, vec![ClassItem::ByteRange(a, b)]));
-                }
                 (Some(NonFinal(OpenClass(_, ref mut items))), Final(ByteRange(a, b))) => {
                     items.push(ClassItem::ByteRange(a, b));
                 }
@@ -416,7 +399,10 @@ fn parse(data: &[u8]) -> Result<FinalNode, String> {
                         unreachable!()
                     }
                 }
-                (prev, top) => panic!("{:?} {:?}", prev, top),
+                (prev, top) => panic!(
+                    "internal parser error: unmatched pattern {:?} {:?}",
+                    prev, top
+                ),
             }
         }
     }
@@ -622,6 +608,14 @@ fn test_parse_class() {
         parse(br"[ab-]")
     );
     assert_eq!(
+        Err("missing byte to close range: `a-`".to_string()),
+        parse(br"[^a-]")
+    );
+    assert_eq!(
+        Err("expected byte before '-' symbol, not range: `a-b-`".to_string()),
+        parse(br"[a-b-]")
+    );
+    assert_eq!(
         Ok(Class(
             false,
             vec![ClassItem::Byte(b'-'), ClassItem::Byte(b'a')]
@@ -721,6 +715,14 @@ fn test_parse_repeat() {
         Err("missing closing `}` symbol: `{1`".to_string()),
         parse(br".{1")
     );
+    assert_eq!(
+        Err("invalid repetition value: `{}`".to_string()),
+        parse(br".{}")
+    );
+    assert_eq!(
+        Err("invalid repetition value: `{a}`".to_string()),
+        parse(br".{a}")
+    );
     assert_eq!(Ok(Repeat(Box::new(AnyByte), 0, Some(0))), parse(br".{0}"));
     assert_eq!(Ok(Repeat(Box::new(AnyByte), 1, Some(1))), parse(br".{1}"));
     assert_eq!(
@@ -748,6 +750,10 @@ fn test_parse_repeat() {
         Err("missing closing `}` symbol: `{1,`".to_string()),
         parse(br".{1,")
     );
+    assert_eq!(
+        Err("invalid repetition value: `{a,}`".to_string()),
+        parse(br".{a,}")
+    );
     assert_eq!(Ok(Repeat(Box::new(AnyByte), 0, None)), parse(br".{0,}"));
     assert_eq!(Ok(Repeat(Box::new(AnyByte), 1, None)), parse(br".{1,}"));
     assert_eq!(Ok(Repeat(Box::new(AnyByte), 99, None)), parse(br".{99,}"));
@@ -760,6 +766,10 @@ fn test_parse_repeat() {
     assert_eq!(
         Err("missing closing `}` symbol: `{,1`".to_string()),
         parse(br".{,1")
+    );
+    assert_eq!(
+        Err("invalid repetition value: `{,a}`".to_string()),
+        parse(br".{,a}")
     );
     assert_eq!(Ok(Repeat(Box::new(AnyByte), 0, Some(0))), parse(br".{,0}"));
     assert_eq!(Ok(Repeat(Box::new(AnyByte), 0, Some(1))), parse(br".{,1}"));
@@ -776,6 +786,18 @@ fn test_parse_repeat() {
     assert_eq!(
         Err("missing closing `}` symbol: `{1,2`".to_string()),
         parse(br".{1,2")
+    );
+    assert_eq!(
+        Err("invalid repetition value: `{0,b}`".to_string()),
+        parse(br".{0,b}")
+    );
+    assert_eq!(
+        Err("invalid repetition value: `{a,1}`".to_string()),
+        parse(br".{a,1}")
+    );
+    assert_eq!(
+        Err("invalid repetition value: `{a,b}`".to_string()),
+        parse(br".{a,b}")
     );
     assert_eq!(
         Err("repeating element has max that is smaller than min: `{2,1}`".to_string()),
