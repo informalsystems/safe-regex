@@ -1,15 +1,7 @@
-[package]
-authors = ["Michael Leonhard <michael@leonhardllc.com>"]
-categories = ["parsing", "text-processing"]
-description = "Safe regular expression library"
-edition = "2018"
-keywords = ["regex", "re", "regexp", "regular", "expression"]
-license = "Apache-2.0"
-name = "safe-regex"
-readme = "Readme.md"
-repository = "https://gitlab.com/leonhard-llc/safe-regex-rs"
-version = "0.1.0"
-
-[dependencies]
-
-[dev-dependencies]
+# https://doc.rust-lang.org/book/ch14-03-cargo-workspaces.html
+[workspace]
+members = [
+    "safe-regex",
+    "safe-regex-macro",
+    "safe-regex-parser",
+]
