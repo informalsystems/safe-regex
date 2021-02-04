@@ -9,7 +9,7 @@ usage() {
   exit 1
 }
 
-toolchain=+stable
+toolchain=
 allow_dirty=
 
 while :; do

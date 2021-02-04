@@ -38,7 +38,7 @@ rust-stable:
 
     - cargo fmt --version || rustup component add rustfmt
     - cargo clippy --version || rustup component add clippy
-    - ./check-all.sh +stable
+    - ./check-all.sh
 
 rust-nightly:
   stage: stage1
