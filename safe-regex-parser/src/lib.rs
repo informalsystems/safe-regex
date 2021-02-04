@@ -119,6 +119,7 @@ pub enum NonFinalNode {
     OpenClassNeg,
     OpenClass(/* inclusive */ bool, Vec<ClassItem>),
     OpenByteRange(u8),
+    ByteRange(u8, u8),
     OpenGroup,
     OpenOr(Vec<FinalNode>),
     RepeatMin(String),
@@ -140,6 +141,12 @@ impl core::fmt::Debug for NonFinalNode {
                 write!(f, "OpenClass^{:?}", items)
             }
             NonFinalNode::OpenByteRange(b) => write!(f, "OpenByteRange({})", escape_ascii([*b])),
+            NonFinalNode::ByteRange(a, b) => write!(
+                f,
+                "ByteRange({}-{})",
+                escape_ascii([*a]),
+                escape_ascii([*b])
+            ),
             NonFinalNode::OpenGroup => write!(f, "OpenGroup"),
             NonFinalNode::OpenOr(nodes) => write!(f, "OpenOr{:?}", nodes),
             NonFinalNode::RepeatMin(min) => write!(f, "RepeatMin({})", min),
@@ -163,7 +170,8 @@ impl NonFinalNode {
             }
             NonFinalNode::OpenClass0
             | NonFinalNode::OpenClassNeg
-            | NonFinalNode::OpenClass(_, _) => "missing closing `]`".to_string(),
+            | NonFinalNode::OpenClass(..)
+            | NonFinalNode::ByteRange(..) => "missing closing `]`".to_string(),
             NonFinalNode::OpenByteRange(b) => {
                 format!("missing byte to close range: `{}-`", escape_ascii([*b]))
             }
@@ -480,10 +488,6 @@ pub enum FinalNode {
     /// );
     /// ```
     Repeat(Box<FinalNode>, usize, Option<usize>),
-
-    /// The parser uses `ByteRange` internally.
-    /// The parser returns trees that do not contain `ByteRange` nodes.
-    ByteRange(u8, u8),
 }
 impl FinalNode {
     /// Assumes this is a `FinalNode::Or(_)` and returns its contents.
@@ -504,14 +508,6 @@ impl core::fmt::Debug for FinalNode {
             FinalNode::Seq(nodes) => write!(f, "Seq{:?}", nodes),
             FinalNode::Class(true, items) => write!(f, "Class{:?}", items),
             FinalNode::Class(false, items) => write!(f, "Class^{:?}", items),
-            FinalNode::ByteRange(a, b) => {
-                write!(
-                    f,
-                    "ByteRange({}-{})",
-                    escape_ascii([*a]),
-                    escape_ascii([*b])
-                )
-            }
             FinalNode::Group(nodes) => write!(f, "Group({:?})", nodes),
             FinalNode::Or(nodes) => write!(f, "Or{:?}", nodes),
             FinalNode::Repeat(node, min, opt_max) => {
@@ -555,11 +551,11 @@ impl core::fmt::Debug for FinalNode {
 pub fn parse(regex: &[u8]) -> Result<FinalNode, String> {
     // This parser works, but it is hard to understand.
     // We should separate the parser code and the grammar declarations.
-    use FinalNode::{AnyByte, Byte, ByteRange, Class, Group, Or, Repeat, Seq};
+    use FinalNode::{AnyByte, Byte, Class, Group, Or, Repeat, Seq};
     use Node::{Final, NonFinal};
     use NonFinalNode::{
-        Escape, HexEscape0, HexEscape1, OpenByteRange, OpenClass, OpenClass0, OpenClassNeg,
-        OpenGroup, OpenOr, RepeatMax, RepeatMin, RepeatToken,
+        ByteRange, Escape, HexEscape0, HexEscape1, OpenByteRange, OpenClass, OpenClass0,
+        OpenClassNeg, OpenGroup, OpenOr, RepeatMax, RepeatMin, RepeatToken,
     };
     if regex.is_empty() {
         return Ok(Seq(Vec::new()));
@@ -589,7 +585,7 @@ pub fn parse(regex: &[u8]) -> Result<FinalNode, String> {
 
             // Combine class nodes
             (Some(NonFinal(OpenByteRange(a))), Some(Final(Byte(b))), _) => {
-                let node = Final(ByteRange(*a, *b));
+                let node = NonFinal(ByteRange(*a, *b));
                 last.take();
                 prev = Some(node);
             }
@@ -608,7 +604,7 @@ pub fn parse(regex: &[u8]) -> Result<FinalNode, String> {
                 last.take();
                 items.push(item);
             }
-            (Some(NonFinal(OpenClass(_, items))), Some(Final(ByteRange(a, b))), _) => {
+            (Some(NonFinal(OpenClass(_, items))), Some(NonFinal(ByteRange(a, b))), _) => {
                 let item = ClassItem::ByteRange(*a, *b);
                 last.take();
                 items.push(item);
@@ -917,6 +913,7 @@ pub fn parse(regex: &[u8]) -> Result<FinalNode, String> {
             (Some(NonFinal(OpenClass(..))), Some(Final(_)), _) => unreachable!(),
             (Some(NonFinal(OpenOr(_))), Some(Final(_)), _) => unreachable!(),
             (Some(NonFinal(OpenByteRange(_))), Some(Final(_)), _) => unreachable!(),
+            (Some(NonFinal(ByteRange(..))), Some(Final(_)), _) => unreachable!(),
             (Some(NonFinal(RepeatToken(..))), Some(Final(_)), _) => unreachable!(),
             (Some(Final(_)), Some(Final(_)), _) => unreachable!(),
         };
@@ -934,10 +931,8 @@ pub fn parse(regex: &[u8]) -> Result<FinalNode, String> {
     // println!("stack {:?}", stack);
     // Check for incomplete elements.  Example: br"(ab"
     for node in stack.iter().rev() {
-        match node {
-            NonFinal(non_final) => return Err(non_final.reason()),
-            Final(ByteRange(..)) => unreachable!(),
-            _ => {}
+        if let NonFinal(non_final) = node {
+            return Err(non_final.reason());
         }
     }
     assert_eq!(1, stack.len());

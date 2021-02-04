@@ -62,6 +62,10 @@ fn non_final_node() {
         "OpenByteRange(a)",
         format!("{:?}", NonFinalNode::OpenByteRange(b'a'))
     );
+    assert_eq!(
+        "ByteRange(0-9)",
+        format!("{:?}", NonFinalNode::ByteRange(b'0', b'9'))
+    );
     assert_eq!("OpenGroup", format!("{:?}", NonFinalNode::OpenGroup));
     assert_eq!(
         "OpenOr[AnyByte]",
@@ -143,10 +147,6 @@ fn final_node() {
     assert_eq!(
         "Class^[Byte(a)]",
         format!("{:?}", FinalNode::Class(false, vec![ClassItem::Byte(b'a')]))
-    );
-    assert_eq!(
-        "ByteRange(0-9)",
-        format!("{:?}", FinalNode::ByteRange(b'0', b'9'))
     );
     assert_eq!(
         "Group(AnyByte)",
