@@ -1,23 +1,43 @@
-//! Simple safe regular expression library.
+//! [![crates.io version](https://img.shields.io/crates/v/safe-regex.svg)](https://crates.io/crates/safe-regex)
+//! [![license: Apache 2.0](https://gitlab.com/leonhard-llc/safe-regex-rs/-/raw/main/license-apache-2.0.svg)](http://www.apache.org/licenses/LICENSE-2.0)
+//! [![unsafe forbidden](https://gitlab.com/leonhard-llc/safe-regex-rs/-/raw/main/unsafe-forbidden-success.svg)](https://github.com/rust-secure-code/safety-dance/)
+//! [![pipeline status](https://gitlab.com/leonhard-llc/safe-regex-rs/badges/main/pipeline.svg)](https://gitlab.com/leonhard-llc/safe-regex-rs/-/pipelines)
+//!
+//! A safe regular expression library.
 //!
 //! # Features
 //! - `forbid(unsafe_code)`
-//! - `no_std` (depends only on `core`)
-//! - Good test coverage (100%)
-//! - Lets the Rust compiler optimize the pattern (no DFA).
+//! - Good test coverage (??%) - TODO(mleonhard) Update.
+//! - `no_std`, depends only on `core`
+//! - Does not allocate
+//! - Checks input in a single pass
+//! - No recursion, no risk of stack overflow
+//! - Rust compiler checks and optimizes the matcher
+//! - Supports basic regular expression syntax:
+//!   - Any byte: `.`
+//!   - Sequences: `abc`
+//!   - Classes: `[-ab0-9]`, `[^ab]`
+//!   - Repetition: `a?`, `a*`, `a+`, `a{1}`, `a{1,}`, `a{,1}`, `a{1,2}`, `a{,}`
+//!   - Alternates: `a|b|c`
+//!   - Capturing groups: `a(b*)?`
 //!
 //! # Limitations
 //! - Only works on byte slices, not strings.
-//! - You must write expressions using Rust syntax.
-//!   For example, to match the expression `r"[a-z][0-9]"` write
-//!   `safe_regex::seq(b'a'..b'z', b'0'..b'9')`.
-//! - No backtracking.  All optional or repeating elements are possessive.
-//!   Input bytes consumed by one part of the pattern are not available to
-//!   later parts of the pattern.
-//!   This means a pattern like `"[a-z]*abc"` can never match.
-//!   If you need to parse patterns like this, you can do it with two regexes.
-//!   Because of this limitation, the library has very good runtime performance:
-//!   O(input_len * pattern_len).
+//!
+//! # Alternatives
+//! - [`regex`](https://crates.io/crates/regex)
+//!   - Mature & Popular
+//!   - Maintained by the core Rust language developers
+//!   - Contains `unsafe` code.
+//! - [`pcre2`](https://crates.io/crates/pcre2)
+//!   - Uses PCRE library which is written in unsafe C.
+//! - [`regular-expression`](https://crates.io/crates/regular-expression)
+//!   - No documentation
+//! - [`rec`](https://crates.io/crates/rec)
+//!
+//! # Cargo Geiger Safety Report
+//! `update_readme.sh` generates `Readme.md`
+//! and replaces this section with the report.
 //!
 //! # Examples
 //! ```rust
@@ -79,11 +99,29 @@
 //! assert_eq!(b"42", cell.get().unwrap());
 //! ```
 //!
+//! # Changelog
+//! - v0.1.0 - First published version
+//!
 //! # TO DO
-//! - DONE - Match byte slices
+//! - DONE - Read about regular expressions
+//! - DONE - Read about NFAs, <https://swtch.com/~rsc/regexp/?
+//! - Design API
+//! - Implement
+//! - Add integration tests
+//! - Add macro, `regex!(r"[a-z][0-9]")`
+//! - Add fuzzing tests
+//! - Add common character classes: whitespace, letters, punctuation, etc.
 //! - Match strings
-//! - Macro, `regex!(r"[a-z][0-9]")`
-//! - Common character classes: whitespace, letters, punctuation, etc.
+//!
+//! # TO DO
+//!
+//! # Release Process
+//! 1. Edit `Cargo.toml` and bump version number.
+//! 1. Run `./release.sh`
+
+// https://swtch.com/~rsc/regexp/regexp1.html
+
+#![forbid(unsafe_code)]
 use core::cell::Cell;
 use core::marker::PhantomData;
 use core::ops::{

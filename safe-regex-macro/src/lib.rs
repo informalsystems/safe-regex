@@ -18,6 +18,9 @@
 //! - Implement `regex!` macro.
 //!   - DONE - Implement `parse`
 //!   - Implement `generate`
+//!     - <https://doc.rust-lang.org/book/ch19-06-macros.html>
+//!     - <https://doc.rust-lang.org/reference/procedural-macros.html>
+//!   - Generate docs <https://stackoverflow.com/questions/33999341/generating-documentation-in-macros>
 //! - Add integration tests
 //! - Add token tree tests
 //! - Add fuzzing tests
@@ -96,6 +99,7 @@ fn impl_regex(stream: TokenStream) -> Result<TokenStream, String> {
     // panic!("expected async fn");
 }
 
+//! Escapes: `\\ \n \r \t \0 \' \" \? \+ \. \* \^ \$ \| \( \) \{ \} \[ \] \xAB`
 #[proc_macro]
 pub fn regex(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input2 = proc_macro2::TokenStream::from(input);

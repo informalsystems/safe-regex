@@ -1,0 +1,21 @@
+[package]
+authors = ["Michael Leonhard <michael@leonhardllc.com>"]
+description = "Macro for the safe-regex package"
+edition = "2018"
+license = "Apache-2.0"
+name = "safe-regex-macro"
+readme = "Readme.md"
+repository = "https://gitlab.com/leonhard-llc/safe-regex-rs"
+version = "0.1.0"
+
+[lib]
+path = "src/lib.rs"
+proc-macro = true
+
+[dependencies]
+proc-macro2 = "1"
+quote = "1"
+
+[dev-dependencies]
+#safe-regex = "^0.1.0"
+safe-regex = { path = "../safe-regex/" }
