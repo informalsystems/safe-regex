@@ -7,6 +7,6 @@ set -e
 set -x
 (
   cd "$top_level_dir"/
-  "$top_level_dir"/check-all.sh "$@"
+  "$top_level_dir"/ci-check.sh "$@"
   git push --follow-tags
 )

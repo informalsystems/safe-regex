@@ -38,7 +38,7 @@ rust-stable:
 
     - cargo fmt --version || rustup component add rustfmt
     - cargo clippy --version || rustup component add clippy
-    - ./check-all.sh
+    - ./check-all.sh +stable
 
 rust-nightly:
   stage: stage1
@@ -53,5 +53,5 @@ rust-nightly:
     # "Include rustfmt and clippy components by default" https://github.com/rust-lang/docker-rust/issues/37
     - cargo fmt --version || rustup component add rustfmt || cargo +nightly install --git https://github.com/rust-lang/rustfmt.git --branch master --force --features "rustfmt cargo-fmt" rustfmt-nightly
     - cargo clippy --version || rustup component add clippy || cargo install --git https://github.com/rust-lang/rust-clippy/ --force clippy
-    - ./check-all.sh
+    - ./check-all.sh +nightly
   #allow_failure: true
