@@ -517,6 +517,392 @@ impl core::fmt::Debug for FinalNode {
     }
 }
 
+/// Applies one parser rule.  Each rule may do any of:
+/// - Match against the next byte of input, `byte`
+/// - Consume the byte by calling `byte.take()`
+/// - Match against the node at the top of the stack, `last`
+/// - Consume the node by calling `last.take()`
+/// - Match against the second-from-top node on the stack, `prev`
+/// - Consume the node by calling `prev.take()`
+/// - Return a new node to put on the stack above `prev` and `last`
+/// - Return an error string with an explanation for the regex author
+///
+/// There are two kinds of parser rule:
+/// - A byte consumer rule consumes a byte of input and creates
+///   a new node or modifies an existing node.
+/// - A node combiner rule merges two nodes into one node.
+///   It may modify one node and discard the other, or replace both with
+///   one new node.
+///
+/// The parser must check all combiner rules before byte consumer
+/// rules.  This is necessary for operator precedence.
+#[allow(clippy::too_many_lines)]
+fn apply_rule_once(
+    mut prev: &mut Option<Node>,
+    mut last: &mut Option<Node>,
+    byte: &mut Option<u8>,
+) -> Result<Option<Node>, String> {
+    use FinalNode::{AnyByte, Byte, Class, Group, Or, Repeat, Seq};
+    use Node::{Final, NonFinal};
+    use NonFinalNode::{
+        ByteRange, Escape, HexEscape0, HexEscape1, OpenByteRange, OpenClass, OpenClass0,
+        OpenClassNeg, OpenGroup, OpenOr, RepeatMax, RepeatMin, RepeatToken,
+    };
+    #[allow(clippy::match_same_arms)]
+    match (&mut prev, &mut last, byte.map(|b| b)) {
+        (Some(_), None, _) => unreachable!(),
+        // Combine class nodes
+        (Some(NonFinal(OpenByteRange(a))), Some(Final(Byte(b))), _) => {
+            let node = NonFinal(ByteRange(*a, *b));
+            prev.take();
+            last.take();
+            Ok(Some(node))
+        }
+        (Some(NonFinal(OpenClass0)), Some(Final(Byte(b))), _) => {
+            let node = NonFinal(OpenClass(true, vec![ClassItem::Byte(*b)]));
+            prev.take();
+            last.take();
+            Ok(Some(node))
+        }
+        (Some(NonFinal(OpenClassNeg)), Some(Final(Byte(b))), _) => {
+            let node = NonFinal(OpenClass(false, vec![ClassItem::Byte(*b)]));
+            prev.take();
+            last.take();
+            Ok(Some(node))
+        }
+        (Some(NonFinal(OpenClass(_, items))), Some(Final(Byte(b))), _) => {
+            let item = ClassItem::Byte(*b);
+            last.take();
+            items.push(item);
+            Ok(None)
+        }
+        (Some(NonFinal(OpenClass(_, items))), Some(NonFinal(ByteRange(a, b))), _) => {
+            let item = ClassItem::ByteRange(*a, *b);
+            last.take();
+            items.push(item);
+            Ok(None)
+        }
+
+        // Combine repeat tokens
+        (None, Some(NonFinal(RepeatToken(printable, _, _))), _)
+        | (Some(NonFinal(_)), Some(NonFinal(RepeatToken(printable, _, _))), _) => Err(format!(
+            "missing element before repeat element: `{}`",
+            printable
+        )),
+        (Some(Final(_)), Some(NonFinal(RepeatToken(_, min, opt_max))), _) => {
+            let inner = prev.take().unwrap().unwrap_final();
+            let node = Final(Repeat(Box::new(inner), *min, *opt_max));
+            last.take();
+            Ok(Some(node))
+        }
+
+        // Combine group tokens
+        (Some(NonFinal(OpenGroup)), Some(Final(_)), None) => Err(OpenGroup.reason()),
+        // Combine Seq tokens
+        (Some(Final(Seq(nodes))), Some(Final(_)), _) => {
+            let node = last.take().unwrap().unwrap_final();
+            nodes.push(node);
+            Ok(None)
+        }
+
+        // Combine alternation/or nodes
+        (Some(NonFinal(OpenOr(_))), Some(Final(_)), b)
+            if b != Some(b'?') && b != Some(b'+') && b != Some(b'*') && b != Some(b'{') =>
+        {
+            let node = last.take().unwrap().unwrap_final();
+            let mut nodes = prev.take().unwrap().unwrap_non_final().unwrap_open_or();
+            nodes.push(node);
+            Ok(Some(Final(Or(nodes))))
+        }
+        (Some(Final(Or(nodes))), Some(Final(_)), b)
+            if b != Some(b'?') && b != Some(b'+') && b != Some(b'*') && b != Some(b'{') =>
+        {
+            let node = last.take().unwrap().unwrap_final();
+            if let Seq(ref mut seq_nodes) = nodes.last_mut().unwrap() {
+                seq_nodes.push(node)
+            } else {
+                let prev_node = nodes.pop().unwrap();
+                nodes.push(Seq(vec![prev_node, node]))
+            }
+            Ok(None)
+        }
+
+        // Create Seq token
+        // For proper precedence, these rules must appear after all the
+        // specialized `Some(Final(something))` rules above.
+        (Some(Final(_)), Some(Final(_)), b)
+            if b != Some(b'?') && b != Some(b'+') && b != Some(b'*') && b != Some(b'{') =>
+        {
+            Ok(Some(Final(Seq(vec![
+                prev.take().unwrap().unwrap_final(),
+                last.take().unwrap().unwrap_final(),
+            ]))))
+        }
+
+        // Escape `\n`
+        (_, Some(NonFinal(Escape)), Some(b'\\')) => {
+            last.take();
+            byte.take();
+            Ok(Some(Final(Byte(b'\\'))))
+        }
+        (_, _, Some(b'\\')) => {
+            byte.take();
+            Ok(Some(NonFinal(Escape)))
+        }
+        (_, Some(NonFinal(Escape)), Some(b'n')) => {
+            last.take();
+            byte.take();
+            Ok(Some(Final(Byte(b'\n'))))
+        }
+        (_, Some(NonFinal(Escape)), Some(b'r')) => {
+            last.take();
+            byte.take();
+            Ok(Some(Final(Byte(b'\r'))))
+        }
+        (_, Some(NonFinal(Escape)), Some(b't')) => {
+            last.take();
+            byte.take();
+            Ok(Some(Final(Byte(b'\t'))))
+        }
+        (_, Some(NonFinal(Escape)), Some(b'0')) => {
+            last.take();
+            byte.take();
+            Ok(Some(Final(Byte(0))))
+        }
+        (_, Some(NonFinal(Escape)), Some(b)) if b"'\"?+.*^$|(){}[]".contains(&b) => {
+            let node = Final(Byte(b));
+            last.take();
+            byte.take();
+            Ok(Some(node))
+        }
+
+        // Hex escape `\x20`
+        (_, Some(NonFinal(Escape)), Some(b'x')) => {
+            last.take();
+            byte.take();
+            Ok(Some(NonFinal(HexEscape0)))
+        }
+        (_, Some(NonFinal(Escape)), Some(d)) => {
+            Err(format!("invalid escape sequence `\\{}`", escape_ascii([d])))
+        }
+        (_, Some(NonFinal(HexEscape0)), Some(d)) => {
+            last.take();
+            byte.take();
+            Ok(Some(NonFinal(HexEscape1(d))))
+        }
+        (_, Some(NonFinal(HexEscape1(d1))), Some(d0))
+            if d1.is_ascii_hexdigit() && d0.is_ascii_hexdigit() =>
+        {
+            let string = String::from_utf8(vec![*d1, d0]).unwrap();
+            let b = u8::from_str_radix(&string, 16).unwrap();
+            last.take();
+            byte.take();
+            Ok(Some(Final(Byte(b))))
+        }
+        (_, Some(NonFinal(HexEscape1(d1))), Some(d0)) => Err(format!(
+            "invalid escape sequence `\\x{}`",
+            escape_ascii([*d1, d0])
+        )),
+
+        // Class `[ab0-9]`, `[^-ab0-9]`
+        (_, Some(NonFinal(OpenClass0)), Some(b'['))
+        | (_, Some(NonFinal(OpenClassNeg)), Some(b'['))
+        | (_, Some(NonFinal(OpenClass(..))), Some(b'[')) => {
+            byte.take();
+            Ok(Some(Final(Byte(b'['))))
+        }
+        (_, _, Some(b'[')) => {
+            byte.take();
+            Ok(Some(NonFinal(OpenClass0)))
+        }
+        (_, Some(NonFinal(OpenClass0)), Some(b'^')) => {
+            last.take();
+            byte.take();
+            Ok(Some(NonFinal(OpenClassNeg)))
+        }
+        (_, Some(NonFinal(OpenClass(_, ref mut items))), Some(b'-')) => {
+            byte.take();
+            match items.pop().unwrap() {
+                // "[a-"
+                ClassItem::Byte(b) => Ok(Some(NonFinal(OpenByteRange(b)))),
+                // "[a-b-"
+                ClassItem::ByteRange(a, b) => Err(format!(
+                    "expected byte before '-' symbol, not range: `{}-{}-`",
+                    escape_ascii([a]),
+                    escape_ascii([b])
+                )),
+            }
+        }
+        (_, Some(NonFinal(OpenClass0)), Some(b']')) => {
+            last.take();
+            byte.take();
+            Ok(Some(Final(Class(true, Vec::new()))))
+        }
+        (_, Some(NonFinal(OpenClassNeg)), Some(b']')) => {
+            last.take();
+            byte.take();
+            Ok(Some(Final(Class(false, Vec::new()))))
+        }
+        (_, Some(NonFinal(OpenClass(..))), Some(b']')) => {
+            byte.take();
+            let (incl, items) = last.take().unwrap().unwrap_non_final().unwrap_open_class();
+            Ok(Some(Final(Class(incl, items))))
+        }
+        (Some(NonFinal(OpenClass(..))), Some(NonFinal(non_final)), Some(b']')) => {
+            Err(non_final.reason())
+        }
+
+        // Bytes inside classes.
+        // These must come before all of the generic `(_, _, b'X')` rules below.
+        (_, Some(NonFinal(OpenClass0)), Some(b))
+        | (_, Some(NonFinal(OpenClassNeg)), Some(b))
+        | (_, Some(NonFinal(OpenClass(..))), Some(b))
+            if b != b']' =>
+        {
+            byte.take();
+            Ok(Some(Final(Byte(b))))
+        }
+
+        // Repeat, postfix operators `?` `+` `*` `{n}` `{n,}` `{,m}` `{n,m}`
+        (_, _, Some(b'?')) => {
+            byte.take();
+            Ok(Some(NonFinal(RepeatToken("?".to_string(), 0, Some(1)))))
+        }
+        (_, _, Some(b'*')) => {
+            byte.take();
+            Ok(Some(NonFinal(RepeatToken("*".to_string(), 0, None))))
+        }
+        (_, _, Some(b'+')) => {
+            byte.take();
+            Ok(Some(NonFinal(RepeatToken("+".to_string(), 1, None))))
+        }
+        (_, _, Some(b'{')) => {
+            byte.take();
+            Ok(Some(NonFinal(RepeatMin(String::new()))))
+        }
+        (_, Some(NonFinal(RepeatMin(_))), Some(b',')) => {
+            byte.take();
+            let min = last.take().unwrap().unwrap_non_final().unwrap_repeat_min();
+            Ok(Some(NonFinal(RepeatMax(min, String::new()))))
+        }
+        (_, Some(NonFinal(RepeatMin(_))), Some(b'}')) => {
+            byte.take();
+            let min = last.take().unwrap().unwrap_non_final().unwrap_repeat_min();
+            let min_usize = usize::from_str_radix(&min, 10)
+                .map_err(|e| format!("invalid repetition value `{{{}}}`: {}", min, e))?;
+            Ok(Some(NonFinal(RepeatToken(
+                format!("{{{}}}", min),
+                min_usize,
+                Some(min_usize),
+            ))))
+        }
+        (_, Some(NonFinal(RepeatMin(min))), Some(b)) => {
+            byte.take();
+            min.push(char::from(b));
+            Ok(None)
+        }
+        (_, Some(NonFinal(RepeatMax(..))), Some(b'}')) => {
+            byte.take();
+            let (min, max) = last.take().unwrap().unwrap_non_final().unwrap_repeat_max();
+            let min_usize = if min.is_empty() {
+                0
+            } else {
+                usize::from_str_radix(&min, 10)
+                    .map_err(|e| format!("invalid repetition value `{{{},{}}}`: {}", min, max, e))?
+            };
+            let max_opt_usize = if max.is_empty() {
+                None
+            } else {
+                let max_usize = usize::from_str_radix(&max, 10).map_err(|e| {
+                    format!("invalid repetition value `{{{},{}}}`: {}", min, max, e)
+                })?;
+                if max_usize < min_usize {
+                    return Err(format!(
+                        "repeating element has max that is smaller than min: `{{{},{}}}`",
+                        min, max
+                    ));
+                }
+                Some(max_usize)
+            };
+            Ok(Some(NonFinal(RepeatToken(
+                format!("{{{},{}}}", min, max),
+                min_usize,
+                max_opt_usize,
+            ))))
+        }
+        (_, Some(NonFinal(RepeatMax(_, ref mut max))), Some(b)) => {
+            max.push(char::from(b));
+            byte.take();
+            Ok(None)
+        }
+
+        // Any byte `.`
+        (_, _, Some(b'.')) => {
+            byte.take();
+            Ok(Some(Final(AnyByte)))
+        }
+
+        // Alternate/Or `a|b|c`
+        (_, Some(Final(Or(_))), Some(b'|')) => {
+            byte.take();
+            let nodes = last.take().unwrap().unwrap_final().unwrap_or();
+            Ok(Some(NonFinal(OpenOr(nodes))))
+        }
+        (_, Some(Final(_)), Some(b'|')) => {
+            byte.take();
+            let node = last.take().unwrap().unwrap_final();
+            Ok(Some(NonFinal(OpenOr(vec![node]))))
+        }
+        (_, None, Some(b'|')) => Err("missing element before bar `|`".to_string()),
+
+        // Group `(ab)`
+        (_, _, Some(b'(')) => {
+            byte.take();
+            Ok(Some(NonFinal(OpenGroup)))
+        }
+        (_, Some(NonFinal(OpenGroup)), Some(b')')) => {
+            last.take();
+            byte.take();
+            Ok(Some(Final(Group(Box::new(Seq(vec![]))))))
+        }
+        (Some(NonFinal(OpenGroup)), Some(NonFinal(non_final)), Some(b')')) => {
+            Err(non_final.reason())
+        }
+        (Some(NonFinal(OpenGroup)), Some(Final(_)), Some(b')')) => {
+            byte.take();
+            let node = last.take().unwrap().unwrap_final();
+            prev.take();
+            Ok(Some(Final(Group(Box::new(node)))))
+        }
+
+        // Other bytes
+        (_, _, Some(b)) => {
+            byte.take();
+            Ok(Some(Final(Byte(b))))
+        }
+
+        // No more bytes.
+        (_, Some(NonFinal(node)), None) => Err(node.reason()),
+        (None, None, None) => unreachable!(),
+        (None, Some(Final(_)), None) => unreachable!(),
+
+        // These cases should be unreachable.
+        (Some(NonFinal(Escape)), Some(Final(_)), _) => unreachable!(),
+        (Some(NonFinal(HexEscape0)), Some(Final(_)), _) => unreachable!(),
+        (Some(NonFinal(HexEscape1(_))), Some(Final(_)), _) => unreachable!(),
+        (Some(NonFinal(RepeatMin(..))), Some(Final(_)), _) => unreachable!(),
+        (Some(NonFinal(RepeatMax(..))), Some(Final(_)), _) => unreachable!(),
+        (Some(NonFinal(OpenClass0)), Some(Final(_)), _) => unreachable!(),
+        (Some(NonFinal(OpenClassNeg)), Some(Final(_)), _) => unreachable!(),
+        (Some(NonFinal(OpenClass(..))), Some(Final(_)), _) => unreachable!(),
+        (Some(NonFinal(OpenOr(_))), Some(Final(_)), _) => unreachable!(),
+        (Some(NonFinal(OpenByteRange(_))), Some(Final(_)), _) => unreachable!(),
+        (Some(NonFinal(ByteRange(..))), Some(Final(_)), _) => unreachable!(),
+        (Some(NonFinal(RepeatToken(..))), Some(Final(_)), _) => unreachable!(),
+        (Some(Final(_)), Some(Final(_)), _) => unreachable!(),
+    }
+}
+
 /// Parses `regex` as a regular expression.
 ///
 /// Returns a [`FinalNode`](enum.FinalNode.htmls) which is the root of the
@@ -547,376 +933,22 @@ impl core::fmt::Debug for FinalNode {
 /// );
 /// ```
 /// See [`FinalNode`](enum.FinalNode.html) variants for more examples.
-#[allow(clippy::too_many_lines)]
 pub fn parse(regex: &[u8]) -> Result<FinalNode, String> {
-    // This parser works, but it is hard to understand.
-    // We should separate the parser code and the grammar declarations.
-    use FinalNode::{AnyByte, Byte, Class, Group, Or, Repeat, Seq};
-    use Node::{Final, NonFinal};
-    use NonFinalNode::{
-        ByteRange, Escape, HexEscape0, HexEscape1, OpenByteRange, OpenClass, OpenClass0,
-        OpenClassNeg, OpenGroup, OpenOr, RepeatMax, RepeatMin, RepeatToken,
-    };
     if regex.is_empty() {
-        return Ok(Seq(Vec::new()));
+        return Ok(FinalNode::Seq(Vec::new()));
     }
     let mut data_iter = regex.iter().copied().peekable();
     let mut stack: Vec<Node> = Vec::new();
     while data_iter.peek().is_some() || stack.len() > 1 {
         // println!("process {:?} next={:?}", stack, iter.peek().map(|b| escape_ascii([*b])));
+        let mut byte = data_iter.peek().copied();
+        let byte_was_some = byte.is_some();
         // Pull the top two items from the stack, so we can work with them and
         // keep the borrow checker happy.
         let mut last = stack.pop();
         let mut prev = stack.pop();
         // Anything put in here becomes the new top of the stack in the next loop.
-        let mut to_push: Option<Node> = None;
-        #[allow(clippy::match_same_arms)]
-        match (&mut prev, &mut last, data_iter.peek().copied()) {
-            (Some(_), None, _) => unreachable!(),
-            // There are two kinds of parser rules:
-            // - Byte Consumer Rule: A byte consumer rule takes a byte from the
-            //   input and creates a new node or modifies an existing node.
-            // - Node Combiner Rule: A node combiner rule takes two nodes and
-            //   merges them into one node.  The resulting node may have a
-            //   different type from the starting nodes.
-            //
-            //   The parser must check all combiner rules before byte consumer
-            //   rules.  This is necessary for operator precedence.
-
-            // Combine class nodes
-            (Some(NonFinal(OpenByteRange(a))), Some(Final(Byte(b))), _) => {
-                let node = NonFinal(ByteRange(*a, *b));
-                last.take();
-                prev = Some(node);
-            }
-            (Some(NonFinal(OpenClass0)), Some(Final(Byte(b))), _) => {
-                let node = NonFinal(OpenClass(true, vec![ClassItem::Byte(*b)]));
-                last.take();
-                prev = Some(node);
-            }
-            (Some(NonFinal(OpenClassNeg)), Some(Final(Byte(b))), _) => {
-                let node = NonFinal(OpenClass(false, vec![ClassItem::Byte(*b)]));
-                last.take();
-                prev = Some(node);
-            }
-            (Some(NonFinal(OpenClass(_, items))), Some(Final(Byte(b))), _) => {
-                let item = ClassItem::Byte(*b);
-                last.take();
-                items.push(item);
-            }
-            (Some(NonFinal(OpenClass(_, items))), Some(NonFinal(ByteRange(a, b))), _) => {
-                let item = ClassItem::ByteRange(*a, *b);
-                last.take();
-                items.push(item);
-            }
-
-            // Combine repeat tokens
-            (None, Some(NonFinal(RepeatToken(printable, _, _))), _)
-            | (Some(NonFinal(_)), Some(NonFinal(RepeatToken(printable, _, _))), _) => {
-                return Err(format!(
-                    "missing element before repeat element: `{}`",
-                    printable
-                ))
-            }
-            (Some(Final(_)), Some(NonFinal(RepeatToken(_, min, opt_max))), _) => {
-                let inner = prev.take().unwrap().unwrap_final();
-                prev = Some(Final(Repeat(Box::new(inner), *min, *opt_max)));
-                last.take();
-            }
-
-            // Combine group tokens
-            (Some(NonFinal(OpenGroup)), Some(Final(_)), None) => return Err(OpenGroup.reason()),
-            // Combine Seq tokens
-            (Some(Final(Seq(nodes))), Some(Final(_)), _) => {
-                let node = last.take().unwrap().unwrap_final();
-                nodes.push(node)
-            }
-
-            // Combine alternation/or nodes
-            (Some(NonFinal(OpenOr(_))), Some(Final(_)), b)
-                if b != Some(b'?') && b != Some(b'+') && b != Some(b'*') && b != Some(b'{') =>
-            {
-                let node = last.take().unwrap().unwrap_final();
-                let mut nodes = prev.take().unwrap().unwrap_non_final().unwrap_open_or();
-                nodes.push(node);
-                prev = Some(Final(Or(nodes)));
-            }
-            (Some(Final(Or(nodes))), Some(Final(_)), b)
-                if b != Some(b'?') && b != Some(b'+') && b != Some(b'*') && b != Some(b'{') =>
-            {
-                let node = last.take().unwrap().unwrap_final();
-                if let Seq(ref mut seq_nodes) = nodes.last_mut().unwrap() {
-                    seq_nodes.push(node)
-                } else {
-                    let prev_node = nodes.pop().unwrap();
-                    nodes.push(Seq(vec![prev_node, node]))
-                }
-            }
-
-            // Create Seq token
-            // For proper precedence, these rules must appear after all the
-            // specialized `Some(Final(something))` rules above.
-            (Some(Final(_)), Some(Final(_)), b)
-                if b != Some(b'?') && b != Some(b'+') && b != Some(b'*') && b != Some(b'{') =>
-            {
-                to_push = Some(Final(Seq(vec![
-                    prev.take().unwrap().unwrap_final(),
-                    last.take().unwrap().unwrap_final(),
-                ])))
-            }
-
-            // Escape `\n`
-            (_, Some(NonFinal(Escape)), Some(b'\\')) => {
-                data_iter.next().unwrap();
-                last = Some(Final(Byte(b'\\')))
-            }
-            (_, _, Some(b'\\')) => {
-                data_iter.next().unwrap();
-                to_push = Some(NonFinal(Escape))
-            }
-            (_, Some(NonFinal(Escape)), Some(b'n')) => {
-                data_iter.next().unwrap();
-                last = Some(Final(Byte(b'\n')))
-            }
-            (_, Some(NonFinal(Escape)), Some(b'r')) => {
-                data_iter.next().unwrap();
-                last = Some(Final(Byte(b'\r')))
-            }
-            (_, Some(NonFinal(Escape)), Some(b't')) => {
-                data_iter.next().unwrap();
-                last = Some(Final(Byte(b'\t')))
-            }
-            (_, Some(NonFinal(Escape)), Some(b'0')) => {
-                data_iter.next().unwrap();
-                last = Some(Final(Byte(0)))
-            }
-            (_, Some(NonFinal(Escape)), Some(b)) if b"'\"?+.*^$|(){}[]".contains(&b) => {
-                data_iter.next().unwrap();
-                last = Some(Final(Byte(b)))
-            }
-
-            // Hex escape `\x20`
-            (_, Some(NonFinal(Escape)), Some(b'x')) => {
-                data_iter.next().unwrap();
-                last = Some(NonFinal(HexEscape0))
-            }
-            (_, Some(NonFinal(Escape)), Some(d)) => {
-                return Err(format!("invalid escape sequence `\\{}`", escape_ascii([d])))
-            }
-            (_, Some(NonFinal(HexEscape0)), Some(d)) => {
-                data_iter.next().unwrap();
-                last = Some(NonFinal(HexEscape1(d)))
-            }
-            (_, Some(NonFinal(HexEscape1(d1))), Some(d0))
-                if d1.is_ascii_hexdigit() && d0.is_ascii_hexdigit() =>
-            {
-                data_iter.next().unwrap();
-                let string = String::from_utf8(vec![*d1, d0]).unwrap();
-                let byte = u8::from_str_radix(&string, 16).unwrap();
-                last = Some(Final(Byte(byte)))
-            }
-            (_, Some(NonFinal(HexEscape1(d1))), Some(d0)) => {
-                return Err(format!(
-                    "invalid escape sequence `\\x{}`",
-                    escape_ascii([*d1, d0])
-                ))
-            }
-
-            // Class `[ab0-9]`, `[^-ab0-9]`
-            (_, Some(NonFinal(OpenClass0)), Some(b'['))
-            | (_, Some(NonFinal(OpenClassNeg)), Some(b'['))
-            | (_, Some(NonFinal(OpenClass(..))), Some(b'[')) => {
-                data_iter.next().unwrap();
-                to_push = Some(Final(Byte(b'[')))
-            }
-            (_, _, Some(b'[')) => {
-                data_iter.next().unwrap();
-                to_push = Some(NonFinal(OpenClass0))
-            }
-            (_, Some(NonFinal(OpenClass0)), Some(b'^')) => {
-                data_iter.next().unwrap();
-                last = Some(NonFinal(OpenClassNeg))
-            }
-            (_, Some(NonFinal(OpenClass(_, ref mut items))), Some(b'-')) => {
-                data_iter.next().unwrap();
-                match items.pop().unwrap() {
-                    // "[a-"
-                    ClassItem::Byte(b) => {
-                        to_push = Some(NonFinal(OpenByteRange(b)));
-                    }
-                    // "[a-b-"
-                    ClassItem::ByteRange(a, b) => {
-                        return Err(format!(
-                            "expected byte before '-' symbol, not range: `{}-{}-`",
-                            escape_ascii([a]),
-                            escape_ascii([b])
-                        ))
-                    }
-                }
-            }
-            (_, Some(NonFinal(OpenClass0)), Some(b']')) => {
-                data_iter.next().unwrap();
-                last = Some(Final(Class(true, Vec::new())))
-            }
-            (_, Some(NonFinal(OpenClassNeg)), Some(b']')) => {
-                data_iter.next().unwrap();
-                last = Some(Final(Class(false, Vec::new())))
-            }
-            (_, Some(NonFinal(OpenClass(..))), Some(b']')) => {
-                data_iter.next().unwrap();
-                let (incl, items) = last.take().unwrap().unwrap_non_final().unwrap_open_class();
-                last = Some(Final(Class(incl, items)))
-            }
-            (Some(NonFinal(OpenClass(..))), Some(NonFinal(non_final)), Some(b']')) => {
-                return Err(non_final.reason())
-            }
-
-            // Bytes inside classes.
-            // These must come before all of the generic `(_, _, b'X')` rules below.
-            (_, Some(NonFinal(OpenClass0)), Some(b))
-            | (_, Some(NonFinal(OpenClassNeg)), Some(b))
-            | (_, Some(NonFinal(OpenClass(..))), Some(b))
-                if b != b']' =>
-            {
-                data_iter.next().unwrap();
-                to_push = Some(Final(Byte(b)))
-            }
-
-            // Repeat, postfix operators `?` `+` `*` `{n}` `{n,}` `{,m}` `{n,m}`
-            (_, _, Some(b'?')) => {
-                data_iter.next().unwrap();
-                to_push = Some(NonFinal(RepeatToken("?".to_string(), 0, Some(1))))
-            }
-            (_, _, Some(b'*')) => {
-                data_iter.next().unwrap();
-                to_push = Some(NonFinal(RepeatToken("*".to_string(), 0, None)))
-            }
-            (_, _, Some(b'+')) => {
-                data_iter.next().unwrap();
-                to_push = Some(NonFinal(RepeatToken("+".to_string(), 1, None)))
-            }
-            (_, _, Some(b'{')) => {
-                data_iter.next().unwrap();
-                to_push = Some(NonFinal(RepeatMin(String::new())))
-            }
-            (_, Some(NonFinal(RepeatMin(_))), Some(b',')) => {
-                data_iter.next().unwrap();
-                let min = last.take().unwrap().unwrap_non_final().unwrap_repeat_min();
-                last = Some(NonFinal(RepeatMax(min, String::new())))
-            }
-            (_, Some(NonFinal(RepeatMin(_))), Some(b'}')) => {
-                data_iter.next().unwrap();
-                let min = last.take().unwrap().unwrap_non_final().unwrap_repeat_min();
-                let min_usize = usize::from_str_radix(&min, 10)
-                    .map_err(|e| format!("invalid repetition value `{{{}}}`: {}", min, e))?;
-                last = Some(NonFinal(RepeatToken(
-                    format!("{{{}}}", min),
-                    min_usize,
-                    Some(min_usize),
-                )))
-            }
-            (_, Some(NonFinal(RepeatMin(min))), Some(b)) => {
-                data_iter.next().unwrap();
-                min.push(char::from(b))
-            }
-            (_, Some(NonFinal(RepeatMax(..))), Some(b'}')) => {
-                data_iter.next().unwrap();
-                let (min, max) = last.take().unwrap().unwrap_non_final().unwrap_repeat_max();
-                let min_usize = if min.is_empty() {
-                    0
-                } else {
-                    usize::from_str_radix(&min, 10).map_err(|e| {
-                        format!("invalid repetition value `{{{},{}}}`: {}", min, max, e)
-                    })?
-                };
-                let max_opt_usize = if max.is_empty() {
-                    None
-                } else {
-                    let max_usize = usize::from_str_radix(&max, 10).map_err(|e| {
-                        format!("invalid repetition value `{{{},{}}}`: {}", min, max, e)
-                    })?;
-                    if max_usize < min_usize {
-                        return Err(format!(
-                            "repeating element has max that is smaller than min: `{{{},{}}}`",
-                            min, max
-                        ));
-                    }
-                    Some(max_usize)
-                };
-                last = Some(NonFinal(RepeatToken(
-                    format!("{{{},{}}}", min, max),
-                    min_usize,
-                    max_opt_usize,
-                )))
-            }
-            (_, Some(NonFinal(RepeatMax(_, ref mut max))), Some(b)) => {
-                data_iter.next().unwrap();
-                max.push(char::from(b));
-            }
-
-            // Any byte `.`
-            (_, _, Some(b'.')) => {
-                data_iter.next().unwrap();
-                to_push = Some(Final(AnyByte))
-            }
-
-            // Alternate/Or `a|b|c`
-            (_, Some(Final(Or(_))), Some(b'|')) => {
-                data_iter.next().unwrap();
-                let nodes = last.take().unwrap().unwrap_final().unwrap_or();
-                last = Some(NonFinal(OpenOr(nodes)))
-            }
-            (_, Some(Final(_)), Some(b'|')) => {
-                data_iter.next().unwrap();
-                let node = last.take().unwrap().unwrap_final();
-                last = Some(NonFinal(OpenOr(vec![node])))
-            }
-            (_, None, Some(b'|')) => return Err("missing element before bar `|`".to_string()),
-
-            // Group `(ab)`
-            (_, _, Some(b'(')) => {
-                data_iter.next().unwrap();
-                to_push = Some(NonFinal(OpenGroup))
-            }
-            (_, Some(NonFinal(OpenGroup)), Some(b')')) => {
-                data_iter.next().unwrap();
-                last = Some(Final(Group(Box::new(Seq(vec![])))))
-            }
-            (Some(NonFinal(OpenGroup)), Some(NonFinal(non_final)), Some(b')')) => {
-                return Err(non_final.reason())
-            }
-            (Some(NonFinal(OpenGroup)), Some(Final(_)), Some(b')')) => {
-                data_iter.next().unwrap();
-                let node = last.take().unwrap().unwrap_final();
-                prev = Some(Final(Group(Box::new(node))));
-            }
-
-            // Other bytes
-            (_, _, Some(b)) => {
-                data_iter.next().unwrap();
-                to_push = Some(Final(Byte(b)))
-            }
-
-            // No more bytes.
-            (_, Some(NonFinal(node)), None) => return Err(node.reason()),
-            (None, None, None) => unreachable!(),
-            (None, Some(Final(_)), None) => unreachable!(),
-
-            // These cases should be unreachable.
-            (Some(NonFinal(Escape)), Some(Final(_)), _) => unreachable!(),
-            (Some(NonFinal(HexEscape0)), Some(Final(_)), _) => unreachable!(),
-            (Some(NonFinal(HexEscape1(_))), Some(Final(_)), _) => unreachable!(),
-            (Some(NonFinal(RepeatMin(..))), Some(Final(_)), _) => unreachable!(),
-            (Some(NonFinal(RepeatMax(..))), Some(Final(_)), _) => unreachable!(),
-            (Some(NonFinal(OpenClass0)), Some(Final(_)), _) => unreachable!(),
-            (Some(NonFinal(OpenClassNeg)), Some(Final(_)), _) => unreachable!(),
-            (Some(NonFinal(OpenClass(..))), Some(Final(_)), _) => unreachable!(),
-            (Some(NonFinal(OpenOr(_))), Some(Final(_)), _) => unreachable!(),
-            (Some(NonFinal(OpenByteRange(_))), Some(Final(_)), _) => unreachable!(),
-            (Some(NonFinal(ByteRange(..))), Some(Final(_)), _) => unreachable!(),
-            (Some(NonFinal(RepeatToken(..))), Some(Final(_)), _) => unreachable!(),
-            (Some(Final(_)), Some(Final(_)), _) => unreachable!(),
-        };
+        let mut to_push = apply_rule_once(&mut prev, &mut last, &mut byte)?;
         // Put items back in `stack`.
         if let Some(node) = prev.take() {
             stack.push(node);
@@ -927,11 +959,14 @@ pub fn parse(regex: &[u8]) -> Result<FinalNode, String> {
         if let Some(node) = to_push.take() {
             stack.push(node);
         }
+        if byte_was_some && byte.is_none() {
+            data_iter.next().unwrap();
+        }
     }
     // println!("stack {:?}", stack);
     // Check for incomplete elements.  Example: br"(ab"
     for node in stack.iter().rev() {
-        if let NonFinal(non_final) = node {
+        if let Node::NonFinal(non_final) = node {
             return Err(non_final.reason());
         }
     }
