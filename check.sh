@@ -14,10 +14,9 @@ allow_dirty=
 
 while :; do
   case "$1" in
-  +nightly) toolchain=+nightly ;;
-  +stable) toolchain=+stable ;;
+  +*) toolchain="$1" ;;
   --allow-dirty) allow_dirty=--allow-dirty ;;
-  '') break;;
+  '') break ;;
   *) usage "bad argument '$1'" ;;
   esac
   shift
@@ -26,10 +25,6 @@ done
 CARGO="cargo $toolchain"
 
 check_cargo_readme() {
-  if [ "$toolchain" == '+nightly' ]; then
-    echo "Skipping checking readme because of '$toolchain' argument."
-    return 0
-  fi
   $CARGO readme >Readme.md.tmp
   # Once cargo-geiger-serde builds on nightly,
   # change this to always run `cargo geiger`.
@@ -47,9 +42,11 @@ check() {
   time $CARGO check --verbose
   time $CARGO build --verbose
   time $CARGO test --verbose
-  time $CARGO fmt --all -- --check
-  time $CARGO clippy --all-targets --all-features -- -D clippy::pedantic
-  time check_cargo_readme
+  if [ "$toolchain" != '+nightly' ]; then
+    time $CARGO fmt --all -- --check
+    time $CARGO clippy --all-targets --all-features -- -D clippy::pedantic
+    time check_cargo_readme
+  fi
   time $CARGO publish --dry-run $allow_dirty
   echo "$0 finished"
 }
