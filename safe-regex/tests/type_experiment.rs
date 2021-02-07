@@ -9,7 +9,9 @@ trait CounterTrait {
 
 struct EmptyCounter;
 impl CounterTrait for EmptyCounter {
-    fn add(&mut self, _n: usize) {}
+    fn add(&mut self, _n: usize) {
+        unimplemented!()
+    }
     fn end(&self) -> usize {
         0
     }
@@ -99,21 +101,24 @@ impl<C, A: Visitor<Counter = C>, B: Visitor<Counter = C>> Visitor for Seq<C, A, 
     }
 }
 
-struct Capture<'r, C: CounterTrait, T: Visitor<Counter = CaptureCounter<C>>> {
-    output: &'r mut Option<Range<usize>>,
+struct Capture<C: CounterTrait, T: Visitor<Counter = CaptureCounter<C>>> {
+    range: Option<Range<usize>>,
     inner: T,
     phantom: PhantomData<C>,
 }
-impl<'r, C: CounterTrait, T: Visitor<Counter = CaptureCounter<C>>> Capture<'r, C, T> {
-    pub fn new(output: &'r mut Option<Range<usize>>, inner: T) -> Self {
+impl<C: CounterTrait, T: Visitor<Counter = CaptureCounter<C>>> Capture<C, T> {
+    pub fn new(inner: T) -> Self {
         Self {
-            output,
+            range: None,
             inner,
             phantom: PhantomData,
         }
     }
+    pub fn range(&self) -> Option<Range<usize>> {
+        self.range.clone()
+    }
 }
-impl<'r, C: CounterTrait, T: Visitor<Counter = CaptureCounter<C>>> Visitor for Capture<'r, C, T> {
+impl<C: CounterTrait, T: Visitor<Counter = CaptureCounter<C>>> Visitor for &mut Capture<C, T> {
     type Counter = C;
 
     fn visit(&mut self, outer_counter: Self::Counter) -> C {
@@ -122,19 +127,23 @@ impl<'r, C: CounterTrait, T: Visitor<Counter = CaptureCounter<C>>> Visitor for C
         let range = counter.range();
         let mut outer_counter = counter.into_outer();
         outer_counter.add(range.end - range.start);
-        *self.output = Some(range);
+        self.range = Some(range);
         outer_counter
+    }
+}
+impl<C: CounterTrait, T: Visitor<Counter = CaptureCounter<C>>> Visitor for Capture<C, T> {
+    type Counter = C;
+
+    fn visit(&mut self, outer_counter: Self::Counter) -> C {
+        self.visit(outer_counter)
     }
 }
 
 #[test]
 fn visitor() {
-    let mut group1: Option<Range<usize>> = None;
-    let mut capture1 = Capture::new(&mut group1, VisitOne::new());
-    let mut group0: Option<Range<usize>> = None;
-    let mut capture0 = Capture::new(&mut group0, Seq::new(VisitOne::new(), capture1));
+    let mut capture1 = Capture::new(VisitOne::new());
+    let mut capture0 = Capture::new(Seq::new(VisitOne::new(), &mut capture1));
     capture0.visit(EmptyCounter {});
-    assert_eq!(Some(0..2), group0);
-    assert_eq!(Some(1..2), group1);
-    // assert_eq!(1..2, capture1.range);
+    assert_eq!(Some(0..2), capture0.range());
+    assert_eq!(Some(1..2), capture1.range());
 }
