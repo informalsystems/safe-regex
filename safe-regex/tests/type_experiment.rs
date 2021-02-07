@@ -9,9 +9,7 @@ trait CounterTrait {
 
 struct EmptyCounter;
 impl CounterTrait for EmptyCounter {
-    fn add(&mut self, _n: usize) {
-        unimplemented!()
-    }
+    fn add(&mut self, _n: usize) {}
     fn end(&self) -> usize {
         0
     }
@@ -32,12 +30,6 @@ impl<T> CaptureCounter<T> {
             end: start,
             outer,
         }
-    }
-    pub fn range(&self) -> Range<usize> {
-        self.start..self.end
-    }
-    pub fn end(&self) -> usize {
-        self.end
     }
     pub fn into_outer(self) -> T {
         self.outer
@@ -131,19 +123,12 @@ impl<C: CounterTrait, T: Visitor<Counter = CaptureCounter<C>>> Visitor for &mut 
         outer_counter
     }
 }
-impl<C: CounterTrait, T: Visitor<Counter = CaptureCounter<C>>> Visitor for Capture<C, T> {
-    type Counter = C;
-
-    fn visit(&mut self, outer_counter: Self::Counter) -> C {
-        self.visit(outer_counter)
-    }
-}
 
 #[test]
 fn visitor() {
     let mut capture1 = Capture::new(VisitOne::new());
     let mut capture0 = Capture::new(Seq::new(VisitOne::new(), &mut capture1));
-    capture0.visit(EmptyCounter {});
+    (&mut capture0).visit(EmptyCounter {});
     assert_eq!(Some(0..2), capture0.range());
     assert_eq!(Some(1..2), capture1.range());
 }
