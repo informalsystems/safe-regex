@@ -314,6 +314,103 @@ impl<R: RangeTrait + Debug> Debug for Byte<R> {
     }
 }
 
+pub struct AnyByte<R: RangeTrait + Debug> {
+    phantom: PhantomData<R>,
+}
+impl<R: RangeTrait + Debug> AnyByte<R> {
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            phantom: PhantomData,
+        }
+    }
+}
+impl<R: RangeTrait + Debug> Matcher for AnyByte<R> {
+    type RangeType = R;
+
+    fn reset(&mut self) {}
+
+    fn process_byte(
+        &mut self,
+        prev_state: Option<Self::RangeType>,
+        _b: u8,
+        n: usize,
+    ) -> Option<Self::RangeType> {
+        let prev_matching_range = prev_state?;
+        println!(
+            "{:?} extend {:?} + {}..{}",
+            self,
+            prev_matching_range,
+            n,
+            n + 1
+        );
+        #[allow(clippy::range_plus_one)]
+        Some(prev_matching_range.extend(&(n..n + 1)))
+    }
+
+    fn matches_empty(&mut self) -> bool {
+        false
+    }
+}
+impl<R: RangeTrait + Debug> Debug for AnyByte<R> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+        write!(f, "AnyByte")
+    }
+}
+
+pub struct Class<R: RangeTrait + Debug> {
+    incl: bool,
+    bytes: &'static [u8],
+    phantom: PhantomData<R>,
+}
+impl<R: RangeTrait + Debug> Class<R> {
+    #[must_use]
+    pub fn new(incl: bool, bytes: &'static [u8]) -> Self {
+        Self {
+            incl,
+            bytes,
+            phantom: PhantomData,
+        }
+    }
+}
+impl<R: RangeTrait + Debug> Matcher for Class<R> {
+    type RangeType = R;
+
+    fn reset(&mut self) {}
+
+    fn process_byte(
+        &mut self,
+        prev_state: Option<Self::RangeType>,
+        b: u8,
+        n: usize,
+    ) -> Option<Self::RangeType> {
+        let prev_matching_range = prev_state?;
+        let contains = self.bytes.contains(&b);
+        if (self.incl && contains) || (!self.incl && !contains) {
+            println!(
+                "{:?} extend {:?} + {}..{}",
+                self,
+                prev_matching_range,
+                n,
+                n + 1
+            );
+            #[allow(clippy::range_plus_one)]
+            Some(prev_matching_range.extend(&(n..n + 1)))
+        } else {
+            None
+        }
+    }
+
+    fn matches_empty(&mut self) -> bool {
+        false
+    }
+}
+impl<R: RangeTrait + Debug> Debug for Class<R> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+        write!(f, "Class({})", escape_ascii(self.bytes))
+    }
+}
+
 pub struct Seq<R, A, B>
 where
     R: RangeTrait + Clone + Debug,

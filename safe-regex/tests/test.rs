@@ -1,4 +1,4 @@
-use safe_regex::{match_all, Byte, CapturingGroup, DiscardingRange, Either, Seq};
+use safe_regex::{match_all, AnyByte, Byte, CapturingGroup, DiscardingRange, Either, Seq};
 
 /// Converts the bytes into an ASCII string.
 pub fn escape_ascii(input: impl AsRef<[u8]>) -> String {
@@ -314,39 +314,6 @@ fn seq_debug() {
 }
 
 // #[test]
-// fn test_range() {
-//     assert_eq!(None, (..).search(b""));
-//     assert_eq!(Some(0..1), (..).search(b"a"));
-//
-//     assert_eq!(None, (b'b'..).search(b""));
-//     assert_eq!(None, (b'b'..).search(b"a"));
-//     assert_eq!(Some(0..1), (b'b'..).search(b"b"));
-//     assert_eq!(Some(0..1), (b'b'..).search(b"c"));
-//
-//     assert_eq!(None, (..b'c').search(b""));
-//     assert_eq!(Some(0..1), (..b'c').search(b"a"));
-//     assert_eq!(Some(0..1), (..b'c').search(b"b"));
-//     assert_eq!(None, (..b'c').search(b"c"));
-//
-//     assert_eq!(None, (..=b'b').search(b""));
-//     assert_eq!(Some(0..1), (..=b'b').search(b"a"));
-//     assert_eq!(Some(0..1), (..=b'b').search(b"b"));
-//     assert_eq!(None, (..=b'b').search(b"c"));
-//
-//     assert_eq!(None, (b'b'..b'd').search(b""));
-//     assert_eq!(None, (b'b'..b'd').search(b"a"));
-//     assert_eq!(Some(0..1), (b'b'..b'd').search(b"b"));
-//     assert_eq!(Some(0..1), (b'b'..b'd').search(b"c"));
-//     assert_eq!(None, (b'b'..b'd').search(b"d"));
-//
-//     assert_eq!(None, (b'b'..=b'c').search(b""));
-//     assert_eq!(None, (b'b'..=b'c').search(b"a"));
-//     assert_eq!(Some(0..1), (b'b'..=b'c').search(b"b"));
-//     assert_eq!(Some(0..1), (b'b'..=b'c').search(b"c"));
-//     assert_eq!(None, (b'b'..=b'c').search(b"d"));
-// }
-//
-// #[test]
 // fn test_repeat_range() {
 //     // zero of, '{0}'
 //     assert_eq!(Some(0..0), ("b", ..=0).search(b""));
@@ -462,46 +429,20 @@ fn seq_debug() {
 //     assert_eq!(Some(1..2), ("b", 1..2).search(b"abc"));
 //     assert_eq!(Some(1..2), ("b", 1..=1).search(b"abc"));
 // }
-//
-// #[test]
-// fn test_any_byte() {
-//     assert_eq!(None, any_byte().search(b""));
-//     assert_eq!(Some(0..1), any_byte().search(b"a"));
-//     assert_eq!(Some(0..1), any_byte().search(b"ab"));
-//
-//     let value = any_byte();
-//     let value_copy = value; // Copy
-//     #[allow(clippy::clone_on_copy)]
-//     let _value_clone = value.clone(); // Clone
-//     assert_eq!("AnyByte", format!("{:?}", value)); // Debug
-//     assert_eq!(
-//         Some(core::cmp::Ordering::Equal),
-//         value.partial_cmp(&any_byte()) // PartialOrd
-//     );
-//     assert_eq!(value, value_copy); // PartialEq
-// }
-//
-// #[test]
-// fn test_not() {
-//     assert_eq!(None, not("X").search(b""));
-//     assert_eq!(None, not("X").search(b"X"));
-//     assert_eq!(None, not("X").search(b"XX"));
-//     assert_eq!(Some(0..1), not("X").search(b"ab"));
-//     assert_eq!(Some(1..2), not("X").search(b"Xab"));
-//     assert_eq!(Some(2..3), not("X").search(b"XXab"));
-//     assert_eq!(Some(0..1), not(seq(any_byte(), "X")).search(b"aX"));
-//
-//     let value = not("X");
-//     let value_copy = value; // Copy
-//     #[allow(clippy::clone_on_copy)]
-//     let _value_clone = value.clone(); // Clone
-//     assert_eq!(
-//         "Not { re: \"X\", phantom: PhantomData }",
-//         format!("{:?}", value)
-//     ); // Debug
-//     assert!(value < not("Y")); // PartialOrd
-//     assert_eq!(value, value_copy); // PartialEq
-// }
+
+#[test]
+fn test_any_byte() {
+    let mut any_byte: AnyByte<DiscardingRange> = AnyByte::new();
+    assert!(!match_all(&mut any_byte, b""));
+    assert!(match_all(&mut any_byte, b"X"));
+    assert!(!match_all(&mut any_byte, b"XY"));
+    // Debug
+    assert_eq!("AnyByte", format!("{:?}", any_byte));
+    // AnyByte should match only one byte.
+    let mut group = CapturingGroup::new(AnyByte::new());
+    assert!(match_all(&mut group, b"X"));
+    assert_eq!(Some(0..1), group.range());
+}
 
 #[test]
 fn either() {
