@@ -24,6 +24,7 @@ struct CaptureCounter<T> {
     outer: T,
 }
 impl<T> CaptureCounter<T> {
+    #[must_use]
     pub fn new(start: usize, outer: T) -> Self {
         Self {
             start,
@@ -56,6 +57,7 @@ struct VisitOne<C: CounterTrait> {
     phantom: PhantomData<C>,
 }
 impl<C: CounterTrait> VisitOne<C> {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             phantom: PhantomData,
@@ -77,6 +79,7 @@ struct Seq<C, A: Visitor<Counter = C>, B: Visitor<Counter = C>> {
     phantom: PhantomData<C>,
 }
 impl<C, A: Visitor<Counter = C>, B: Visitor<Counter = C>> Seq<C, A, B> {
+    #[must_use]
     pub fn new(a: A, b: B) -> Self {
         Self {
             a,
@@ -99,6 +102,7 @@ struct Capture<C: CounterTrait, T: Visitor<Counter = CaptureCounter<C>>> {
     phantom: PhantomData<C>,
 }
 impl<C: CounterTrait, T: Visitor<Counter = CaptureCounter<C>>> Capture<C, T> {
+    #[must_use]
     pub fn new(inner: T) -> Self {
         Self {
             range: None,
@@ -117,10 +121,10 @@ impl<C: CounterTrait, T: Visitor<Counter = CaptureCounter<C>>> Visitor for &mut 
         let counter = CaptureCounter::new(outer_counter.end(), outer_counter);
         let counter = self.inner.visit(counter);
         let range = counter.range();
-        let mut outer_counter = counter.into_outer();
-        outer_counter.add(range.end - range.start);
+        let mut updated_outer_counter = counter.into_outer();
+        updated_outer_counter.add(range.end - range.start);
         self.range = Some(range);
-        outer_counter
+        updated_outer_counter
     }
 }
 

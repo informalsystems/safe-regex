@@ -121,7 +121,7 @@ assert_eq!(b"42", cell.get().unwrap());
 
 ## TO DO
 - DONE - Read about regular expressions
-- DONE - Read about NFAs, <https://swtch.com/~rsc/regexp/?
+- DONE - Read about NFAs, <https://swtch.com/~rsc/regexp/>
 - Design API
 - Implement
 - Add integration tests

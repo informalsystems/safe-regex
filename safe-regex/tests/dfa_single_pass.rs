@@ -17,7 +17,7 @@
 //! regex.  It just silently fails to match.
 //!
 //! One advantage of this version of the library is good performance:
-//! - runtime O(input_len)
+//! - runtime O(`input_len`)
 //! - memory O(1)
 //!
 //! I discovered this limitation and did more reading on the problem.
@@ -266,6 +266,7 @@ struct Bytes<'d, T: AsRef<[u8]>> {
 impl<'d, T: AsRef<[u8]>> Bytes<'d, T> {
     // TO DO(https://github.com/rust-lang/rust/issues/57563)
     //   Once `feature(const_fn)` is stable, make this `const fn`.
+    #[must_use]
     pub fn new(b: T) -> Self {
         Self {
             bytes: b,
@@ -310,6 +311,7 @@ struct Seq<'d, A: Regex<'d>, B: Regex<'d>> {
 impl<'d, A: Regex<'d>, B: Regex<'d>> Seq<'d, A, B> {
     // TO DO(https://github.com/rust-lang/rust/issues/57563)
     //   Once `feature(const_fn)` is stable, make this `const fn`.
+    #[must_use]
     pub fn new(a: A, b: B) -> Self {
         Self {
             a,
@@ -446,6 +448,7 @@ struct Not<'d, A: Regex<'d>> {
 impl<'d, A: Regex<'d>> Not<'d, A> {
     // TO DO(https://github.com/rust-lang/rust/issues/57563)
     //   Once `feature(const_fn)` is stable, make this `const fn`.
+    #[must_use]
     pub fn new(re: A) -> Self {
         Self {
             re,
@@ -493,6 +496,7 @@ struct Or<'d, A: Regex<'d>, B: Regex<'d>> {
 impl<'d, A: Regex<'d>, B: Regex<'d>> Or<'d, A, B> {
     // TO DO(https://github.com/rust-lang/rust/issues/57563)
     //   Once `feature(const_fn)` is stable, make this `const fn`.
+    #[must_use]
     pub fn new(a: A, b: B) -> Self {
         Self {
             a,

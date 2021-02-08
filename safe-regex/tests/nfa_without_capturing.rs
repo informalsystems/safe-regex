@@ -3,13 +3,8 @@
 //! It does not support capturing groups.
 
 #![forbid(unsafe_code)]
-use core::cell::Cell;
 use core::fmt::Debug;
 use core::marker::PhantomData;
-use core::ops::{
-    Bound, Range, RangeBounds, RangeFrom, RangeFull, RangeInclusive, RangeTo, RangeToInclusive,
-};
-use safe_regex_parser::escape_ascii;
 
 pub trait Matcher {
     fn reset(&mut self);
@@ -41,6 +36,7 @@ pub fn match_all<T: Matcher + Debug>(matcher: &mut T, data: &[u8]) -> bool {
 #[derive(Copy, Clone, Debug)]
 pub struct Byte(u8);
 impl Byte {
+    #[must_use]
     pub fn new(b: u8) -> Self {
         Self(b)
     }
@@ -65,6 +61,7 @@ pub struct Seq<A: Matcher + Debug + Copy + Clone, B: Matcher + Debug + Copy + Cl
     matched: bool,
 }
 impl<A: Matcher + Debug + Copy + Clone, B: Matcher + Debug + Copy + Clone> Seq<A, B> {
+    #[must_use]
     pub fn new(a: A, b: B) -> Self {
         Self {
             a,
@@ -92,7 +89,7 @@ impl<A: Matcher + Debug + Copy + Clone, B: Matcher + Debug + Copy + Clone> Match
 }
 
 pub fn double<T: Matcher + Debug + Copy + Clone>(inner: T) -> Seq<T, T> {
-    Seq::new(inner.clone(), inner)
+    Seq::new(inner, inner)
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -101,6 +98,7 @@ pub struct Double<T: Matcher + Debug + Copy + Clone> {
     states: [bool; 2],
 }
 impl<T: Matcher + Debug + Copy + Clone> Double<T> {
+    #[must_use]
     pub fn new(inner: T) -> Self {
         Self {
             matchers: [inner; 2],
@@ -110,7 +108,7 @@ impl<T: Matcher + Debug + Copy + Clone> Double<T> {
 }
 impl<T: Matcher + Debug + Copy + Clone> Matcher for Double<T> {
     fn reset(&mut self) {
-        for state in self.states.iter_mut() {
+        for state in &mut self.states {
             *state = false;
         }
     }
@@ -144,6 +142,7 @@ where
     M: AsMut<[T]> + Debug + Copy + Clone,
     S: AsMut<[bool]> + Debug + Copy + Clone,
 {
+    #[must_use]
     pub fn new(mut matchers: M, min: usize, mut states: S) -> Self {
         if matchers.as_mut().len() != states.as_mut().len() {
             panic!(
@@ -202,12 +201,12 @@ fn matcher_fn() {
     {
         let mut re = Seq::new(Byte::new(b'a'), Byte::new(b'b'));
         println!("size {} bytes: {:?}", core::mem::size_of_val(&re), &re);
-        assert!(!match_all(&mut re, (b"")));
-        assert!(!match_all(&mut re, (b"a")));
-        assert!(match_all(&mut re, (b"ab")));
-        assert!(!match_all(&mut re, (b"aab")));
-        assert!(!match_all(&mut re, (b"aba")));
-        assert!(!match_all(&mut re, (b"abab")));
+        assert!(!match_all(&mut re, b""));
+        assert!(!match_all(&mut re, b"a"));
+        assert!(match_all(&mut re, b"ab"));
+        assert!(!match_all(&mut re, b"aab"));
+        assert!(!match_all(&mut re, b"aba"));
+        assert!(!match_all(&mut re, b"abab"));
     }
     {
         let mut re = Seq::new(Double::new(Byte::new(b'a')), Byte::new(b'a'));
