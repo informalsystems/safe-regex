@@ -129,10 +129,19 @@ impl<C: CounterTrait, T: Visitor<Counter = CaptureCounter<C>>> Visitor for &mut 
 }
 
 #[test]
-fn visitor() {
+fn capture() {
     let mut capture1 = Capture::new(VisitOne::new());
     let mut capture0 = Capture::new(Seq::new(VisitOne::new(), &mut capture1));
     (&mut capture0).visit(EmptyCounter {});
     assert_eq!(Some(0..2), capture0.range());
     assert_eq!(Some(1..2), capture1.range());
+}
+
+#[test]
+fn capture_nested() {
+    let mut capture1 = Capture::new(VisitOne::new());
+    let mut capture0 = Capture::new(&mut capture1);
+    (&mut capture0).visit(EmptyCounter {});
+    assert_eq!(Some(0..1), capture0.range());
+    assert_eq!(Some(0..1), capture1.range());
 }
