@@ -41,62 +41,62 @@
 //!
 //! # Examples
 //! ```rust
-//! use safe_regex::simple;
-//! use safe_regex::simple::Regex;
-//!
-//! // "."
-//! simple::any_byte()
-//!     .match_all(b"a")
-//!     .unwrap();
-//!
-//! // "[0-9]"
-//! (b'0'..=b'9').match_all(b"7").unwrap();
-//!
-//! // "[^0-9]"
-//! simple::not(b'0'..=b'9')
-//!     .match_all(b"a")
-//!     .unwrap();
-//!
-//! // "a?"
-//! ("a", ..=1).match_all(b"").unwrap();
-//! ("a", ..=1).match_all(b"a").unwrap();
-//!
-//! // "a+"
-//! ("a", 1..).match_all(b"a").unwrap();
-//! ("a", 1..).match_all(b"aaa").unwrap();
-//!
-//! // "a{3}"
-//! ("a", 3..=3).match_all(b"aaa").unwrap();
-//!
-//! // "a{2,3}"
-//! ("a", 2..=3).match_all(b"aa").unwrap();
-//! ("a", 2..=3).match_all(b"aaa").unwrap();
-//!
-//! // "a|b"
-//! simple::or("a", "b")
-//!     .match_all(b"b")
-//!     .unwrap();
-//!
-//! // "a|b|c|d|e"
-//! simple::or5("a", "b", "c", "d", "e")
-//!     .match_all(b"b").unwrap();
-//!
-//! // "(a|b)(c|d)"
-//! simple::seq(
-//!     simple::or("a", "b"),
-//!     simple::or("c", "d"),
-//! ).match_all(b"bc").unwrap();
-//!
-//! // "id([0-9]+)" capturing group
-//! use std::cell::Cell;
-//! let cell: Cell<Option<&[u8]>> =
-//!     Cell::new(None);
-//! simple::seq(
-//!     "id",
-//!     simple::group(
-//!         &cell, (b'0'..b'9', 1..)
-//! )).match_all(b"id42").unwrap();
-//! assert_eq!(b"42", cell.get().unwrap());
+//! // use safe_regex::simple;
+//! // use safe_regex::simple::Regex;
+//! //
+//! // // "."
+//! // simple::any_byte()
+//! //     .match_all(b"a")
+//! //     .unwrap();
+//! //
+//! // // "[0-9]"
+//! // (b'0'..=b'9').match_all(b"7").unwrap();
+//! //
+//! // // "[^0-9]"
+//! // simple::not(b'0'..=b'9')
+//! //     .match_all(b"a")
+//! //     .unwrap();
+//! //
+//! // // "a?"
+//! // ("a", ..=1).match_all(b"").unwrap();
+//! // ("a", ..=1).match_all(b"a").unwrap();
+//! //
+//! // // "a+"
+//! // ("a", 1..).match_all(b"a").unwrap();
+//! // ("a", 1..).match_all(b"aaa").unwrap();
+//! //
+//! // // "a{3}"
+//! // ("a", 3..=3).match_all(b"aaa").unwrap();
+//! //
+//! // // "a{2,3}"
+//! // ("a", 2..=3).match_all(b"aa").unwrap();
+//! // ("a", 2..=3).match_all(b"aaa").unwrap();
+//! //
+//! // // "a|b"
+//! // simple::or("a", "b")
+//! //     .match_all(b"b")
+//! //     .unwrap();
+//! //
+//! // // "a|b|c|d|e"
+//! // simple::or5("a", "b", "c", "d", "e")
+//! //     .match_all(b"b").unwrap();
+//! //
+//! // // "(a|b)(c|d)"
+//! // simple::seq(
+//! //     simple::or("a", "b"),
+//! //     simple::or("c", "d"),
+//! // ).match_all(b"bc").unwrap();
+//! //
+//! // // "id([0-9]+)" capturing group
+//! // use std::cell::Cell;
+//! // let cell: Cell<Option<&[u8]>> =
+//! //     Cell::new(None);
+//! // simple::seq(
+//! //     "id",
+//! //     simple::group(
+//! //         &cell, (b'0'..b'9', 1..)
+//! // )).match_all(b"id42").unwrap();
+//! // assert_eq!(b"42", cell.get().unwrap());
 //! ```
 //!
 //! # Changelog
@@ -104,7 +104,7 @@
 //!
 //! # TO DO
 //! - DONE - Read about regular expressions
-//! - DONE - Read about NFAs, <https://swtch.com/~rsc/regexp/?
+//! - DONE - Read about NFAs, <https://swtch.com/~rsc/regexp/>
 //! - Design API
 //! - Implement
 //! - Add integration tests
@@ -114,6 +114,8 @@
 //! - Match strings
 //!
 //! # TO DO
+//! - Once [const generics](https://github.com/rust-lang/rust/issues/44580)
+//!   are stable, use the feature to simplify `Repeat` and other types.
 //!
 //! # Release Process
 //! 1. Edit `Cargo.toml` and bump version number.
@@ -122,229 +124,334 @@
 // https://swtch.com/~rsc/regexp/regexp1.html
 
 #![forbid(unsafe_code)]
-use core::cell::Cell;
+use core::fmt::Debug;
 use core::marker::PhantomData;
-use core::ops::{
-    Bound, Range, RangeBounds, RangeFrom, RangeFull, RangeInclusive, RangeTo, RangeToInclusive,
-};
+use core::ops::Range;
+use safe_regex_parser::escape_ascii;
 
-/// Implements regular expression matching on byte slices.
-///
-/// See the [module docs](index.html) for examples.
-pub trait Regex<'d> {
-    /// Checks if `data` starts with the pattern.
-    ///
-    /// Returns the number of bytes of `data` that match the pattern.
-    ///
-    /// Returns `None` if the pattern did not match.
-    ///
-    /// This is equivalent to adding '^' to the start of a regular expression.
-    fn match_prefix(&self, data: &'d [u8]) -> Option<usize>;
+pub trait RangeTrait {
+    fn is_discarding_range(&self) -> bool;
+    fn extend(self, r: &Range<usize>) -> Self;
+    fn end(&self) -> usize;
+    fn range(&self) -> Range<usize>;
+}
 
-    /// Checks if `data` ends with the pattern.
-    ///
-    /// Returns the number of bytes of `data` that match the pattern.
-    ///
-    /// Returns `None` if the pattern did not match.
-    ///
-    /// This is equivalent to adding '$' to the end of a regular expression.
-    fn match_suffix(&self, data: &'d [u8]) -> Option<Range<usize>> {
-        let mut n: usize = 0;
-        loop {
-            if let Some(num_matched) = self.match_prefix(&data[n..]) {
-                if n + num_matched == data.len() {
-                    return Some(n..data.len());
-                }
-            }
-            if data.len() <= n {
-                return None;
-            }
-            n += 1;
-        }
+#[derive(Clone, PartialEq)]
+pub struct DiscardingRange;
+impl RangeTrait for DiscardingRange {
+    fn is_discarding_range(&self) -> bool {
+        true
     }
 
-    /// Checks if all of the bytes in `data` match the pattern.
-    ///
-    /// This is equivalent to adding '^' and '$' to the start and end of a
-    /// regular expression.
-    fn match_all(&self, data: &'d [u8]) -> Option<()> {
-        let num_matched = self.match_prefix(data)?;
-        if num_matched == data.len() {
-            Some(())
+    fn extend(self, _r: &Range<usize>) -> Self {
+        self
+    }
+
+    fn end(&self) -> usize {
+        0
+    }
+    fn range(&self) -> Range<usize> {
+        0..0
+    }
+}
+impl Debug for DiscardingRange {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+        write!(f, "DiscardingRange")
+    }
+}
+
+#[derive(Clone)]
+pub struct MatchRange<R: RangeTrait + Clone + Debug> {
+    start: usize,
+    end: usize,
+    outer: R,
+}
+impl<R: RangeTrait + Clone + Debug> MatchRange<R> {
+    #[must_use]
+    pub fn new(outer: R, n: usize) -> Self {
+        if outer.is_discarding_range() {
+            Self {
+                start: n,
+                end: n,
+                outer,
+            }
         } else {
-            None
-        }
-    }
-
-    /// Searches for the pattern inside `data`.
-    ///
-    /// Returns the range of bytes in `data` that match the pattern.
-    ///
-    /// Returns `None` if the pattern did not match any sub-slice of `data`.
-    fn search(&self, data: &'d [u8]) -> Option<Range<usize>> {
-        let mut n: usize = 0;
-        loop {
-            if let Some(num_matched) = self.match_prefix(&data[n..]) {
-                return Some(n..n + num_matched);
+            let end = outer.range().end;
+            if end != n {
+                panic!("{} is not immediately after {:?}", n, outer);
             }
-            if data.len() <= n {
-                return None;
+            Self {
+                start: end,
+                end,
+                outer,
             }
-            n += 1;
         }
     }
-}
-
-fn check_range<R: RangeBounds<u8>>(range: &R, data: &[u8]) -> Option<usize> {
-    if range.contains(data.get(0)?) {
-        Some(1)
-    } else {
-        None
+    pub fn into_outer(self) -> R {
+        self.outer
     }
 }
-
-impl<'d> Regex<'d> for Range<u8> {
-    fn match_prefix(&self, data: &'d [u8]) -> Option<usize> {
-        check_range(self, data)
+impl<R: RangeTrait + Clone + Debug> RangeTrait for MatchRange<R> {
+    fn is_discarding_range(&self) -> bool {
+        false
     }
-}
 
-impl<'d> Regex<'d> for RangeFrom<u8> {
-    fn match_prefix(&self, data: &'d [u8]) -> Option<usize> {
-        check_range(self, data)
-    }
-}
-
-impl<'d> Regex<'d> for RangeFull {
-    fn match_prefix(&self, data: &'d [u8]) -> Option<usize> {
-        check_range(self, data)
-    }
-}
-
-impl<'d> Regex<'d> for RangeInclusive<u8> {
-    fn match_prefix(&self, data: &'d [u8]) -> Option<usize> {
-        check_range(self, data)
-    }
-}
-
-impl<'d> Regex<'d> for RangeTo<u8> {
-    fn match_prefix(&self, data: &'d [u8]) -> Option<usize> {
-        check_range(self, data)
-    }
-}
-
-impl<'d> Regex<'d> for RangeToInclusive<u8> {
-    fn match_prefix(&self, data: &'d [u8]) -> Option<usize> {
-        check_range(self, data)
-    }
-}
-
-impl<'d> Regex<'d> for char {
-    fn match_prefix(&self, data: &'d [u8]) -> Option<usize> {
-        let mut buf = [0_u8; 8];
-        let s: &str = self.encode_utf8(&mut buf);
-        s.match_prefix(data)
-    }
-}
-
-impl<'d> Regex<'d> for &str {
-    fn match_prefix(&self, data: &'d [u8]) -> Option<usize> {
-        self.as_bytes().match_prefix(data)
-    }
-}
-
-impl<'d> Regex<'d> for String {
-    fn match_prefix(&self, data: &'d [u8]) -> Option<usize> {
-        self.as_bytes().match_prefix(data)
-    }
-}
-
-impl<'d> Regex<'d> for u8 {
-    fn match_prefix(&self, data: &'d [u8]) -> Option<usize> {
-        if !data.is_empty() && data[0] == *self {
-            Some(1)
-        } else {
-            None
+    fn extend(mut self, r: &Range<usize>) -> Self {
+        println!("extend {:?} + {:?}", &self, &r);
+        if self.end != 0 && self.end != r.start {
+            panic!("{:?} is not immediately after {:?}", &r, &self);
         }
-    }
-}
-
-impl<'d> Regex<'d> for &[u8] {
-    fn match_prefix(&self, data: &'d [u8]) -> Option<usize> {
-        let slice_len = self.len();
-        if slice_len <= data.len() && *self == &data[..slice_len] {
-            Some(slice_len)
-        } else {
-            None
+        if r.end < r.start {
+            panic!("bad range: {:?}", &r);
         }
+        self.end = r.end;
+        self
+    }
+
+    fn end(&self) -> usize {
+        self.end
+    }
+    fn range(&self) -> Range<usize> {
+        self.start..self.end
+    }
+}
+impl<R: RangeTrait + Clone + Debug> Debug for MatchRange<R> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+        write!(
+            f,
+            "MatchRange({}..{},{:?})",
+            self.start, self.end, self.outer
+        )
     }
 }
 
-// TODO(https://github.com/rust-lang/rust/issues/44580)
-//   Once const generics are stable, uncomment this and deprecate `Bytes`.
-// impl<'d, const N: usize> Regex<'_> for [u8; N] {
-//     fn check(&self, data: &'_ [u8]) -> Option<usize> {
-//         (&self[..]).check(data)
-//     }
-// }
-
-/// A wrapper type that implements `Regex` for structs that implement
-/// `AsRef<[u8]>`.
-///
-/// [`bytes`](#method.bytes) returns this.
-#[derive(Copy, Clone, Debug, PartialOrd, PartialEq)]
-pub struct Bytes<'d, T: AsRef<[u8]>> {
-    bytes: T,
-    phantom: PhantomData<&'d ()>,
+pub trait Matcher {
+    type RangeType;
+    fn reset(&mut self);
+    fn process_byte(
+        &mut self,
+        prev_state: Option<Self::RangeType>,
+        b: u8,
+        n: usize,
+    ) -> Option<Self::RangeType>;
+    // This method takes `&mut self` so we can eliminate the `AsRef<[T]>` type
+    // param on `Repeat`.
+    fn matches_empty(&mut self) -> bool;
 }
 
-impl<'d, T: AsRef<[u8]>> Bytes<'d, T> {
-    // TODO(https://github.com/rust-lang/rust/issues/57563)
-    //   Once `feature(const_fn)` is stable, make this `const fn`.
-    pub fn new(b: T) -> Self {
+pub fn match_all<T: Matcher<RangeType = DiscardingRange> + Debug>(
+    matcher: &mut T,
+    data: &[u8],
+) -> bool {
+    if data.is_empty() {
+        return matcher.matches_empty();
+    }
+    matcher.reset();
+    println!("{:?}", &matcher);
+    println!("process_byte {}", escape_ascii([data[0]]));
+    let mut result = matcher
+        .process_byte(Some(DiscardingRange), data[0], 0)
+        .is_some();
+    println!("{:?}", &matcher);
+    println!("result = {}", result);
+    for (n, b) in data.iter().copied().enumerate().skip(1) {
+        println!("process_byte {}", escape_ascii([b]));
+        result = matcher.process_byte(None, b, n).is_some();
+        println!("{:?}", &matcher);
+        println!("result = {}", result);
+    }
+    result
+}
+
+#[derive(Clone, PartialOrd, PartialEq)]
+pub struct Byte<R: RangeTrait + Debug> {
+    value: u8,
+    phantom: PhantomData<R>,
+}
+impl<R: RangeTrait + Debug> Byte<R> {
+    #[must_use]
+    pub fn new(b: u8) -> Self {
         Self {
-            bytes: b,
+            value: b,
             phantom: PhantomData,
         }
     }
 }
+impl<R: RangeTrait + Debug> Matcher for Byte<R> {
+    type RangeType = R;
 
-/// Use an array as a `Regex` pattern.
-/// This works with any type that implements `AsRef<[u8]>`.
-///
-/// # Example
-/// ```
-/// use safe_regex::simple;
-/// use safe_regex::simple::Regex;
-/// simple::bytes(b"ab")
-///     .match_all(b"ab")
-///     .unwrap();
-/// ```
-pub fn bytes<'d, T: AsRef<[u8]>>(b: T) -> Bytes<'d, T> {
-    Bytes::new(b)
+    fn reset(&mut self) {}
+
+    fn process_byte(
+        &mut self,
+        prev_state: Option<Self::RangeType>,
+        b: u8,
+        n: usize,
+    ) -> Option<Self::RangeType> {
+        let prev_matching_range = prev_state?;
+        if b == self.value {
+            println!(
+                "{:?} extend {:?} + {}..{}",
+                self,
+                prev_matching_range,
+                n,
+                n + 1
+            );
+            #[allow(clippy::range_plus_one)]
+            Some(prev_matching_range.extend(&(n..n + 1)))
+        } else {
+            None
+        }
+    }
+
+    fn matches_empty(&mut self) -> bool {
+        false
+    }
 }
-
-impl<'d, T: AsRef<[u8]>> Regex<'d> for Bytes<'d, T> {
-    fn match_prefix(&self, data: &'d [u8]) -> Option<usize> {
-        self.bytes.as_ref().match_prefix(data)
+impl<R: RangeTrait + Debug> Debug for Byte<R> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+        write!(f, "Byte({})", escape_ascii([self.value]))
     }
 }
 
-/// A sequence of two `Regex` patterns.
-///
-/// [`seq`](#method.seq), [`seq3`](#method.seq3), [`seq4`](#method.seq4),
-/// and [`seq5`](#method.seq5) return this.
-/// ```
-#[derive(Copy, Clone, Debug, PartialOrd, PartialEq)]
-pub struct Seq<'d, A: Regex<'d>, B: Regex<'d>> {
+pub struct Seq<R, A, B>
+where
+    R: RangeTrait + Clone + Debug,
+    A: Matcher<RangeType = R> + Debug,
+    B: Matcher<RangeType = R> + Debug,
+{
     a: A,
     b: B,
-    phantom: PhantomData<&'d ()>,
+    prev_a_state: Option<R>,
+}
+impl<R, A, B> Seq<R, A, B>
+where
+    R: RangeTrait + Clone + Debug,
+    A: Matcher<RangeType = R> + Debug,
+    B: Matcher<RangeType = R> + Debug,
+{
+    #[must_use]
+    pub fn new(a: A, b: B) -> Self {
+        Self {
+            a,
+            b,
+            prev_a_state: None,
+        }
+    }
+
+    fn reset_impl(&mut self) {
+        self.a.reset();
+        self.b.reset();
+        self.prev_a_state = None;
+    }
+
+    fn process_byte_impl(&mut self, prev_state: Option<R>, b: u8, n: usize) -> Option<R> {
+        let prev_a_state_clone = self.prev_a_state.clone();
+        let result = self.b.process_byte(self.prev_a_state.take(), b, n);
+        println!(
+            "Seq.process_byte({},{}) {:?} --{:?}-> {:?}",
+            escape_ascii([b]),
+            n,
+            prev_a_state_clone,
+            self.b,
+            result
+        );
+
+        let prev_state_clone = prev_state.clone();
+        self.prev_a_state = self.a.process_byte(prev_state, b, n);
+        println!(
+            "Seq.process_byte({},{}) {:?} --{:?}-> {:?}",
+            escape_ascii([b]),
+            n,
+            prev_state_clone,
+            self.a,
+            self.prev_a_state
+        );
+        result
+    }
+
+    fn matches_empty_impl(&mut self) -> bool {
+        self.a.matches_empty() && self.b.matches_empty()
+    }
+}
+impl<R, A, B> Matcher for Seq<R, A, B>
+where
+    R: RangeTrait + Clone + Debug,
+    A: Matcher<RangeType = R> + Debug,
+    B: Matcher<RangeType = R> + Debug,
+{
+    type RangeType = R;
+
+    fn reset(&mut self) {
+        self.reset_impl()
+    }
+
+    fn process_byte(
+        &mut self,
+        prev_outer_state: Option<Self::RangeType>,
+        b: u8,
+        n: usize,
+    ) -> Option<Self::RangeType> {
+        self.process_byte_impl(prev_outer_state, b, n)
+    }
+
+    fn matches_empty(&mut self) -> bool {
+        self.matches_empty_impl()
+    }
+}
+impl<R, A, B> Matcher for &mut Seq<R, A, B>
+where
+    R: RangeTrait + Clone + Debug,
+    A: Matcher<RangeType = R> + Debug,
+    B: Matcher<RangeType = R> + Debug,
+{
+    type RangeType = R;
+
+    fn reset(&mut self) {
+        self.reset_impl()
+    }
+
+    fn process_byte(
+        &mut self,
+        prev_outer_state: Option<Self::RangeType>,
+        b: u8,
+        n: usize,
+    ) -> Option<Self::RangeType> {
+        self.process_byte_impl(prev_outer_state, b, n)
+    }
+
+    fn matches_empty(&mut self) -> bool {
+        self.matches_empty_impl()
+    }
+}
+impl<R, A, B> Debug for Seq<R, A, B>
+where
+    R: RangeTrait + Clone + Debug,
+    A: Matcher<RangeType = R> + Debug,
+    B: Matcher<RangeType = R> + Debug,
+{
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+        write!(f, "Seq({:?},{:?},{:?})", self.a, self.prev_a_state, self.b)
+    }
 }
 
-impl<'d, A: Regex<'d>, B: Regex<'d>> Seq<'d, A, B> {
-    // TODO(https://github.com/rust-lang/rust/issues/57563)
-    //   Once `feature(const_fn)` is stable, make this `const fn`.
+pub struct Either<R, A, B>
+where
+    R: RangeTrait + Clone + Debug,
+    A: Matcher<RangeType = R> + Debug,
+    B: Matcher<RangeType = R> + Debug,
+{
+    a: A,
+    b: B,
+    phantom: PhantomData<R>,
+}
+impl<R, A, B> Either<R, A, B>
+where
+    R: RangeTrait + Clone + Debug,
+    A: Matcher<RangeType = R> + Debug,
+    B: Matcher<RangeType = R> + Debug,
+{
+    #[must_use]
     pub fn new(a: A, b: B) -> Self {
         Self {
             a,
@@ -352,343 +459,191 @@ impl<'d, A: Regex<'d>, B: Regex<'d>> Seq<'d, A, B> {
             phantom: PhantomData,
         }
     }
-}
 
-/// A sequence of two `Regex` patterns.
-///
-/// # Example
-/// ```
-/// use safe_regex::simple;
-/// use safe_regex::simple::Regex;
-/// simple::seq("a", "b")
-///     .match_all(b"ab")
-///     .unwrap();
-/// ```
-pub fn seq<'d, A: Regex<'d>, B: Regex<'d>>(a: A, b: B) -> Seq<'d, A, B> {
-    Seq::new(a, b)
-}
-
-/// A sequence of three `Regex` patterns.
-///
-/// # Example
-/// ```
-/// use safe_regex::simple;
-/// use safe_regex::simple::Regex;
-/// simple::seq3("a", "b", "c")
-///     .match_all(b"abc")
-///     .unwrap();
-/// ```
-pub fn seq3<'d, A: Regex<'d>, B: Regex<'d>, C: Regex<'d>>(
-    a: A,
-    b: B,
-    c: C,
-) -> Seq<'d, A, Seq<'d, B, C>> {
-    Seq::new(a, Seq::new(b, c))
-}
-
-/// A sequence of four `Regex` patterns.
-///
-/// # Example
-/// ```
-/// use safe_regex::simple;
-/// use safe_regex::simple::Regex;
-/// simple::seq4("a", "b", "c", "d")
-///     .match_all(b"abcd")
-///     .unwrap();
-/// ```
-pub fn seq4<'d, A: Regex<'d>, B: Regex<'d>, C: Regex<'d>, D: Regex<'d>>(
-    a: A,
-    b: B,
-    c: C,
-    d: D,
-) -> Seq<'d, A, Seq<'d, B, Seq<'d, C, D>>> {
-    Seq::new(a, Seq::new(b, Seq::new(c, d)))
-}
-
-/// A sequence of five `Regex` patterns.
-///
-/// # Example
-/// ```
-/// use safe_regex::simple;
-/// use safe_regex::simple::Regex;
-/// simple::seq5("a", "b", "c", "d", "e")
-///     .match_all(b"abcde")
-///     .unwrap();
-/// ```
-#[allow(clippy::many_single_char_names)]
-#[allow(clippy::type_complexity)]
-pub fn seq5<'d, A: Regex<'d>, B: Regex<'d>, C: Regex<'d>, D: Regex<'d>, E: Regex<'d>>(
-    a: A,
-    b: B,
-    c: C,
-    d: D,
-    e: E,
-) -> Seq<'d, A, Seq<'d, B, Seq<'d, C, Seq<'d, D, E>>>> {
-    Seq::new(a, Seq::new(b, Seq::new(c, Seq::new(d, e))))
-}
-
-impl<'d, A: Regex<'d>, B: Regex<'d>> Regex<'d> for Seq<'d, A, B> {
-    fn match_prefix(&self, data: &'d [u8]) -> Option<usize> {
-        let num_matched1 = self.a.match_prefix(data)?;
-        let num_matched2 = self.b.match_prefix(&data[num_matched1..])?;
-        Some(num_matched1 + num_matched2)
+    fn reset_impl(&mut self) {
+        self.a.reset();
+        self.b.reset();
     }
-}
 
-/// A `Regex` pattern that matches any byte.
-///
-/// [`any_byte`](#method.any_byte) returns this.
-/// ```
-#[derive(Copy, Clone, Debug, PartialOrd, PartialEq)]
-pub struct AnyByte;
-
-#[must_use]
-/// Returns a `Regex` pattern that matches any byte.
-///
-/// # Example
-/// ```
-/// use safe_regex::simple;
-/// use safe_regex::simple::Regex;
-/// simple::any_byte()
-///     .match_all(b"a")
-///     .unwrap();
-/// ```
-pub fn any_byte() -> AnyByte {
-    AnyByte {}
-}
-
-impl<'d> Regex<'d> for AnyByte {
-    fn match_prefix(&self, data: &'d [u8]) -> Option<usize> {
-        if data.is_empty() {
-            None
-        } else {
-            Some(1)
+    fn process_byte_impl(&mut self, prev_state: Option<R>, b: u8, n: usize) -> Option<R> {
+        let prev_state_clone = prev_state.clone();
+        if let Some(match_range) = self.a.process_byte(prev_state, b, n) {
+            return Some(match_range);
         }
+        self.b.process_byte(prev_state_clone, b, n)
+    }
+
+    fn matches_empty_impl(&mut self) -> bool {
+        self.a.matches_empty() || self.b.matches_empty()
+    }
+}
+impl<R, A, B> Matcher for Either<R, A, B>
+where
+    R: RangeTrait + Clone + Debug,
+    A: Matcher<RangeType = R> + Debug,
+    B: Matcher<RangeType = R> + Debug,
+{
+    type RangeType = R;
+
+    fn reset(&mut self) {
+        self.reset_impl()
+    }
+
+    fn process_byte(
+        &mut self,
+        prev_outer_state: Option<Self::RangeType>,
+        b: u8,
+        n: usize,
+    ) -> Option<Self::RangeType> {
+        self.process_byte_impl(prev_outer_state, b, n)
+    }
+
+    fn matches_empty(&mut self) -> bool {
+        self.matches_empty_impl()
+    }
+}
+impl<R, A, B> Matcher for &mut Either<R, A, B>
+where
+    R: RangeTrait + Clone + Debug,
+    A: Matcher<RangeType = R> + Debug,
+    B: Matcher<RangeType = R> + Debug,
+{
+    type RangeType = R;
+
+    fn reset(&mut self) {
+        self.reset_impl()
+    }
+
+    fn process_byte(
+        &mut self,
+        prev_outer_state: Option<Self::RangeType>,
+        b: u8,
+        n: usize,
+    ) -> Option<Self::RangeType> {
+        self.process_byte_impl(prev_outer_state, b, n)
+    }
+
+    fn matches_empty(&mut self) -> bool {
+        self.matches_empty_impl()
+    }
+}
+impl<R, A, B> Debug for Either<R, A, B>
+where
+    R: RangeTrait + Clone + Debug,
+    A: Matcher<RangeType = R> + Debug,
+    B: Matcher<RangeType = R> + Debug,
+{
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+        write!(f, "Either({:?},{:?})", self.a, self.b)
     }
 }
 
-/// A `Regex` pattern that matches a single byte, if that byte doesn't match
-/// the specified `re`.
-///
-/// [`not`](#method.not) return this.
-/// ```
-#[derive(Copy, Clone, Debug, PartialOrd, PartialEq)]
-pub struct Not<'d, A: Regex<'d>> {
-    re: A,
-    phantom: PhantomData<&'d ()>,
+#[derive(Clone)]
+pub struct CapturingGroup<R, T>
+where
+    R: RangeTrait + Clone + Debug,
+    T: Matcher<RangeType = MatchRange<R>> + Debug,
+{
+    range: Option<Range<usize>>,
+    inner: T,
+    phantom: PhantomData<R>,
 }
-
-impl<'d, A: Regex<'d>> Not<'d, A> {
-    // TODO(https://github.com/rust-lang/rust/issues/57563)
-    //   Once `feature(const_fn)` is stable, make this `const fn`.
-    pub fn new(re: A) -> Self {
+impl<R, T> CapturingGroup<R, T>
+where
+    R: RangeTrait + Clone + Debug,
+    T: Matcher<RangeType = MatchRange<R>> + Debug,
+{
+    #[must_use]
+    pub fn new(inner: T) -> Self {
         Self {
-            re,
+            range: None,
+            inner,
             phantom: PhantomData,
         }
     }
-}
 
-/// Match any single byte that does not match `re`.
-///
-/// # Example
-/// ```
-/// use safe_regex::simple;
-/// use safe_regex::simple::Regex;
-/// simple::not("x").match_all(b"b").unwrap();
-/// assert_eq!(None, simple::not("x").match_all(b"x"));
-/// ```
-pub fn not<'d, A: Regex<'d>>(re: A) -> Not<'d, A> {
-    Not::new(re)
-}
+    pub fn range(&self) -> Option<Range<usize>> {
+        self.range.clone()
+    }
 
-//#[allow(clippy::option_if_let_else)]
-impl<'d, A: Regex<'d>> Regex<'d> for Not<'d, A> {
-    fn match_prefix(&self, data: &'d [u8]) -> Option<usize> {
-        if !data.is_empty() && self.re.match_prefix(&data[..1]).is_none() {
-            Some(1)
-        } else {
-            None
-        }
+    fn reset_impl(&mut self) {
+        self.inner.reset();
+        self.range = None;
+    }
+
+    fn process_byte_impl(
+        &mut self,
+        prev_outer_state: Option<<CapturingGroup<R, T> as Matcher>::RangeType>,
+        b: u8,
+        n: usize,
+    ) -> Option<<CapturingGroup<R, T> as Matcher>::RangeType> {
+        let prev_state = prev_outer_state.map(|p| MatchRange::new(p, n));
+        let state = self.inner.process_byte(prev_state, b, n);
+        let match_range = state?;
+        let range = match_range.range();
+        let outer_range = match_range.into_outer().extend(&range);
+        self.range = Some(range);
+        Some(outer_range)
+    }
+
+    fn matches_empty_impl(&mut self) -> bool {
+        self.inner.matches_empty()
     }
 }
+impl<R, T> Matcher for CapturingGroup<R, T>
+where
+    R: RangeTrait + Clone + Debug,
+    T: Matcher<RangeType = MatchRange<R>> + Debug,
+{
+    type RangeType = R;
 
-/// A `Regex` pattern that can match either of two patterns.
-///
-/// [`or`](#method.or), [`or3`](#method.or3), [`or4`](#method.or4),
-/// and [`or5`](#method.or5) return this.
-/// ```
-#[derive(Copy, Clone, Debug, PartialOrd, PartialEq)]
-pub struct Or<'d, A: Regex<'d>, B: Regex<'d>> {
-    a: A,
-    b: B,
-    phantom: PhantomData<&'d ()>,
-}
+    fn reset(&mut self) {
+        self.reset_impl()
+    }
 
-impl<'d, A: Regex<'d>, B: Regex<'d>> Or<'d, A, B> {
-    // TODO(https://github.com/rust-lang/rust/issues/57563)
-    //   Once `feature(const_fn)` is stable, make this `const fn`.
-    pub fn new(a: A, b: B) -> Self {
-        Self {
-            a,
-            b,
-            phantom: PhantomData,
-        }
+    fn process_byte(
+        &mut self,
+        prev_outer_state: Option<Self::RangeType>,
+        b: u8,
+        n: usize,
+    ) -> Option<Self::RangeType> {
+        self.process_byte_impl(prev_outer_state, b, n)
+    }
+
+    fn matches_empty(&mut self) -> bool {
+        self.matches_empty_impl()
     }
 }
+impl<R, T> Matcher for &mut CapturingGroup<R, T>
+where
+    R: RangeTrait + Clone + Debug,
+    T: Matcher<RangeType = MatchRange<R>> + Debug,
+{
+    type RangeType = R;
 
-/// Match either of the specified patterns.
-///
-/// # Example
-/// ```
-/// use safe_regex::simple;
-/// use safe_regex::simple::Regex;
-/// simple::or("a", "b")
-///     .match_all(b"b")
-///     .unwrap();
-/// ```
-pub fn or<'d, A: Regex<'d>, B: Regex<'d>>(a: A, b: B) -> Or<'d, A, B> {
-    Or::new(a, b)
-}
+    fn reset(&mut self) {
+        self.reset_impl()
+    }
 
-/// Match any of the specified patterns.
-///
-/// # Example
-/// ```
-/// use safe_regex::simple;
-/// use safe_regex::simple::Regex;
-/// simple::or3("a", "b", "c")
-///     .match_all(b"c")
-///     .unwrap();
-/// ```
-pub fn or3<'d, A: Regex<'d>, B: Regex<'d>, C: Regex<'d>>(
-    a: A,
-    b: B,
-    c: C,
-) -> Or<'d, A, Or<'d, B, C>> {
-    Or::new(a, Or::new(b, c))
-}
+    fn process_byte(
+        &mut self,
+        prev_outer_state: Option<Self::RangeType>,
+        b: u8,
+        n: usize,
+    ) -> Option<Self::RangeType> {
+        self.process_byte_impl(prev_outer_state, b, n)
+    }
 
-/// Match any of the specified patterns.
-///
-/// # Example
-/// ```
-/// use safe_regex::simple;
-/// use safe_regex::simple::Regex;
-/// simple::or4("a", "b", "c", "d")
-///     .match_all(b"c")
-///     .unwrap();
-/// ```
-pub fn or4<'d, A: Regex<'d>, B: Regex<'d>, C: Regex<'d>, D: Regex<'d>>(
-    a: A,
-    b: B,
-    c: C,
-    d: D,
-) -> Or<'d, A, Or<'d, B, Or<'d, C, D>>> {
-    Or::new(a, Or::new(b, Or::new(c, d)))
-}
-
-/// Match any of the specified patterns.
-///
-/// # Example
-/// ```
-/// use safe_regex::simple;
-/// use safe_regex::simple::Regex;
-/// simple::or5("a", "b", "c", "d", "e")
-///     .match_all(b"c")
-///     .unwrap();
-/// ```
-#[allow(clippy::many_single_char_names)]
-#[allow(clippy::type_complexity)]
-pub fn or5<'d, A: Regex<'d>, B: Regex<'d>, C: Regex<'d>, D: Regex<'d>, E: Regex<'d>>(
-    a: A,
-    b: B,
-    c: C,
-    d: D,
-    e: E,
-) -> Or<'d, A, Or<'d, B, Or<'d, C, Or<'d, D, E>>>> {
-    Or::new(a, Or::new(b, Or::new(c, Or::new(d, e))))
-}
-
-#[allow(clippy::option_if_let_else)]
-impl<'d, A: Regex<'d>, B: Regex<'d>> Regex<'d> for Or<'d, A, B> {
-    fn match_prefix(&self, data: &'d [u8]) -> Option<usize> {
-        if let Some(n) = self.a.match_prefix(data) {
-            Some(n)
-        } else if let Some(n) = self.b.match_prefix(data) {
-            Some(n)
-        } else {
-            None
-        }
+    fn matches_empty(&mut self) -> bool {
+        self.matches_empty_impl()
     }
 }
-
-/// Wraps a `Regex` pattern and saves the slice that it matches.
-///
-/// [`group`](#method.group) returns this.
-/// ```
-#[derive(Copy, Clone, Debug, PartialOrd, PartialEq)]
-pub struct Group<'d, R: Regex<'d>>(&'d Cell<Option<&'d [u8]>>, R);
-
-/// Wrap `re`.  Whenever `re` matches a slice, save that to `cell`.
-///
-/// This is a "capturing gorup".
-///
-/// # Example
-/// ```
-/// use safe_regex::simple;
-/// use safe_regex::simple::Regex;
-/// // "id([0-9]+)" capturing group
-/// use std::cell::Cell;
-/// let cell: Cell<Option<&[u8]>> =
-///     Cell::new(None);
-/// simple::seq(
-///     "id",
-///     simple::group(
-///         &cell, (b'0'..b'9', 1..))
-/// ).match_all(b"id42").unwrap();
-/// assert_eq!(b"42", cell.get().unwrap());
-/// ```
-pub fn group<'d, R: Regex<'d>>(cell: &'d Cell<Option<&'d [u8]>>, re: R) -> Group<'d, R> {
-    Group(cell, re)
-}
-
-impl<'d, R: Regex<'d>> Regex<'d> for Group<'d, R> {
-    fn match_prefix(&self, data: &'d [u8]) -> Option<usize> {
-        let num_bytes_matched = self.1.match_prefix(data)?;
-        self.0.set(Some(&data[0..num_bytes_matched]));
-        Some(num_bytes_matched)
-    }
-}
-
-impl<'d, T: Regex<'d>, R: RangeBounds<usize>> Regex<'d> for (T, R) {
-    fn match_prefix(&self, data: &'d [u8]) -> Option<usize> {
-        let max_incl = match self.1.end_bound() {
-            Bound::Included(end_incl) => *end_incl,
-            Bound::Excluded(end_excl) => *end_excl - 1,
-            Bound::Unbounded => usize::MAX,
-        };
-        let mut num_found: usize = 0;
-        let mut n: usize = 0;
-        while n < data.len() && num_found < max_incl {
-            let unchecked_data = &data[n..];
-            if let Some(num_bytes_matched) = self.0.match_prefix(unchecked_data) {
-                assert!(num_bytes_matched <= unchecked_data.len());
-                num_found += 1;
-                n += num_bytes_matched;
-                assert!(n <= data.len());
-                if num_bytes_matched == 0 {
-                    // Zero-length match.  Can match an arbitrary number of times.
-                    return Some(n);
-                }
-            } else {
-                break;
-            }
-        }
-        if self.1.contains(&num_found) {
-            Some(n)
-        } else {
-            None
-        }
+impl<R, T> Debug for CapturingGroup<R, T>
+where
+    R: RangeTrait + Clone + Debug,
+    T: Matcher<RangeType = MatchRange<R>> + Debug,
+{
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+        write!(f, "CapturingGroup({:?})", self.inner)
     }
 }
