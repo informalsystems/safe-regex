@@ -440,7 +440,7 @@ fn test_any_byte() {
     assert_eq!("AnyByte", format!("{:?}", any_byte));
     // AnyByte should match only one byte.
     let mut group = CapturingGroup::new(AnyByte::new());
-    assert!(match_all(&mut group, b"X"));
+    assert!(match_all(&mut Seq::new(&mut group, AnyByte::new()), b"XY"));
     assert_eq!(Some(0..1), group.range());
 }
 
