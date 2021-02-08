@@ -407,7 +407,12 @@ impl<R: RangeTrait + Debug> Matcher for Class<R> {
 }
 impl<R: RangeTrait + Debug> Debug for Class<R> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
-        write!(f, "Class({})", escape_ascii(self.bytes))
+        write!(
+            f,
+            "Class{}({})",
+            if self.incl { "" } else { "^" },
+            escape_ascii(self.bytes)
+        )
     }
 }
 

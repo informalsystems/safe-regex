@@ -1,4 +1,4 @@
-use safe_regex::{match_all, AnyByte, Byte, CapturingGroup, DiscardingRange, Either, Seq};
+use safe_regex::{match_all, AnyByte, Byte, CapturingGroup, Class, DiscardingRange, Either, Seq};
 
 /// Converts the bytes into an ASCII string.
 pub fn escape_ascii(input: impl AsRef<[u8]>) -> String {
@@ -441,6 +441,44 @@ fn test_any_byte() {
     // AnyByte should match only one byte.
     let mut group = CapturingGroup::new(AnyByte::new());
     assert!(match_all(&mut group, b"X"));
+    assert_eq!(Some(0..1), group.range());
+}
+
+#[test]
+fn class_inclusive() {
+    let mut re = Class::new(true, b"abc");
+    assert!(!match_all(&mut re, b""));
+    assert!(!match_all(&mut re, b"X"));
+    assert!(!match_all(&mut re, b"Xa"));
+    assert!(!match_all(&mut re, b"aX"));
+    assert!(!match_all(&mut re, b"aa"));
+    assert!(!match_all(&mut re, b"abc"));
+    assert!(match_all(&mut re, b"a"));
+    assert!(match_all(&mut re, b"b"));
+    assert!(match_all(&mut re, b"c"));
+    // Debug
+    assert_eq!("Class(abc)", format!("{:?}", re));
+    // Class should match only one byte.
+    let mut group = CapturingGroup::new(Class::new(true, b"abc"));
+    assert!(match_all(&mut Seq::new(&mut group, AnyByte::new()), b"aa"));
+    assert_eq!(Some(0..1), group.range());
+}
+
+#[test]
+fn class_exclusive() {
+    let mut re = Class::new(false, b"abc");
+    assert!(!match_all(&mut re, b""));
+    assert!(match_all(&mut re, b"X"));
+    assert!(match_all(&mut re, b"Y"));
+    assert!(!match_all(&mut re, b"XY"));
+    assert!(!match_all(&mut re, b"a"));
+    assert!(!match_all(&mut re, b"b"));
+    assert!(!match_all(&mut re, b"c"));
+    // Debug
+    assert_eq!("Class^(abc)", format!("{:?}", re));
+    // Class should match only one byte.
+    let mut group = CapturingGroup::new(Class::new(false, b"abc"));
+    assert!(match_all(&mut Seq::new(&mut group, AnyByte::new()), b"XX"));
     assert_eq!(Some(0..1), group.range());
 }
 
