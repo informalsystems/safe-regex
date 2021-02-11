@@ -131,7 +131,9 @@ use safe_regex_parser::escape_ascii;
 
 pub trait RangeTrait {
     fn is_discarding_range(&self) -> bool;
-    fn extend(self, r: &Range<usize>) -> Self;
+    fn extend(self, r: &Range<usize>) -> Option<Self>
+    where
+        Self: Sized;
     fn end(&self) -> usize;
     fn range(&self) -> Range<usize>;
 }
@@ -143,8 +145,8 @@ impl RangeTrait for DiscardingRange {
         true
     }
 
-    fn extend(self, _r: &Range<usize>) -> Self {
-        self
+    fn extend(self, _r: &Range<usize>) -> Option<Self> {
+        Some(self)
     }
 
     fn end(&self) -> usize {
@@ -161,10 +163,26 @@ impl Debug for DiscardingRange {
 }
 
 #[derive(Clone)]
-pub struct MatchRange<R: RangeTrait + Clone + Debug> {
+pub struct MatchRange<R> {
     start: usize,
     end: usize,
     outer: R,
+}
+impl<R> MatchRange<R> {
+    #[must_use]
+    pub fn into_outer(self) -> R {
+        self.outer
+    }
+}
+impl MatchRange<()> {
+    #[must_use]
+    pub fn zero() -> Self {
+        Self {
+            start: 0,
+            end: 0,
+            outer: (),
+        }
+    }
 }
 impl<R: RangeTrait + Clone + Debug> MatchRange<R> {
     #[must_use]
@@ -187,25 +205,23 @@ impl<R: RangeTrait + Clone + Debug> MatchRange<R> {
             }
         }
     }
-    pub fn into_outer(self) -> R {
-        self.outer
-    }
 }
-impl<R: RangeTrait + Clone + Debug> RangeTrait for MatchRange<R> {
+impl<R: Clone + Debug> RangeTrait for MatchRange<R> {
     fn is_discarding_range(&self) -> bool {
         false
     }
 
-    fn extend(mut self, r: &Range<usize>) -> Self {
+    fn extend(mut self, r: &Range<usize>) -> Option<Self> {
         println!("extend {:?} + {:?}", &self, &r);
-        if self.end != 0 && self.end != r.start {
-            panic!("{:?} is not immediately after {:?}", &r, &self);
+        if self.end != r.start {
+            println!("{:?} is not immediately after {:?}", &r, &self);
+            return None;
         }
         if r.end < r.start {
             panic!("bad range: {:?}", &r);
         }
         self.end = r.end;
-        self
+        Some(self)
     }
 
     fn end(&self) -> usize {
@@ -215,7 +231,7 @@ impl<R: RangeTrait + Clone + Debug> RangeTrait for MatchRange<R> {
         self.start..self.end
     }
 }
-impl<R: RangeTrait + Clone + Debug> Debug for MatchRange<R> {
+impl<R: Clone + Debug> Debug for MatchRange<R> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
         write!(
             f,
@@ -239,7 +255,7 @@ pub trait Matcher {
     fn matches_empty(&mut self) -> bool;
 }
 
-pub fn match_all<T: Matcher<RangeType = DiscardingRange> + Debug>(
+pub fn match_all<T: Matcher<RangeType = MatchRange<()>> + Debug>(
     matcher: &mut T,
     data: &[u8],
 ) -> bool {
@@ -249,18 +265,20 @@ pub fn match_all<T: Matcher<RangeType = DiscardingRange> + Debug>(
     matcher.reset();
     println!("{:?}", &matcher);
     println!("process_byte {}", escape_ascii([data[0]]));
-    let mut result = matcher
-        .process_byte(Some(DiscardingRange), data[0], 0)
-        .is_some();
+    let mut final_state = matcher.process_byte(Some(MatchRange::zero()), data[0], 0);
     println!("{:?}", &matcher);
-    println!("result = {}", result);
+    println!("final_state = {:?}", final_state);
     for (n, b) in data.iter().copied().enumerate().skip(1) {
         println!("process_byte {}", escape_ascii([b]));
-        result = matcher.process_byte(None, b, n).is_some();
+        final_state = matcher.process_byte(None, b, n);
         println!("{:?}", &matcher);
-        println!("result = {}", result);
+        println!("final_state = {:?}", final_state);
     }
-    result
+    if let Some(matching_range) = final_state {
+        matching_range.range() == (0..data.len())
+    } else {
+        false
+    }
 }
 
 #[derive(Clone, PartialOrd, PartialEq)]
@@ -298,7 +316,7 @@ impl<R: RangeTrait + Debug> Matcher for Byte<R> {
                 n + 1
             );
             #[allow(clippy::range_plus_one)]
-            Some(prev_matching_range.extend(&(n..n + 1)))
+            prev_matching_range.extend(&(n..n + 1))
         } else {
             None
         }
@@ -345,7 +363,7 @@ impl<R: RangeTrait + Debug> Matcher for AnyByte<R> {
             n + 1
         );
         #[allow(clippy::range_plus_one)]
-        Some(prev_matching_range.extend(&(n..n + 1)))
+        prev_matching_range.extend(&(n..n + 1))
     }
 
     fn matches_empty(&mut self) -> bool {
@@ -395,7 +413,7 @@ impl<R: RangeTrait + Debug> Matcher for Class<R> {
                 n + 1
             );
             #[allow(clippy::range_plus_one)]
-            Some(prev_matching_range.extend(&(n..n + 1)))
+            prev_matching_range.extend(&(n..n + 1))
         } else {
             None
         }
@@ -640,6 +658,102 @@ where
     }
 }
 
+pub struct Optional<R, T>
+where
+    R: RangeTrait + Clone + Debug,
+    T: Matcher<RangeType = R> + Debug,
+{
+    inner: T,
+    phantom: PhantomData<R>,
+}
+impl<R, T> Optional<R, T>
+where
+    R: RangeTrait + Clone + Debug,
+    T: Matcher<RangeType = R> + Debug,
+{
+    #[must_use]
+    pub fn new(inner: T) -> Self {
+        Self {
+            inner,
+            phantom: PhantomData,
+        }
+    }
+
+    fn reset_impl(&mut self) {
+        self.inner.reset();
+    }
+
+    fn process_byte_impl(&mut self, prev_state: Option<R>, b: u8, n: usize) -> Option<R> {
+        let prev_state_clone = prev_state.clone();
+        if let Some(match_range) = self.inner.process_byte(prev_state, b, n) {
+            Some(match_range)
+        } else {
+            prev_state_clone
+        }
+    }
+
+    fn matches_empty_impl(&mut self) -> bool {
+        true
+    }
+}
+impl<R, T> Matcher for Optional<R, T>
+where
+    R: RangeTrait + Clone + Debug,
+    T: Matcher<RangeType = R> + Debug,
+{
+    type RangeType = R;
+
+    fn reset(&mut self) {
+        self.reset_impl()
+    }
+
+    fn process_byte(
+        &mut self,
+        prev_outer_state: Option<Self::RangeType>,
+        b: u8,
+        n: usize,
+    ) -> Option<Self::RangeType> {
+        self.process_byte_impl(prev_outer_state, b, n)
+    }
+
+    fn matches_empty(&mut self) -> bool {
+        self.matches_empty_impl()
+    }
+}
+impl<R, T> Matcher for &mut Optional<R, T>
+where
+    R: RangeTrait + Clone + Debug,
+    T: Matcher<RangeType = R> + Debug,
+{
+    type RangeType = R;
+
+    fn reset(&mut self) {
+        self.reset_impl()
+    }
+
+    fn process_byte(
+        &mut self,
+        prev_outer_state: Option<Self::RangeType>,
+        b: u8,
+        n: usize,
+    ) -> Option<Self::RangeType> {
+        self.process_byte_impl(prev_outer_state, b, n)
+    }
+
+    fn matches_empty(&mut self) -> bool {
+        self.matches_empty_impl()
+    }
+}
+impl<R, T> Debug for Optional<R, T>
+where
+    R: RangeTrait + Clone + Debug,
+    T: Matcher<RangeType = R> + Debug,
+{
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+        write!(f, "Optional({:?})", self.inner)
+    }
+}
+
 #[derive(Clone)]
 pub struct CapturingGroup<R, T>
 where
@@ -685,7 +799,7 @@ where
         let range = match_range.range();
         let outer_range = match_range.into_outer().extend(&range);
         self.range = Some(range);
-        Some(outer_range)
+        outer_range
     }
 
     fn matches_empty_impl(&mut self) -> bool {

@@ -1,4 +1,6 @@
-use safe_regex::{match_all, AnyByte, Byte, CapturingGroup, Class, DiscardingRange, Either, Seq};
+use safe_regex::{
+    match_all, AnyByte, Byte, CapturingGroup, Class, DiscardingRange, Either, Optional, Seq,
+};
 
 /// Converts the bytes into an ASCII string.
 pub fn escape_ascii(input: impl AsRef<[u8]>) -> String {
@@ -80,7 +82,7 @@ fn matcher_fn() {
 // }
 
 // #[test]
-// fn test_match_all() {
+// fn match_all() {
 //     assert_eq!(Some(()), "".match_all(b""));
 //     assert_eq!(None, "".match_all(b"a"));
 //     assert_eq!(Some(()), "b".match_all(b"b"));
@@ -98,7 +100,7 @@ fn matcher_fn() {
 // }
 //
 // #[test]
-// fn test_match_prefix() {
+// fn match_prefix() {
 //     assert_eq!(Some(0), "".match_prefix(b""));
 //     assert_eq!(Some(0), "".match_prefix(b"a"));
 //     assert_eq!(Some(1), "b".match_prefix(b"b"));
@@ -139,7 +141,7 @@ fn matcher_fn() {
 // }
 //
 // #[test]
-// fn test_match_suffix() {
+// fn match_suffix() {
 //     assert_eq!(Some(0..0), "".match_suffix(b""));
 //     assert_eq!(Some(1..1), "".match_suffix(b"a"));
 //     assert_eq!(Some(0..1), "b".match_suffix(b"b"));
@@ -193,7 +195,7 @@ fn matcher_fn() {
 // }
 //
 // #[test]
-// fn test_impl_for_u8_slice() {
+// fn impl_for_u8_slice() {
 //     // Empty pattern
 //     assert_eq!(Some(0..0), b"".as_ref().search(b""));
 //     assert_eq!(Some(0..0), b"".as_ref().search(b"a"));
@@ -218,7 +220,7 @@ fn matcher_fn() {
 // }
 
 // #[test]
-// fn test_bytes() {
+// fn bytes() {
 //     assert_eq!(Some(0..0), bytes(b"").search(b""));
 //     assert_eq!(Some(1..3), bytes(b"bb").search(b"abbc"));
 //
@@ -308,131 +310,112 @@ fn seq_debug() {
     assert_eq!("Seq(Byte(a),None,Byte(b))", format!("{:?}", re));
     assert!(!match_all(&mut re, b"a"));
     assert_eq!(
-        "Seq(Byte(a),Some(DiscardingRange),Byte(b))",
+        "Seq(Byte(a),Some(MatchRange(0..1,())),Byte(b))",
         format!("{:?}", re)
     );
 }
 
-// #[test]
-// fn test_repeat_range() {
-//     // zero of, '{0}'
-//     assert_eq!(Some(0..0), ("b", ..=0).search(b""));
-//     assert_eq!(Some(0..0), (("b", ..=1), ..=1).search(b"a"));
-//
-//     // zero or one, '?', '{0,1}'
-//     assert_eq!(Some(0..0), ("b", ..=1).search(b""));
-//     assert_eq!(Some(0..0), ("b", ..=1).search(b"a"));
-//     assert_eq!(Some(0..0), ("b", ..=1).search(b"ab"));
-//     assert_eq!(Some(0..1), ("b", ..=1).search(b"b"));
-//     assert_eq!(Some(0..1), ("b", ..=1).search(b"bb"));
-//     assert_eq!(Some(0..0), ("bc", ..=1).search(b""));
-//     assert_eq!(Some(0..0), ("bc", ..=1).search(b"a"));
-//     assert_eq!(Some(0..0), ("bc", ..=1).search(b"abc"));
-//     assert_eq!(Some(0..2), ("bc", ..=1).search(b"bc"));
-//     assert_eq!(Some(0..2), ("bc", ..=1).search(b"bcbc"));
-//
-//     // zero or more, '*', '{0,}'
-//     assert_eq!(Some(0..0), ("b", ..).search(b""));
-//     assert_eq!(Some(0..0), ("b", ..).search(b"a"));
-//     assert_eq!(Some(0..0), ("b", ..).search(b"ab"));
-//     assert_eq!(Some(0..1), ("b", ..).search(b"b"));
-//     assert_eq!(Some(0..4), ("b", ..).search(b"bbbb"));
-//     assert_eq!(Some(0..0), ("bc", ..).search(b""));
-//     assert_eq!(Some(0..0), ("bc", ..).search(b"a"));
-//     assert_eq!(Some(0..0), ("bc", ..).search(b"abc"));
-//     assert_eq!(Some(0..2), ("bc", ..).search(b"bc"));
-//     assert_eq!(Some(0..4), ("bc", ..).search(b"bcbc"));
-//
-//     // one or more, '+', '{1,}'
-//     assert_eq!(None, ("b", 1..).search(b""));
-//     assert_eq!(None, ("b", 1..).search(b"a"));
-//     assert_eq!(Some(1..2), ("b", 1..).search(b"ab"));
-//     assert_eq!(Some(0..1), ("b", 1..).search(b"b"));
-//     assert_eq!(Some(0..4), ("b", 1..).search(b"bbbb"));
-//     assert_eq!(None, ("bc", 1..).search(b""));
-//     assert_eq!(None, ("bc", 1..).search(b"a"));
-//     assert_eq!(Some(1..3), ("bc", 1..).search(b"abc"));
-//     assert_eq!(Some(0..2), ("bc", 1..).search(b"bc"));
-//     assert_eq!(Some(1..3), ("bc", 1..).search(b"bbc"));
-//     assert_eq!(Some(0..4), ("bc", 1..).search(b"bcbc"));
-//
-//     // n of, '{n}'
-//     assert_eq!(Some(0..0), ("b", 0..=0).search(b""));
-//     assert_eq!(Some(0..0), ("b", 0..=0).search(b"a"));
-//     assert_eq!(None, ("b", 1..=1).search(b""));
-//     assert_eq!(Some(0..1), ("b", 1..=1).search(b"b"));
-//
-//     assert_eq!(None, ("b", 2..=2).search(b""));
-//     assert_eq!(None, ("b", 2..=2).search(b"aaa"));
-//     assert_eq!(None, ("b", 2..=2).search(b"abaa"));
-//     assert_eq!(Some(1..3), ("b", 2..=2).search(b"abb"));
-//     assert_eq!(Some(0..2), ("b", 2..=2).search(b"bb"));
-//     assert_eq!(Some(0..2), ("b", 2..=2).search(b"bbc"));
-//     assert_eq!(Some(0..2), ("b", 2..=2).search(b"bbbb"));
-//
-//     assert_eq!(None, ("bc", 2..=2).search(b""));
-//     assert_eq!(None, ("bc", 2..=2).search(b"aa"));
-//     assert_eq!(None, ("bc", 2..=2).search(b"abb"));
-//     assert_eq!(None, ("bc", 2..=2).search(b"ccd"));
-//     assert_eq!(Some(1..5), ("bc", 2..=2).search(b"abcbc"));
-//     assert_eq!(Some(0..4), ("bc", 2..=2).search(b"bcbc"));
-//     assert_eq!(Some(1..5), ("bc", 2..=2).search(b"bbcbc"));
-//     assert_eq!(Some(0..4), ("bc", 2..=2).search(b"bcbcbcbc"));
-//
-//     // m to n of, '{m,n}'
-//     assert_eq!(Some(0..0), ("b", 0..=0).search(b""));
-//     assert_eq!(Some(0..0), ("b", 0..=0).search(b"a"));
-//
-//     assert_eq!(Some(0..0), ("b", 0..=1).search(b""));
-//     assert_eq!(Some(0..0), ("b", 0..=1).search(b"a"));
-//     assert_eq!(Some(0..0), ("b", 0..=1).search(b"ab"));
-//
-//     assert_eq!(None, ("b", 1..=2).search(b""));
-//     assert_eq!(None, ("b", 1..=2).search(b"a"));
-//     assert_eq!(Some(0..1), ("b", 1..=2).search(b"b"));
-//     assert_eq!(Some(0..1), ("b", 1..=2).search(b"bc"));
-//     assert_eq!(Some(1..2), ("b", 1..=2).search(b"ab"));
-//     assert_eq!(Some(1..2), ("b", 1..=2).search(b"abc"));
-//     assert_eq!(Some(1..3), ("b", 1..=2).search(b"abbc"));
-//     assert_eq!(Some(1..3), ("b", 1..=2).search(b"abbbbc"));
-//
-//     assert_eq!(None, ("b", 2..=4).search(b""));
-//     assert_eq!(None, ("b", 2..=4).search(b"aa"));
-//     assert_eq!(None, ("b", 2..=4).search(b"ab"));
-//     assert_eq!(None, ("b", 2..=4).search(b"abc"));
-//     assert_eq!(Some(0..2), ("b", 2..=4).search(b"bb"));
-//     assert_eq!(Some(0..2), ("b", 2..=4).search(b"bbcc"));
-//     assert_eq!(Some(2..4), ("b", 2..=4).search(b"aabb"));
-//     assert_eq!(Some(1..3), ("b", 2..=4).search(b"abbc"));
-//     assert_eq!(Some(1..4), ("b", 2..=4).search(b"abbbc"));
-//     assert_eq!(Some(1..5), ("b", 2..=4).search(b"abbbbc"));
-//     assert_eq!(Some(1..5), ("b", 2..=4).search(b"abbbbbbbbc"));
-//
-//     assert_eq!(None, ("bc", 2..=4).search(b""));
-//     assert_eq!(None, ("bc", 2..=4).search(b"aaaa"));
-//     assert_eq!(None, ("bc", 2..=4).search(b"abc"));
-//     assert_eq!(None, ("bc", 2..=4).search(b"abcb"));
-//     assert_eq!(None, ("bc", 2..=4).search(b"abcd"));
-//     assert_eq!(Some(0..4), ("bc", 2..=4).search(b"bcbc"));
-//     assert_eq!(Some(0..4), ("bc", 2..=4).search(b"bcbcdddd"));
-//     assert_eq!(Some(4..8), ("bc", 2..=4).search(b"aaaabcbc"));
-//     assert_eq!(Some(1..5), ("bc", 2..=4).search(b"abcbcd"));
-//     assert_eq!(Some(2..6), ("bc", 2..=4).search(b"abbcbc"));
-//     assert_eq!(Some(1..7), ("bc", 2..=4).search(b"abcbcbc"));
-//     assert_eq!(Some(1..9), ("bc", 2..=4).search(b"abcbcbcbc"));
-//     assert_eq!(Some(1..9), ("bc", 2..=4).search(b"abcbcbcbcbc"));
-//
-//     assert_eq!(Some(0..0), ("b", ..).search(b"abc"));
-//     assert_eq!(Some(1..2), ("b", 1..).search(b"abc"));
-//     assert_eq!(Some(0..0), ("b", ..2).search(b"abc"));
-//     assert_eq!(Some(0..0), ("b", ..=1).search(b"abc"));
-//     assert_eq!(Some(1..2), ("b", 1..2).search(b"abc"));
-//     assert_eq!(Some(1..2), ("b", 1..=1).search(b"abc"));
-// }
+#[test]
+fn optional() {
+    let mut re = Optional::new(Byte::new(b'a'));
+    assert_eq!("Optional(Byte(a))", format!("{:?}", re));
+    assert!(match_all(&mut re, b""));
+    assert!(match_all(&mut re, b"a"));
+    assert!(!match_all(&mut re, b"aa"));
+    assert!(!match_all(&mut re, b"X"));
+    assert!(!match_all(&mut re, b"aX"));
+    assert!(!match_all(&mut re, b"Xa"));
+}
 
 #[test]
-fn test_any_byte() {
-    let mut any_byte: AnyByte<DiscardingRange> = AnyByte::new();
+fn optional_at_start() {
+    let mut re = Seq::new(Optional::new(Byte::new(b'a')), Byte::new(b'a'));
+    assert!(!match_all(&mut re, b""));
+    assert!(!match_all(&mut re, b"X"));
+    assert!(!match_all(&mut re, b"aX"));
+    assert!(!match_all(&mut re, b"Xa"));
+    assert!(match_all(&mut re, b"a"));
+    assert!(match_all(&mut re, b"aa"));
+    assert!(!match_all(&mut re, b"aaa"));
+    assert!(!match_all(&mut re, b"Xaa"));
+    assert!(!match_all(&mut re, b"aaX"));
+}
+
+#[test]
+fn optional_at_end() {
+    let mut re = Seq::new(Byte::new(b'a'), Optional::new(Byte::new(b'a')));
+    assert!(!match_all(&mut re, b""));
+    assert!(!match_all(&mut re, b"X"));
+    assert!(!match_all(&mut re, b"aX"));
+    assert!(!match_all(&mut re, b"Xa"));
+    assert!(match_all(&mut re, b"a"));
+    assert!(match_all(&mut re, b"aa"));
+    assert!(!match_all(&mut re, b"aaa"));
+    assert!(!match_all(&mut re, b"Xaa"));
+    assert!(!match_all(&mut re, b"aaX"));
+}
+
+#[test]
+fn optional_in_middle() {
+    let mut re = Seq::new(
+        Byte::new(b'a'),
+        Seq::new(Optional::new(Byte::new(b'a')), Byte::new(b'a')),
+    );
+    assert!(!match_all(&mut re, b""));
+    assert!(!match_all(&mut re, b"X"));
+    assert!(!match_all(&mut re, b"a"));
+    assert!(!match_all(&mut re, b"aX"));
+    assert!(!match_all(&mut re, b"Xa"));
+    assert!(!match_all(&mut re, b"Xaa"));
+    assert!(!match_all(&mut re, b"aaX"));
+    assert!(!match_all(&mut re, b"aXa"));
+    assert!(match_all(&mut re, b"aa"));
+    assert!(match_all(&mut re, b"aaa"));
+    assert!(!match_all(&mut re, b"aaaa"));
+    assert!(!match_all(&mut re, b"aaaaa"));
+    assert!(!match_all(&mut re, b"aaaaaa"));
+    assert!(!match_all(&mut re, b"Xaaa"));
+    assert!(!match_all(&mut re, b"aaaX"));
+    assert!(!match_all(&mut re, b"XaaaX"));
+}
+
+#[test]
+fn optional_in_group() {
+    let matcher = |data| {
+        let mut group = CapturingGroup::new(Optional::new(Byte::new(b'a')));
+        if match_all(
+            &mut Seq::new(Byte::new(b'a'), Seq::new(&mut group, Byte::new(b'a'))),
+            data,
+        ) {
+            Some(group.range())
+        } else {
+            None
+        }
+    };
+    assert_eq!(None, matcher(b""));
+    assert_eq!(None, matcher(b"X"));
+    assert_eq!(None, matcher(b"a"));
+    assert_eq!(None, matcher(b"aX"));
+    assert_eq!(None, matcher(b"Xa"));
+    assert_eq!(Some(None), matcher(b"aa"));
+    assert_eq!(None, matcher(b"Xaa"));
+    assert_eq!(None, matcher(b"aXa"));
+    assert_eq!(None, matcher(b"aaX"));
+    assert_eq!(None, matcher(b"XaaX"));
+    assert_eq!(None, matcher(b"Xaaa"));
+    assert_eq!(None, matcher(b"aXaa"));
+    assert_eq!(None, matcher(b"aaXa"));
+    assert_eq!(None, matcher(b"aaaX"));
+    assert_eq!(None, matcher(b"XaaaX"));
+    assert_eq!(Some(Some(1..2)), matcher(b"aaa"));
+    assert_eq!(None, matcher(b"aaaa"));
+    assert_eq!(None, matcher(b"aaaaa"));
+    assert_eq!(None, matcher(b"aaaaaa"));
+}
+
+#[test]
+fn any_byte() {
+    let mut any_byte = AnyByte::new();
     assert!(!match_all(&mut any_byte, b""));
     assert!(match_all(&mut any_byte, b"X"));
     assert!(!match_all(&mut any_byte, b"XY"));
