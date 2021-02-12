@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_lines)]
-use safe_regex_parser::FinalNode::{AnyByte, Byte, Class, Group, Or, Repeat, Seq};
-use safe_regex_parser::{parse, ClassItem};
+use safe_regex_compiler::parser::FinalNode::{AnyByte, Byte, Class, Group, Or, Repeat, Seq};
+use safe_regex_compiler::parser::{parse, ClassItem};
 
 #[test]
 fn test() {

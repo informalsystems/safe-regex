@@ -1,5 +1,5 @@
 #![forbid(unsafe_code)]
-use safe_regex_parser::{ClassItem, FinalNode, Node, NonFinalNode};
+use safe_regex_compiler::parser::{ClassItem, FinalNode, Node, NonFinalNode};
 
 #[test]
 fn node() {
