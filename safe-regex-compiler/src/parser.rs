@@ -1,21 +1,16 @@
-//! [![crates.io version](https://img.shields.io/crates/v/safe-regex-parser.svg)](https://crates.io/crates/safe-regex-parser)
-//! [![license: Apache 2.0](https://gitlab.com/leonhard-llc/safe-regex-rs/-/raw/main/license-apache-2.0.svg)](http://www.apache.org/licenses/LICENSE-2.0)
-//! [![unsafe forbidden](https://gitlab.com/leonhard-llc/safe-regex-rs/-/raw/main/unsafe-forbidden-success.svg)](https://github.com/rust-secure-code/safety-dance/)
-//! [![pipeline status](https://gitlab.com/leonhard-llc/safe-regex-rs/badges/main/pipeline.svg)](https://gitlab.com/leonhard-llc/safe-regex-rs/-/pipelines)
-//!
-//! This crate is used by the
-//! [`safe_regex`](https://crates.io/crates/safe-regex) crate.
-//! If you want to use regular expressions in your software, use that crate.
+//! A parser for regular expressions.
 //!
 //! # Features
-//! - Provides a `parse` function that converts a regular expression string
-//!   into a `FinalNode` struct which is the root of an abstract syntax tree
+//! - Provides a [`parse`](fn.parse.html) function that converts a regular
+//!   expression string into a [`FinalNode`](struct.FinalNode.html)
+//!   struct which is the root of an abstract syntax tree
 //! - Implements a straightforward
 //!   [contex-free grammar parser](https://www.cs.umd.edu/class/summer2015/cmsc330/parsing/)
 //! - Parses in a single pass
 //! - No recursion, no risk of stack overflow
-//! - Depends only on `core` (it's `no_std`)
-//! - Good test coverage (93%)
+//! - `forbid(unsafe)`
+//! - Depends only on `std`
+//! - Good test coverage (92%)
 //!
 //! # Limitations
 //! - Parses only raw byte strings, `br"..."`.
@@ -29,35 +24,8 @@
 //!   - Full of features
 //! - [`regular-expression`](https://crates.io/crates/regular-expression)
 //!   - No documentation
-//!
-//! # Cargo Geiger Safety Report
-//!
-//! # Changelog
-//! - v0.1.0 - First published version
-//!
-//! # TO DO
-//! - DONE - Read about regular expressions
-//! - DONE - Read about parsing
-//! - DONE - Implement `parse`
-//! - DONE - Add integration tests
-//! - Add unwrap functions for other `FinalNode` variants
-//! - Add fuzzing tests
-//!
-//! # Release Process
-//! 1. Edit `Cargo.toml` and bump version number.
-//! 1. Run `./release.sh`
 #![forbid(unsafe_code)]
-
-/// Converts the bytes into an ASCII string.
-pub fn escape_ascii(input: impl AsRef<[u8]>) -> String {
-    let mut result = String::new();
-    for byte in input.as_ref() {
-        for ascii_byte in core::ascii::escape_default(*byte) {
-            result.push_str(core::str::from_utf8(&[ascii_byte]).unwrap());
-        }
-    }
-    result
-}
+use crate::escape_ascii;
 
 /// An AST node used during parsing.
 #[derive(Clone, Debug, PartialOrd, PartialEq)]
@@ -258,8 +226,8 @@ pub enum FinalNode {
     ///
     /// # Examples
     /// ```
-    /// use safe_regex_parser::parse;
-    /// use safe_regex_parser::FinalNode;
+    /// use safe_regex_compiler::parser::parse;
+    /// use safe_regex_compiler::parser::FinalNode;
     /// assert_eq!(
     ///     Ok(FinalNode::Byte(b'a')),
     ///     parse(br"a"),
@@ -285,8 +253,8 @@ pub enum FinalNode {
     ///
     /// # Example
     /// ```
-    /// use safe_regex_parser::parse;
-    /// use safe_regex_parser::FinalNode;
+    /// use safe_regex_compiler::parser::parse;
+    /// use safe_regex_compiler::parser::FinalNode;
     /// assert_eq!(
     ///     Ok(FinalNode::AnyByte),
     ///     parse(br"."),
@@ -300,8 +268,8 @@ pub enum FinalNode {
     ///
     /// # Example
     /// ```
-    /// use safe_regex_parser::parse;
-    /// use safe_regex_parser::FinalNode;
+    /// use safe_regex_compiler::parser::parse;
+    /// use safe_regex_compiler::parser::FinalNode;
     /// assert_eq!(
     ///     Ok(FinalNode::Seq(vec![
     ///         FinalNode::Byte(b'a'),
@@ -320,9 +288,9 @@ pub enum FinalNode {
     ///
     /// # Examples
     /// ```
-    /// use safe_regex_parser::parse;
-    /// use safe_regex_parser::FinalNode;
-    /// use safe_regex_parser::ClassItem;
+    /// use safe_regex_compiler::parser::parse;
+    /// use safe_regex_compiler::parser::FinalNode;
+    /// use safe_regex_compiler::parser::ClassItem;
     /// assert_eq!(
     ///     Ok(FinalNode::Class(true, vec![
     ///         ClassItem::Byte(b'a'),
@@ -354,8 +322,8 @@ pub enum FinalNode {
     ///
     /// # Examples
     /// ```
-    /// use safe_regex_parser::parse;
-    /// use safe_regex_parser::FinalNode;
+    /// use safe_regex_compiler::parser::parse;
+    /// use safe_regex_compiler::parser::FinalNode;
     /// assert_eq!(
     ///    Ok(FinalNode::Seq(vec![
     ///       FinalNode::Byte(b'a'),
@@ -390,8 +358,8 @@ pub enum FinalNode {
     ///
     /// # Examples
     /// ```
-    /// use safe_regex_parser::parse;
-    /// use safe_regex_parser::FinalNode;
+    /// use safe_regex_compiler::parser::parse;
+    /// use safe_regex_compiler::parser::FinalNode;
     /// assert_eq!(
     ///     Ok(FinalNode::Or(vec![
     ///         FinalNode::Byte(b'a'),
@@ -420,8 +388,8 @@ pub enum FinalNode {
     ///
     /// # Examples
     /// ```
-    /// use safe_regex_parser::parse;
-    /// use safe_regex_parser::FinalNode;
+    /// use safe_regex_compiler::parser::parse;
+    /// use safe_regex_compiler::parser::FinalNode;
     /// assert_eq!(
     ///     Ok(FinalNode::Repeat(
     ///         Box::new(FinalNode::Byte(b'a')),
@@ -914,8 +882,8 @@ fn apply_rule_once(
 ///
 /// # Examples
 /// ```
-/// use safe_regex_parser::parse;
-/// use safe_regex_parser::FinalNode;
+/// use safe_regex_compiler::parser::parse;
+/// use safe_regex_compiler::parser::FinalNode;
 /// assert_eq!(
 ///     Ok(FinalNode::Byte(b'a')), parse(br"a")
 /// );

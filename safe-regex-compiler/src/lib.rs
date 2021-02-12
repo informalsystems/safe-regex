@@ -28,3 +28,14 @@
 //! 1. Run `./release.sh`
 #![forbid(unsafe_code)]
 pub mod parser;
+
+/// Converts the bytes into an ASCII string.
+pub fn escape_ascii(input: impl AsRef<[u8]>) -> String {
+    let mut result = String::new();
+    for byte in input.as_ref() {
+        for ascii_byte in core::ascii::escape_default(*byte) {
+            result.push_str(core::str::from_utf8(&[ascii_byte]).unwrap());
+        }
+    }
+    result
+}
