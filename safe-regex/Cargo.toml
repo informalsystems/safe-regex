@@ -11,7 +11,6 @@ repository = "https://gitlab.com/leonhard-llc/safe-regex-rs"
 version = "0.1.0"
 
 [dependencies]
-#safe-regex-macro = "^0.1.0"
-#safe-regex-macro = { path = "../safe-regex-macro/" }
+safe-regex-macro = { version = "^0.1.0", path = "../safe-regex-macro/" }
 
 [dev-dependencies]

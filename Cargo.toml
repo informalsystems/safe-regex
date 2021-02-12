@@ -2,6 +2,6 @@
 [workspace]
 members = [
     "safe-regex",
-    #"safe-regex-macro",
+    "safe-regex-macro",
     "safe-regex-compiler",
 ]

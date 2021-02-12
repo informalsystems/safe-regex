@@ -11,5 +11,7 @@ repository = "https://gitlab.com/leonhard-llc/safe-regex-rs"
 version = "0.1.0"
 
 [dependencies]
+proc-macro2 = "1"
+quote = "1"
 
 [dev-dependencies]

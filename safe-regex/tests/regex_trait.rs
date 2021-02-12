@@ -2,8 +2,7 @@
 use core::fmt::Debug;
 use core::hash::Hash;
 use core::ops::Range;
-use safe_regex::{clone_and_increment, clone_and_set, Regex};
-use safe_regex_parser::escape_ascii;
+use safe_regex::{clone_and_increment, clone_and_set, escape_ascii, Regex};
 use std::collections::hash_map::RandomState;
 use std::collections::HashSet;
 

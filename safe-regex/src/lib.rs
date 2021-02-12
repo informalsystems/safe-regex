@@ -132,8 +132,19 @@
 use core::fmt::Debug;
 use core::hash::Hash;
 use core::ops::Range;
-use safe_regex_parser::escape_ascii;
+pub use safe_regex_macro::regex;
 use std::collections::HashSet;
+
+/// Converts the bytes into an ASCII string.
+pub fn escape_ascii(input: impl AsRef<[u8]>) -> String {
+    let mut result = String::new();
+    for byte in input.as_ref() {
+        for ascii_byte in core::ascii::escape_default(*byte) {
+            result.push_str(core::str::from_utf8(&[ascii_byte]).unwrap());
+        }
+    }
+    result
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Groups<'d, T: AsRef<[Range<u32>]>> {
