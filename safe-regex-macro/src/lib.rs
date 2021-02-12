@@ -60,7 +60,7 @@ fn impl_regex(stream: TokenStream) -> Result<TokenStream, String> {
     // The compiler guarantees that a literal byte string contains only ASCII.
     // > regex!(br"€"); // error: raw byte string must be ASCII
     // Therefore, we can slice the string at any byte offset.
-    let ast = parse(raw_byte_string.as_bytes())?;
+    let ast = safe_regex_macro_impl::parse(raw_byte_string.as_bytes())?;
 
     // panic!("literal: {:?} str={:?}", literal, literal.to_string());
     // if let Some(tree) = attr.into_iter().next() {
@@ -99,7 +99,7 @@ fn impl_regex(stream: TokenStream) -> Result<TokenStream, String> {
     // panic!("expected async fn");
 }
 
-//! Escapes: `\\ \n \r \t \0 \' \" \? \+ \. \* \^ \$ \| \( \) \{ \} \[ \] \xAB`
+// Escapes: `\\ \n \r \t \0 \' \" \? \+ \. \* \^ \$ \| \( \) \{ \} \[ \] \xAB`
 #[proc_macro]
 pub fn regex(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input2 = proc_macro2::TokenStream::from(input);
