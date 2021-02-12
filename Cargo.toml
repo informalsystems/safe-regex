@@ -3,5 +3,5 @@
 members = [
     "safe-regex",
     #"safe-regex-macro",
-    "safe-regex-macro-impl",
+    "safe-regex-compiler",
 ]

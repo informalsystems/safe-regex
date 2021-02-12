@@ -1,11 +1,11 @@
 [package]
 authors = ["Michael Leonhard <michael@leonhardllc.com>"]
 categories = ["parsing", "text-processing"]
-description = "Implementation of the safe-regex-macro crate"
+description = "Regex compiler for the safe-regex crate"
 edition = "2018"
 keywords = ["regex", "re", "regexp", "regular", "expression"]
 license = "Apache-2.0"
-name = "safe-regex-macro-impl"
+name = "safe-regex-compiler"
 readme = "Readme.md"
 repository = "https://gitlab.com/leonhard-llc/safe-regex-rs"
 version = "0.1.0"
