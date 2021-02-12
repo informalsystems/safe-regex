@@ -8,10 +8,12 @@
 //! # Features
 //! - `forbid(unsafe_code)`
 //! - Good test coverage (??%) - TODO(mleonhard) Update.
-//! - `no_std`, depends only on `core`
-//! - Does not allocate
-//! - Checks input in a single pass
-//! - No recursion, no risk of stack overflow
+//! - Checks input in a single pass.
+//!   Runtime and memory usage are both `O(n * r * 2^g)` where
+//!   - `n` is the length of the data to check
+//!   - `r` is the length of the regex
+//!   - `g` is the number of capturing groups in the regex
+//!   TODO(mleonhard) Confirm this with a benchmark.
 //! - Rust compiler checks and optimizes the matcher
 //! - Supports basic regular expression syntax:
 //!   - Any byte: `.`
@@ -23,6 +25,9 @@
 //!
 //! # Limitations
 //! - Only works on byte slices, not strings.
+//! - Allocates.  Uses
+//!   [`std::collections::HashSet`](https://doc.rust-lang.org/stable/std/collections/struct.HashSet.html)
+//!   during matching.
 //!
 //! # Alternatives
 //! - [`regex`](https://crates.io/crates/regex)
@@ -125,741 +130,89 @@
 
 #![forbid(unsafe_code)]
 use core::fmt::Debug;
-use core::marker::PhantomData;
+use core::hash::Hash;
 use core::ops::Range;
 use safe_regex_parser::escape_ascii;
+use std::collections::HashSet;
 
-pub trait RangeTrait {
-    fn is_discarding_range(&self) -> bool;
-    fn extend(self, r: &Range<usize>) -> Option<Self>
+#[derive(Clone, Debug, PartialEq)]
+pub struct Groups<'d, T: AsRef<[Range<u32>]>> {
+    ranges: T,
+    data: &'d [u8],
+}
+impl<'d, T: AsRef<[Range<u32>]>> Groups<'d, T> {
+    pub fn new(ranges: T, data: &'d [u8]) -> Self {
+        Self { ranges, data }
+    }
+
+    pub fn group_range(&self, n: usize) -> Range<usize> {
+        if let Some(r) = self.ranges.as_ref().get(n) {
+            (r.start as usize)..(r.end as usize)
+        } else {
+            panic!("group {} not found in Match struct", n);
+        }
+    }
+
+    pub fn group(&self, n: usize) -> &[u8] {
+        &self.data[self.group_range(n)]
+    }
+}
+
+pub trait Regex {
+    type State;
+    fn start() -> Self;
+    fn accept(&self) -> Option<Self::State>;
+    fn make_next_states(&self, opt_b: Option<u8>, n: u32, next_states: &mut HashSet<Self>)
     where
         Self: Sized;
-    fn end(&self) -> usize;
-    fn range(&self) -> Range<usize>;
-}
 
-#[derive(Clone, PartialEq)]
-pub struct DiscardingRange;
-impl RangeTrait for DiscardingRange {
-    fn is_discarding_range(&self) -> bool {
-        true
-    }
-
-    fn extend(self, _r: &Range<usize>) -> Option<Self> {
-        Some(self)
-    }
-
-    fn end(&self) -> usize {
-        0
-    }
-    fn range(&self) -> Range<usize> {
-        0..0
-    }
-}
-impl Debug for DiscardingRange {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
-        write!(f, "DiscardingRange")
-    }
-}
-
-#[derive(Clone)]
-pub struct MatchRange<R> {
-    start: usize,
-    end: usize,
-    outer: R,
-}
-impl<R> MatchRange<R> {
-    #[must_use]
-    pub fn into_outer(self) -> R {
-        self.outer
-    }
-}
-impl MatchRange<()> {
-    #[must_use]
-    pub fn zero() -> Self {
-        Self {
-            start: 0,
-            end: 0,
-            outer: (),
+    fn match_all(data: &[u8]) -> Option<Groups<Self::State>>
+    where
+        Self: Eq + Hash + Debug + Sized,
+        Self::State: AsRef<[Range<u32>]> + Debug,
+    {
+        let start = Self::start();
+        println!("match_all b\"{}\" {:?}", escape_ascii(data), start);
+        if data.is_empty() {
+            return start.accept().map(|s| Groups::new(s, data));
         }
-    }
-}
-impl<R: RangeTrait + Clone + Debug> MatchRange<R> {
-    #[must_use]
-    pub fn new(outer: R, n: usize) -> Self {
-        if outer.is_discarding_range() {
-            Self {
-                start: n,
-                end: n,
-                outer,
+        // We store states in a set to eliminate duplicate states.
+        // This is necessary for the algorithm to work in useful time and memory.
+        let mut states: HashSet<Self> = HashSet::new();
+        states.insert(start);
+        let mut next_states: HashSet<Self> = HashSet::new();
+        for (n, b) in data.iter().enumerate() {
+            println!("process_byte {}", escape_ascii([*b]));
+            // We call `HashSet::drain` to use less memory.
+            // It might be faster to just use `iter()` and then call
+            // `HashSet::clear` after the loop.  Let's test before changing it.
+            for state in states.drain() {
+                state.make_next_states(Some(*b), n as u32, &mut next_states);
             }
-        } else {
-            let end = outer.range().end;
-            if end != n {
-                panic!("{} is not immediately after {:?}", n, outer);
-            }
-            Self {
-                start: end,
-                end,
-                outer,
+            core::mem::swap(&mut states, &mut next_states);
+            println!("states = {:?}", states);
+            if states.is_empty() {
+                return None;
             }
         }
-    }
-}
-impl<R: Clone + Debug> RangeTrait for MatchRange<R> {
-    fn is_discarding_range(&self) -> bool {
-        false
-    }
-
-    fn extend(mut self, r: &Range<usize>) -> Option<Self> {
-        println!("extend {:?} + {:?}", &self, &r);
-        if self.end != r.start {
-            println!("{:?} is not immediately after {:?}", &r, &self);
-            return None;
+        for state in states {
+            if let Some(accept) = state.accept() {
+                println!("accept = {:?}", accept);
+                return Some(Groups::new(accept, data));
+            }
         }
-        if r.end < r.start {
-            panic!("bad range: {:?}", &r);
-        }
-        self.end = r.end;
-        Some(self)
-    }
-
-    fn end(&self) -> usize {
-        self.end
-    }
-    fn range(&self) -> Range<usize> {
-        self.start..self.end
-    }
-}
-impl<R: Clone + Debug> Debug for MatchRange<R> {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
-        write!(
-            f,
-            "MatchRange({}..{},{:?})",
-            self.start, self.end, self.outer
-        )
+        None
     }
 }
 
-pub trait Matcher {
-    type RangeType;
-    fn reset(&mut self);
-    fn process_byte(
-        &mut self,
-        prev_state: Option<Self::RangeType>,
-        b: u8,
-        n: usize,
-    ) -> Option<Self::RangeType>;
-    // This method takes `&mut self` so we can eliminate the `AsRef<[T]>` type
-    // param on `Repeat`.
-    fn matches_empty(&mut self) -> bool;
+pub fn clone_and_set<T: AsMut<[Range<u32>]> + Clone>(array: &T, n: u32, item: Range<u32>) -> T {
+    let mut array_clone = array.clone();
+    array_clone.as_mut()[n as usize] = item;
+    array_clone
 }
 
-pub fn match_all<T: Matcher<RangeType = MatchRange<()>> + Debug>(
-    matcher: &mut T,
-    data: &[u8],
-) -> bool {
-    if data.is_empty() {
-        return matcher.matches_empty();
-    }
-    matcher.reset();
-    println!("{:?}", &matcher);
-    println!("process_byte {}", escape_ascii([data[0]]));
-    let mut final_state = matcher.process_byte(Some(MatchRange::zero()), data[0], 0);
-    println!("{:?}", &matcher);
-    println!("final_state = {:?}", final_state);
-    for (n, b) in data.iter().copied().enumerate().skip(1) {
-        println!("process_byte {}", escape_ascii([b]));
-        final_state = matcher.process_byte(None, b, n);
-        println!("{:?}", &matcher);
-        println!("final_state = {:?}", final_state);
-    }
-    if let Some(matching_range) = final_state {
-        matching_range.range() == (0..data.len())
-    } else {
-        false
-    }
-}
-
-#[derive(Clone, PartialOrd, PartialEq)]
-pub struct Byte<R: RangeTrait + Debug> {
-    value: u8,
-    phantom: PhantomData<R>,
-}
-impl<R: RangeTrait + Debug> Byte<R> {
-    #[must_use]
-    pub fn new(b: u8) -> Self {
-        Self {
-            value: b,
-            phantom: PhantomData,
-        }
-    }
-}
-impl<R: RangeTrait + Debug> Matcher for Byte<R> {
-    type RangeType = R;
-
-    fn reset(&mut self) {}
-
-    fn process_byte(
-        &mut self,
-        prev_state: Option<Self::RangeType>,
-        b: u8,
-        n: usize,
-    ) -> Option<Self::RangeType> {
-        let prev_matching_range = prev_state?;
-        if b == self.value {
-            println!(
-                "{:?} extend {:?} + {}..{}",
-                self,
-                prev_matching_range,
-                n,
-                n + 1
-            );
-            #[allow(clippy::range_plus_one)]
-            prev_matching_range.extend(&(n..n + 1))
-        } else {
-            None
-        }
-    }
-
-    fn matches_empty(&mut self) -> bool {
-        false
-    }
-}
-impl<R: RangeTrait + Debug> Debug for Byte<R> {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
-        write!(f, "Byte({})", escape_ascii([self.value]))
-    }
-}
-
-pub struct AnyByte<R: RangeTrait + Debug> {
-    phantom: PhantomData<R>,
-}
-impl<R: RangeTrait + Debug> AnyByte<R> {
-    #[must_use]
-    pub fn new() -> Self {
-        Self {
-            phantom: PhantomData,
-        }
-    }
-}
-impl<R: RangeTrait + Debug> Matcher for AnyByte<R> {
-    type RangeType = R;
-
-    fn reset(&mut self) {}
-
-    fn process_byte(
-        &mut self,
-        prev_state: Option<Self::RangeType>,
-        _b: u8,
-        n: usize,
-    ) -> Option<Self::RangeType> {
-        let prev_matching_range = prev_state?;
-        println!(
-            "{:?} extend {:?} + {}..{}",
-            self,
-            prev_matching_range,
-            n,
-            n + 1
-        );
-        #[allow(clippy::range_plus_one)]
-        prev_matching_range.extend(&(n..n + 1))
-    }
-
-    fn matches_empty(&mut self) -> bool {
-        false
-    }
-}
-impl<R: RangeTrait + Debug> Debug for AnyByte<R> {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
-        write!(f, "AnyByte")
-    }
-}
-
-pub struct Class<R: RangeTrait + Debug> {
-    incl: bool,
-    bytes: &'static [u8],
-    phantom: PhantomData<R>,
-}
-impl<R: RangeTrait + Debug> Class<R> {
-    #[must_use]
-    pub fn new(incl: bool, bytes: &'static [u8]) -> Self {
-        Self {
-            incl,
-            bytes,
-            phantom: PhantomData,
-        }
-    }
-}
-impl<R: RangeTrait + Debug> Matcher for Class<R> {
-    type RangeType = R;
-
-    fn reset(&mut self) {}
-
-    fn process_byte(
-        &mut self,
-        prev_state: Option<Self::RangeType>,
-        b: u8,
-        n: usize,
-    ) -> Option<Self::RangeType> {
-        let prev_matching_range = prev_state?;
-        let contains = self.bytes.contains(&b);
-        if (self.incl && contains) || (!self.incl && !contains) {
-            println!(
-                "{:?} extend {:?} + {}..{}",
-                self,
-                prev_matching_range,
-                n,
-                n + 1
-            );
-            #[allow(clippy::range_plus_one)]
-            prev_matching_range.extend(&(n..n + 1))
-        } else {
-            None
-        }
-    }
-
-    fn matches_empty(&mut self) -> bool {
-        false
-    }
-}
-impl<R: RangeTrait + Debug> Debug for Class<R> {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
-        write!(
-            f,
-            "Class{}({})",
-            if self.incl { "" } else { "^" },
-            escape_ascii(self.bytes)
-        )
-    }
-}
-
-pub struct Seq<R, A, B>
-where
-    R: RangeTrait + Clone + Debug,
-    A: Matcher<RangeType = R> + Debug,
-    B: Matcher<RangeType = R> + Debug,
-{
-    a: A,
-    b: B,
-    prev_a_state: Option<R>,
-}
-impl<R, A, B> Seq<R, A, B>
-where
-    R: RangeTrait + Clone + Debug,
-    A: Matcher<RangeType = R> + Debug,
-    B: Matcher<RangeType = R> + Debug,
-{
-    #[must_use]
-    pub fn new(a: A, b: B) -> Self {
-        Self {
-            a,
-            b,
-            prev_a_state: None,
-        }
-    }
-
-    fn reset_impl(&mut self) {
-        self.a.reset();
-        self.b.reset();
-        self.prev_a_state = None;
-    }
-
-    fn process_byte_impl(&mut self, prev_state: Option<R>, b: u8, n: usize) -> Option<R> {
-        let prev_a_state_clone = self.prev_a_state.clone();
-        let result = self.b.process_byte(self.prev_a_state.take(), b, n);
-        println!(
-            "Seq.process_byte({},{}) {:?} --{:?}-> {:?}",
-            escape_ascii([b]),
-            n,
-            prev_a_state_clone,
-            self.b,
-            result
-        );
-
-        let prev_state_clone = prev_state.clone();
-        self.prev_a_state = self.a.process_byte(prev_state, b, n);
-        println!(
-            "Seq.process_byte({},{}) {:?} --{:?}-> {:?}",
-            escape_ascii([b]),
-            n,
-            prev_state_clone,
-            self.a,
-            self.prev_a_state
-        );
-        result
-    }
-
-    fn matches_empty_impl(&mut self) -> bool {
-        self.a.matches_empty() && self.b.matches_empty()
-    }
-}
-impl<R, A, B> Matcher for Seq<R, A, B>
-where
-    R: RangeTrait + Clone + Debug,
-    A: Matcher<RangeType = R> + Debug,
-    B: Matcher<RangeType = R> + Debug,
-{
-    type RangeType = R;
-
-    fn reset(&mut self) {
-        self.reset_impl()
-    }
-
-    fn process_byte(
-        &mut self,
-        prev_outer_state: Option<Self::RangeType>,
-        b: u8,
-        n: usize,
-    ) -> Option<Self::RangeType> {
-        self.process_byte_impl(prev_outer_state, b, n)
-    }
-
-    fn matches_empty(&mut self) -> bool {
-        self.matches_empty_impl()
-    }
-}
-impl<R, A, B> Matcher for &mut Seq<R, A, B>
-where
-    R: RangeTrait + Clone + Debug,
-    A: Matcher<RangeType = R> + Debug,
-    B: Matcher<RangeType = R> + Debug,
-{
-    type RangeType = R;
-
-    fn reset(&mut self) {
-        self.reset_impl()
-    }
-
-    fn process_byte(
-        &mut self,
-        prev_outer_state: Option<Self::RangeType>,
-        b: u8,
-        n: usize,
-    ) -> Option<Self::RangeType> {
-        self.process_byte_impl(prev_outer_state, b, n)
-    }
-
-    fn matches_empty(&mut self) -> bool {
-        self.matches_empty_impl()
-    }
-}
-impl<R, A, B> Debug for Seq<R, A, B>
-where
-    R: RangeTrait + Clone + Debug,
-    A: Matcher<RangeType = R> + Debug,
-    B: Matcher<RangeType = R> + Debug,
-{
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
-        write!(f, "Seq({:?},{:?},{:?})", self.a, self.prev_a_state, self.b)
-    }
-}
-
-pub struct Either<R, A, B>
-where
-    R: RangeTrait + Clone + Debug,
-    A: Matcher<RangeType = R> + Debug,
-    B: Matcher<RangeType = R> + Debug,
-{
-    a: A,
-    b: B,
-    phantom: PhantomData<R>,
-}
-impl<R, A, B> Either<R, A, B>
-where
-    R: RangeTrait + Clone + Debug,
-    A: Matcher<RangeType = R> + Debug,
-    B: Matcher<RangeType = R> + Debug,
-{
-    #[must_use]
-    pub fn new(a: A, b: B) -> Self {
-        Self {
-            a,
-            b,
-            phantom: PhantomData,
-        }
-    }
-
-    fn reset_impl(&mut self) {
-        self.a.reset();
-        self.b.reset();
-    }
-
-    fn process_byte_impl(&mut self, prev_state: Option<R>, b: u8, n: usize) -> Option<R> {
-        let prev_state_clone = prev_state.clone();
-        if let Some(match_range) = self.a.process_byte(prev_state, b, n) {
-            return Some(match_range);
-        }
-        self.b.process_byte(prev_state_clone, b, n)
-    }
-
-    fn matches_empty_impl(&mut self) -> bool {
-        self.a.matches_empty() || self.b.matches_empty()
-    }
-}
-impl<R, A, B> Matcher for Either<R, A, B>
-where
-    R: RangeTrait + Clone + Debug,
-    A: Matcher<RangeType = R> + Debug,
-    B: Matcher<RangeType = R> + Debug,
-{
-    type RangeType = R;
-
-    fn reset(&mut self) {
-        self.reset_impl()
-    }
-
-    fn process_byte(
-        &mut self,
-        prev_outer_state: Option<Self::RangeType>,
-        b: u8,
-        n: usize,
-    ) -> Option<Self::RangeType> {
-        self.process_byte_impl(prev_outer_state, b, n)
-    }
-
-    fn matches_empty(&mut self) -> bool {
-        self.matches_empty_impl()
-    }
-}
-impl<R, A, B> Matcher for &mut Either<R, A, B>
-where
-    R: RangeTrait + Clone + Debug,
-    A: Matcher<RangeType = R> + Debug,
-    B: Matcher<RangeType = R> + Debug,
-{
-    type RangeType = R;
-
-    fn reset(&mut self) {
-        self.reset_impl()
-    }
-
-    fn process_byte(
-        &mut self,
-        prev_outer_state: Option<Self::RangeType>,
-        b: u8,
-        n: usize,
-    ) -> Option<Self::RangeType> {
-        self.process_byte_impl(prev_outer_state, b, n)
-    }
-
-    fn matches_empty(&mut self) -> bool {
-        self.matches_empty_impl()
-    }
-}
-impl<R, A, B> Debug for Either<R, A, B>
-where
-    R: RangeTrait + Clone + Debug,
-    A: Matcher<RangeType = R> + Debug,
-    B: Matcher<RangeType = R> + Debug,
-{
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
-        write!(f, "Either({:?},{:?})", self.a, self.b)
-    }
-}
-
-pub struct Optional<R, T>
-where
-    R: RangeTrait + Clone + Debug,
-    T: Matcher<RangeType = R> + Debug,
-{
-    inner: T,
-    phantom: PhantomData<R>,
-}
-impl<R, T> Optional<R, T>
-where
-    R: RangeTrait + Clone + Debug,
-    T: Matcher<RangeType = R> + Debug,
-{
-    #[must_use]
-    pub fn new(inner: T) -> Self {
-        Self {
-            inner,
-            phantom: PhantomData,
-        }
-    }
-
-    fn reset_impl(&mut self) {
-        self.inner.reset();
-    }
-
-    fn process_byte_impl(&mut self, prev_state: Option<R>, b: u8, n: usize) -> Option<R> {
-        let prev_state_clone = prev_state.clone();
-        if let Some(match_range) = self.inner.process_byte(prev_state, b, n) {
-            Some(match_range)
-        } else {
-            prev_state_clone
-        }
-    }
-
-    fn matches_empty_impl(&mut self) -> bool {
-        true
-    }
-}
-impl<R, T> Matcher for Optional<R, T>
-where
-    R: RangeTrait + Clone + Debug,
-    T: Matcher<RangeType = R> + Debug,
-{
-    type RangeType = R;
-
-    fn reset(&mut self) {
-        self.reset_impl()
-    }
-
-    fn process_byte(
-        &mut self,
-        prev_outer_state: Option<Self::RangeType>,
-        b: u8,
-        n: usize,
-    ) -> Option<Self::RangeType> {
-        self.process_byte_impl(prev_outer_state, b, n)
-    }
-
-    fn matches_empty(&mut self) -> bool {
-        self.matches_empty_impl()
-    }
-}
-impl<R, T> Matcher for &mut Optional<R, T>
-where
-    R: RangeTrait + Clone + Debug,
-    T: Matcher<RangeType = R> + Debug,
-{
-    type RangeType = R;
-
-    fn reset(&mut self) {
-        self.reset_impl()
-    }
-
-    fn process_byte(
-        &mut self,
-        prev_outer_state: Option<Self::RangeType>,
-        b: u8,
-        n: usize,
-    ) -> Option<Self::RangeType> {
-        self.process_byte_impl(prev_outer_state, b, n)
-    }
-
-    fn matches_empty(&mut self) -> bool {
-        self.matches_empty_impl()
-    }
-}
-impl<R, T> Debug for Optional<R, T>
-where
-    R: RangeTrait + Clone + Debug,
-    T: Matcher<RangeType = R> + Debug,
-{
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
-        write!(f, "Optional({:?})", self.inner)
-    }
-}
-
-#[derive(Clone)]
-pub struct CapturingGroup<R, T>
-where
-    R: RangeTrait + Clone + Debug,
-    T: Matcher<RangeType = MatchRange<R>> + Debug,
-{
-    range: Option<Range<usize>>,
-    inner: T,
-    phantom: PhantomData<R>,
-}
-impl<R, T> CapturingGroup<R, T>
-where
-    R: RangeTrait + Clone + Debug,
-    T: Matcher<RangeType = MatchRange<R>> + Debug,
-{
-    #[must_use]
-    pub fn new(inner: T) -> Self {
-        Self {
-            range: None,
-            inner,
-            phantom: PhantomData,
-        }
-    }
-
-    pub fn range(&self) -> Option<Range<usize>> {
-        self.range.clone()
-    }
-
-    fn reset_impl(&mut self) {
-        self.inner.reset();
-        self.range = None;
-    }
-
-    fn process_byte_impl(
-        &mut self,
-        prev_outer_state: Option<<CapturingGroup<R, T> as Matcher>::RangeType>,
-        b: u8,
-        n: usize,
-    ) -> Option<<CapturingGroup<R, T> as Matcher>::RangeType> {
-        let prev_state = prev_outer_state.map(|p| MatchRange::new(p, n));
-        let state = self.inner.process_byte(prev_state, b, n);
-        let match_range = state?;
-        let range = match_range.range();
-        let outer_range = match_range.into_outer().extend(&range);
-        self.range = Some(range);
-        outer_range
-    }
-
-    fn matches_empty_impl(&mut self) -> bool {
-        self.inner.matches_empty()
-    }
-}
-impl<R, T> Matcher for CapturingGroup<R, T>
-where
-    R: RangeTrait + Clone + Debug,
-    T: Matcher<RangeType = MatchRange<R>> + Debug,
-{
-    type RangeType = R;
-
-    fn reset(&mut self) {
-        self.reset_impl()
-    }
-
-    fn process_byte(
-        &mut self,
-        prev_outer_state: Option<Self::RangeType>,
-        b: u8,
-        n: usize,
-    ) -> Option<Self::RangeType> {
-        self.process_byte_impl(prev_outer_state, b, n)
-    }
-
-    fn matches_empty(&mut self) -> bool {
-        self.matches_empty_impl()
-    }
-}
-impl<R, T> Matcher for &mut CapturingGroup<R, T>
-where
-    R: RangeTrait + Clone + Debug,
-    T: Matcher<RangeType = MatchRange<R>> + Debug,
-{
-    type RangeType = R;
-
-    fn reset(&mut self) {
-        self.reset_impl()
-    }
-
-    fn process_byte(
-        &mut self,
-        prev_outer_state: Option<Self::RangeType>,
-        b: u8,
-        n: usize,
-    ) -> Option<Self::RangeType> {
-        self.process_byte_impl(prev_outer_state, b, n)
-    }
-
-    fn matches_empty(&mut self) -> bool {
-        self.matches_empty_impl()
-    }
-}
-impl<R, T> Debug for CapturingGroup<R, T>
-where
-    R: RangeTrait + Clone + Debug,
-    T: Matcher<RangeType = MatchRange<R>> + Debug,
-{
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
-        write!(f, "CapturingGroup({:?})", self.inner)
-    }
+pub fn clone_and_increment<T: AsMut<[Range<u32>]> + Clone>(array: &T, n: u32) -> T {
+    let mut array_clone = array.clone();
+    array_clone.as_mut()[n as usize].end += 1;
+    array_clone
 }
