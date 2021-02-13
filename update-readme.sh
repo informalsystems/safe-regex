@@ -1,10 +1,7 @@
 #!/usr/bin/env sh
-if [ -f Readme.md ]; then
-  set -e
-  set -x
-  cargo +nightly readme >Readme.md
-  cargo geiger --update-readme --no-license --readme-path Readme.md --output-format GitHubMarkdown
-else
-  echo "Readme.md does not exist. Check your directory." >&2
-  exit 1
-fi
+
+. "$(dirname "$0")"/lib.sh
+
+set -e
+ls -1 Readme.md
+generate_readme Readme.md

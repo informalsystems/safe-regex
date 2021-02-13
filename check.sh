@@ -1,53 +1,18 @@
 #!/usr/bin/env bash
-# This script uses bash because it has a built-in 'time' command.
-# The rust docker images have no 'time' binary and use dash for 'sh' which has
-# no built-in 'time' command.
+# Use bash because because it has a built-in 'time' command.
 
-usage() {
-  echo "$(basename "$0")": ERROR: "$@" 1>&2
-  echo usage: "$(basename "$0")" '[+nightly|+stable] [--allow-dirty]' 1>&2
-  exit 1
-}
-
-toolchain=
-allow_dirty=
-
-while :; do
-  case "$1" in
-  +*) toolchain="$1" ;;
-  --allow-dirty) allow_dirty=--allow-dirty ;;
-  '') break ;;
-  *) usage "bad argument '$1'" ;;
-  esac
-  shift
-done
-
-CARGO="cargo $toolchain"
-
-check_cargo_readme() {
-  $CARGO readme >Readme.md.tmp
-  # Once cargo-geiger-serde builds on nightly,
-  # change this to always run `cargo geiger`.
-  # https://github.com/rust-secure-code/cargo-geiger/issues/181
-  $CARGO geiger --update-readme --readme-path Readme.md.tmp --output-format GitHubMarkdown
-  diff Readme.md Readme.md.tmp || (
-    echo "Readme.md is stale" >&2
-    exit 1
-  )
-  rm -f Readme.md.tmp
-  git rm -f --ignore-unmatch Readme.md.tmp
-}
+. "$(dirname "$0")"/lib.sh
 
 check() {
-  time $CARGO check --verbose
-  time $CARGO build --verbose
-  time $CARGO test --verbose
-  if [ "$toolchain" != '+nightly' ]; then
-    time $CARGO fmt --all -- --check
-    time $CARGO clippy --all-targets --all-features -- -D clippy::pedantic
-    time check_cargo_readme
+  cargo_check_build_test
+  if [ "$TOOLCHAIN" != '+nightly' ]; then
+    cargo_fmt_clippy
+    # Once cargo-geiger builds on nightly,
+    # change this to always check the readme.
+    # https://github.com/rust-secure-code/cargo-geiger/issues/181
+    check_readme
   fi
-  time $CARGO publish --dry-run $allow_dirty
+  time $CARGO publish --dry-run "$ALLOW_DIRTY"
   echo "$0 finished"
 }
 

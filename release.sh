@@ -2,7 +2,8 @@
 (
   set -e
   set -x
-  ../check.sh
+  ../check.sh +stable
+  ../check.sh +nightly
 ) || exit 1
 
 if ! (git branch --show-current | grep -q -E '^main$'); then
