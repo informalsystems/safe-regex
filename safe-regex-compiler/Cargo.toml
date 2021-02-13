@@ -11,7 +11,7 @@ repository = "https://gitlab.com/leonhard-llc/safe-regex-rs"
 version = "0.1.0"
 
 [dependencies]
-proc-macro2 = "1"
-quote = "1"
+safe-proc-macro2 = { version = "1", path = "../safe-proc-macro2/" }
+safe-quote = { version = "1", path = "../safe-quote/" }
 
 [dev-dependencies]

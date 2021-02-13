@@ -13,7 +13,7 @@ path = "src/lib.rs"
 proc-macro = true
 
 [dependencies]
-proc-macro2 = "1"
+safe-proc-macro2 = { version = "1", path = "../safe-proc-macro2/" }
 safe-regex-compiler = { version = "^0.1.0", path = "../safe-regex-compiler/" }
 
 [dev-dependencies]

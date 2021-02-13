@@ -27,7 +27,7 @@
 //! 1. Edit `Cargo.toml` and bump version number.
 //! 1. Run `./release.sh`
 #![forbid(unsafe_code)]
-use proc_macro2::TokenStream;
+use safe_proc_macro2::TokenStream;
 
 pub mod macro_generator;
 pub mod parser;

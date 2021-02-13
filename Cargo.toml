@@ -1,6 +1,8 @@
 # https://doc.rust-lang.org/book/ch14-03-cargo-workspaces.html
 [workspace]
 members = [
+    "safe-proc-macro2",
+    "safe-quote",
     "safe-regex",
     "safe-regex-macro",
     "safe-regex-compiler",

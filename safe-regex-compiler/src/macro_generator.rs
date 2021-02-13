@@ -4,12 +4,12 @@
 //! How-to develop proc macros: <https://github.com/dtolnay/proc-macro-workshop>
 #![forbid(unsafe_code)]
 use crate::parser::FinalNode;
-use proc_macro2::TokenStream;
+use safe_proc_macro2::TokenStream;
 
 /// Generates an enum that implements `parsed_re` and implements the
 /// [`safe_regex::Regex`](https://docs.rs/safe-regex/latest/safe_regex/trait.Regex.html)
 /// trait.
-pub fn generate(parsed_re: FinalNode) -> proc_macro2::TokenStream {
+pub fn generate(parsed_re: FinalNode) -> safe_proc_macro2::TokenStream {
     // eprintln!(
     //     "regex({}) -> {}",
     //     input2,

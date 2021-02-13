@@ -20,7 +20,7 @@
 
 #[proc_macro]
 pub fn regex(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    let input2 = proc_macro2::TokenStream::from(input);
+    let input2 = safe_proc_macro2::TokenStream::from(input);
     let output2 = match safe_regex_compiler::impl_regex(input2) {
         Ok(output2) => output2,
         Err(reason) => panic!("{}", reason),

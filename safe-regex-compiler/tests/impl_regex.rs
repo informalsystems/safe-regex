@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
-use proc_macro2::{TokenStream, TokenTree};
-use quote::quote;
+use safe_proc_macro2::{TokenStream, TokenTree};
+use safe_quote::quote;
 use safe_regex_compiler::impl_regex;
 
 fn stream_to_s(s: TokenStream) -> String {
