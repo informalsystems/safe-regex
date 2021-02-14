@@ -11,16 +11,19 @@ use safe_regex::{regex, Regex};
 //     result
 // }
 
+regex! {enum UsingCurlyBraces = br"a"}
+regex!(enum UsingParentheses = br"a");
+
 #[test]
 fn byte() {
-    regex!(enum Re = b"abc\n");
-    // println!("size {} bytes", core::mem::size_of_val(&Re::Byte0));
-    // assert_eq!(None, Re::match_all(b""));
-    // assert_eq!(None, Re::match_all(b"X"));
-    // Re::match_all(b"a").unwrap();
-    // assert_eq!(None, Re::match_all(b"aX"));
-    // assert_eq!(None, Re::match_all(b"Xa"));
-    // assert_eq!(None, Re::match_all(b"aa"));
+    regex!(enum Re = br"abc\n");
+    println!("size {} bytes", core::mem::size_of_val(&Re::start()));
+    assert_eq!(None, Re::match_all(b""));
+    assert_eq!(None, Re::match_all(b"X"));
+    Re::match_all(b"a").unwrap();
+    assert_eq!(None, Re::match_all(b"aX"));
+    assert_eq!(None, Re::match_all(b"Xa"));
+    assert_eq!(None, Re::match_all(b"aa"));
 }
 
 // #[test]
