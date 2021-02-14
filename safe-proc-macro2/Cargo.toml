@@ -26,7 +26,7 @@ features = ["span-locations"]
 unicode-xid = "0.2"
 
 [dev-dependencies]
-quote = { version = "1.0", default_features = false }
+safe-quote = { version = "1.0", path = "../safe-quote/", default_features = false }
 
 [features]
 proc-macro = []

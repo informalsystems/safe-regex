@@ -87,7 +87,7 @@
 #![doc(html_root_url = "https://docs.rs/proc-macro2/1.0.24")]
 #![cfg_attr(any(proc_macro_span, super_unstable), feature(proc_macro_span))]
 #![cfg_attr(super_unstable, feature(proc_macro_raw_ident, proc_macro_def_site))]
-#![allow(clippy::needless_doctest_main, clippy::vec_init_then_push)]
+#![allow(clippy::needless_doctest_main)]
 
 #[cfg(use_proc_macro)]
 extern crate proc_macro;
@@ -442,8 +442,7 @@ impl Span {
 
     /// Get the starting line/column in the source file for this span.
     ///
-    /// This method requires the `"span-locations"` feature to be enabled and to be on `nightly`. On `stable` rust this
-    /// currently returns a mocked LineColumn (`LineColumn { line: 0, column: 0 }`).
+    /// This method requires the `"span-locations"` feature to be enabled.
     #[cfg(span_locations)]
     pub fn start(&self) -> LineColumn {
         let imp::LineColumn { line, column } = self.inner.start();
@@ -452,8 +451,7 @@ impl Span {
 
     /// Get the ending line/column in the source file for this span.
     ///
-    /// This method requires the `"span-locations"` feature to be enabled and to be on `nightly`. On `stable` rust this
-    /// currently returns a mocked LineColumn (`LineColumn { line: 0, column: 0 }`).
+    /// This method requires the `"span-locations"` feature to be enabled.
     #[cfg(span_locations)]
     pub fn end(&self) -> LineColumn {
         let imp::LineColumn { line, column } = self.inner.end();
