@@ -2,7 +2,7 @@
 use core::fmt::Debug;
 use core::hash::Hash;
 use core::ops::Range;
-use safe_regex::{clone_and_increment, clone_and_set, escape_ascii, Regex};
+use safe_regex::internal::{clone_and_increment, clone_and_set, escape_ascii, Machine};
 use std::collections::hash_map::RandomState;
 use std::collections::HashSet;
 
@@ -20,7 +20,7 @@ fn byte() {
         Byte0,
         Accept,
     }
-    impl Regex for Re {
+    impl Machine for Re {
         type State = [Range<u32>; 0];
         fn start() -> Self {
             Self::Byte0
@@ -66,7 +66,7 @@ fn class_inclusive() {
         Class0,
         Accept,
     }
-    impl Regex for Re {
+    impl Machine for Re {
         type State = [Range<u32>; 0];
         fn start() -> Self {
             Self::Class0
@@ -115,7 +115,7 @@ fn class_exclusive() {
         Class0,
         Accept,
     }
-    impl Regex for Re {
+    impl Machine for Re {
         type State = [Range<u32>; 0];
         fn start() -> Self {
             Self::Class0
@@ -164,7 +164,7 @@ fn seq() {
         Byte2,
         Accept,
     }
-    impl Regex for Re {
+    impl Machine for Re {
         type State = [Range<u32>; 0];
         fn start() -> Self {
             Self::Byte0
@@ -235,7 +235,7 @@ fn alternates() {
         Alt0Matched,
         Accept,
     }
-    impl Regex for Re {
+    impl Machine for Re {
         type State = [Range<u32>; 0];
         fn start() -> Self {
             Self::Alt0
@@ -301,7 +301,7 @@ fn group() {
         Group0Matched([Range<u32>; 1]),
         Accept([Range<u32>; 1]),
     }
-    impl Regex for Re {
+    impl Machine for Re {
         type State = [Range<u32>; 1];
         fn start() -> Self {
             Self::Group0([u32::MAX..u32::MAX])
@@ -370,7 +370,7 @@ fn optional() {
         Optional0Byte0,
         Accept,
     }
-    impl Regex for Re {
+    impl Machine for Re {
         type State = [Range<u32>; 0];
         fn start() -> Self {
             Self::Optional0
@@ -426,7 +426,7 @@ fn optional_at_start() {
         Byte2,
         Accept,
     }
-    impl Regex for Re {
+    impl Machine for Re {
         type State = [Range<u32>; 0];
         fn start() -> Self {
             Self::Optional0
@@ -490,7 +490,7 @@ fn optional_at_end() {
         Optional1Byte1,
         Accept,
     }
-    impl Regex for Re {
+    impl Machine for Re {
         type State = [Range<u32>; 0];
         fn start() -> Self {
             Self::Byte0
@@ -555,7 +555,7 @@ fn star() {
         Byte2,
         Accept,
     }
-    impl Regex for Re {
+    impl Machine for Re {
         type State = [Range<u32>; 0];
         fn start() -> Self {
             Self::Star0
@@ -642,7 +642,7 @@ fn alternates_in_group() {
         Group0Matched([Range<u32>; 1]),
         Accept([Range<u32>; 1]),
     }
-    impl Regex for Re {
+    impl Machine for Re {
         type State = [Range<u32>; 1];
         fn start() -> Self {
             Self::Group0([u32::MAX..u32::MAX])
@@ -725,7 +725,7 @@ fn optionals_in_groups() {
         Group1Byte1([Range<u32>; 2]),
         Accept([Range<u32>; 2]),
     }
-    impl Regex for Re {
+    impl Machine for Re {
         type State = [Range<u32>; 2];
         fn start() -> Self {
             Self::Group0Start([u32::MAX..u32::MAX, u32::MAX..u32::MAX])

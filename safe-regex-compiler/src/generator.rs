@@ -60,14 +60,9 @@ fn build(
 }
 
 /// Generates an enum that implements `parsed_re` and implements the
-/// [`safe_regex::Regex`](https://docs.rs/safe-regex/latest/safe_regex/trait.Regex.html)
+/// [`safe_regex::internal::Machine`](https://docs.rs/safe-regex/latest/safe_regex/internal/trait.Machine.html)
 /// trait.
-pub fn generate(
-    literal_re: String,
-    is_pub: bool,
-    enum_name: String,
-    parsed_re: FinalNode,
-) -> safe_proc_macro2::TokenStream {
+pub fn generate(literal_re: String, parsed_re: FinalNode) -> safe_proc_macro2::TokenStream {
     let num_groups = count_groups(&parsed_re);
     let state_type = quote!([core::ops::Range<u32>; #num_groups]);
     let mut names: Vec<Ident> = Vec::new();
@@ -89,12 +84,6 @@ pub fn generate(
         }
     });
 
-    let enum_or_pub_enum = if is_pub {
-        quote!(pub enum)
-    } else {
-        quote!(enum)
-    };
-    let name_ident = format_ident!("{}", enum_name);
     let default_ranges = core::iter::repeat(quote!(u32::MAX..u32::MAX)).take(num_groups);
     let initial_state = if num_groups == 0 {
         quote! { Self::#first_variant }
@@ -108,13 +97,14 @@ pub fn generate(
         quote! { Self::Accept(ranges) => Some(ranges.clone()) }
     };
     let result = quote! {
+    {
         #[doc = #literal_re]
         #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-        #enum_or_pub_enum #name_ident {
+        enum CompiledRegex_ {
             #( #variants ),* ,
             Accept,
         }
-        impl Regex for #name_ident {
+        impl safe_regex::internal::Machine for CompiledRegex_ {
             type State = #state_type;
             fn start() -> Self { #initial_state }
             fn accept(&self) -> Option<Self::State> {
@@ -133,7 +123,7 @@ pub fn generate(
                     "make_next_states {} {} {:?}",
                     opt_b.map_or(
                         String::from("None"),
-                        |b| format!("Some({})", core::str::from_utf8(&[b]).unwrap())),
+                        |b| format!("Some({})", safe_regex::internal::escape_ascii(&[b]))),
                     n,
                     self,
                 );
@@ -144,6 +134,9 @@ pub fn generate(
                 }
             }
         }
+
+        <safe_regex::Matcher<CompiledRegex_>>::new()
+    }
     };
     println!("result={}", result);
     result

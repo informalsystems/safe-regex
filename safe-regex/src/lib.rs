@@ -134,16 +134,26 @@ use core::hash::Hash;
 use core::ops::Range;
 pub use safe_regex_macro::regex;
 use std::collections::HashSet;
+use std::marker::PhantomData;
 
-/// Converts the bytes into an ASCII string.
-pub fn escape_ascii(input: impl AsRef<[u8]>) -> String {
-    let mut result = String::new();
-    for byte in input.as_ref() {
-        for ascii_byte in core::ascii::escape_default(*byte) {
-            result.push_str(core::str::from_utf8(&[ascii_byte]).unwrap());
+pub struct Matcher<T> {
+    phantom: PhantomData<T>,
+}
+impl<S, T> Matcher<T>
+where
+    S: AsRef<[std::ops::Range<u32>]> + Debug,
+    T: internal::Machine<State = S> + Eq + Hash + Debug + Sized,
+{
+    /// We can make this function `const` when
+    /// [trait bounds on \`const fn\` parameters are stable](https://github.com/rust-lang/rust/issues/57563).
+    pub fn new() -> Self {
+        Self {
+            phantom: PhantomData,
         }
     }
-    result
+    pub fn match_all<'d>(&self, data: &'d [u8]) -> Option<Groups<'d, T::State>> {
+        T::match_all(data)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -169,61 +179,81 @@ impl<'d, T: AsRef<[Range<u32>]>> Groups<'d, T> {
     }
 }
 
-pub trait Regex {
-    type State;
-    fn start() -> Self;
-    fn accept(&self) -> Option<Self::State>;
-    fn make_next_states(&self, opt_b: Option<u8>, n: u32, next_states: &mut HashSet<Self>)
-    where
-        Self: Sized;
+pub mod internal {
+    use core::fmt::Debug;
+    use core::hash::Hash;
+    use core::ops::Range;
+    pub use safe_regex_macro::regex;
+    use std::collections::HashSet;
+    use std::marker::PhantomData;
 
-    fn match_all(data: &[u8]) -> Option<Groups<Self::State>>
-    where
-        Self: Eq + Hash + Debug + Sized,
-        Self::State: AsRef<[Range<u32>]> + Debug,
-    {
-        let start = Self::start();
-        println!("match_all b\"{}\" {:?}", escape_ascii(data), start);
-        if data.is_empty() {
-            return start.accept().map(|s| Groups::new(s, data));
-        }
-        // We store states in a set to eliminate duplicate states.
-        // This is necessary for the algorithm to work in useful time and memory.
-        let mut states: HashSet<Self> = HashSet::new();
-        states.insert(start);
-        let mut next_states: HashSet<Self> = HashSet::new();
-        for (n, b) in data.iter().enumerate() {
-            println!("process_byte {}", escape_ascii([*b]));
-            // We call `HashSet::drain` to use less memory.
-            // It might be faster to just use `iter()` and then call
-            // `HashSet::clear` after the loop.  Let's test before changing it.
-            for state in states.drain() {
-                state.make_next_states(Some(*b), n as u32, &mut next_states);
-            }
-            core::mem::swap(&mut states, &mut next_states);
-            println!("states = {:?}", states);
-            if states.is_empty() {
-                return None;
+    /// Converts the bytes into an ASCII string.
+    pub fn escape_ascii(input: impl AsRef<[u8]>) -> String {
+        let mut result = String::new();
+        for byte in input.as_ref() {
+            for ascii_byte in core::ascii::escape_default(*byte) {
+                result.push_str(core::str::from_utf8(&[ascii_byte]).unwrap());
             }
         }
-        for state in states {
-            if let Some(accept) = state.accept() {
-                println!("accept = {:?}", accept);
-                return Some(Groups::new(accept, data));
-            }
-        }
-        None
+        result
     }
-}
 
-pub fn clone_and_set<T: AsMut<[Range<u32>]> + Clone>(array: &T, n: u32, item: Range<u32>) -> T {
-    let mut array_clone = array.clone();
-    array_clone.as_mut()[n as usize] = item;
-    array_clone
-}
+    pub trait Machine {
+        type State;
+        fn start() -> Self;
+        fn accept(&self) -> Option<Self::State>;
+        fn make_next_states(&self, opt_b: Option<u8>, n: u32, next_states: &mut HashSet<Self>)
+        where
+            Self: Sized;
 
-pub fn clone_and_increment<T: AsMut<[Range<u32>]> + Clone>(array: &T, n: u32) -> T {
-    let mut array_clone = array.clone();
-    array_clone.as_mut()[n as usize].end += 1;
-    array_clone
+        fn match_all(data: &[u8]) -> Option<crate::Groups<Self::State>>
+        where
+            Self: Eq + Hash + Debug + Sized,
+            Self::State: AsRef<[Range<u32>]> + Debug,
+        {
+            let start = Self::start();
+            println!("match_all b\"{}\" {:?}", escape_ascii(data), start);
+            if data.is_empty() {
+                return start.accept().map(|s| crate::Groups::new(s, data));
+            }
+            // We store states in a set to eliminate duplicate states.
+            // This is necessary for the algorithm to work in useful time and memory.
+            let mut states: HashSet<Self> = HashSet::new();
+            states.insert(start);
+            let mut next_states: HashSet<Self> = HashSet::new();
+            for (n, b) in data.iter().enumerate() {
+                println!("process_byte {}", escape_ascii([*b]));
+                // We call `HashSet::drain` to use less memory.
+                // It might be faster to just use `iter()` and then call
+                // `HashSet::clear` after the loop.  Let's test before changing it.
+                for state in states.drain() {
+                    state.make_next_states(Some(*b), n as u32, &mut next_states);
+                }
+                core::mem::swap(&mut states, &mut next_states);
+                println!("states = {:?}", states);
+                if states.is_empty() {
+                    return None;
+                }
+            }
+            for state in states {
+                if let Some(accept) = state.accept() {
+                    println!("accept = {:?}", accept);
+                    return Some(crate::Groups::new(accept, data));
+                }
+            }
+            None
+        }
+    }
+
+    pub fn clone_and_set<T: AsMut<[Range<u32>]> + Clone>(array: &T, n: u32, item: Range<u32>) -> T {
+        let mut array_clone = array.clone();
+        array_clone.as_mut()[n as usize] = item;
+        array_clone
+    }
+
+    pub fn clone_and_increment<T: AsMut<[Range<u32>]> + Clone>(array: &T, n: u32) -> T {
+        let mut array_clone = array.clone();
+        array_clone.as_mut()[n as usize].end += 1;
+        array_clone
+    }
 }

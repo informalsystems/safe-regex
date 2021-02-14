@@ -1,4 +1,4 @@
-use safe_regex::{regex, Regex};
+use safe_regex::{regex, Matcher};
 
 // /// Converts the bytes into an ASCII string.
 // pub fn escape_ascii(input: impl AsRef<[u8]>) -> String {
@@ -11,19 +11,25 @@ use safe_regex::{regex, Regex};
 //     result
 // }
 
-regex! {enum UsingCurlyBraces = br"a"}
-regex!(enum UsingParentheses = br"a");
+fn match_re_fn(data: &[u8]) -> bool {
+    regex!(br"a").match_all(data).is_some()
+}
+
+#[test]
+fn test_re_fn() {
+    assert!(!match_re_fn(b""));
+    assert!(match_re_fn(b"a"));
+}
 
 #[test]
 fn byte() {
-    regex!(enum Re = br"abc\n");
-    println!("size {} bytes", core::mem::size_of_val(&Re::start()));
-    assert_eq!(None, Re::match_all(b""));
-    assert_eq!(None, Re::match_all(b"X"));
-    Re::match_all(b"a").unwrap();
-    assert_eq!(None, Re::match_all(b"aX"));
-    assert_eq!(None, Re::match_all(b"Xa"));
-    assert_eq!(None, Re::match_all(b"aa"));
+    let re: Matcher<_> = regex!(br"abc\n");
+    assert_eq!(None, re.match_all(b""));
+    assert_eq!(None, re.match_all(b"X"));
+    re.match_all(b"a").unwrap();
+    assert_eq!(None, re.match_all(b"aX"));
+    assert_eq!(None, re.match_all(b"Xa"));
+    assert_eq!(None, re.match_all(b"aa"));
 }
 
 // #[test]

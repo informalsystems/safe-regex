@@ -66,33 +66,6 @@ pub fn impl_regex(stream: TokenStream) -> Result<TokenStream, String> {
             .collect::<String>()
     );
     let mut stream_iter = stream.into_iter();
-    // stream_iter.next(); // Consume 'regex'.
-    // stream_iter.next(); // Consume '!'
-    // let opt_group_tree = stream_iter.next();
-    // if stream_iter.next().is_some() {
-    //     return Err(ERR.to_string());
-    // }
-    // let mut group_iter = if let Some(TokenTree::Group(group)) = opt_group_tree {
-    //     group.stream().into_iter()
-    // } else {
-    //     return Err(ERR.to_string());
-    // };
-    let (is_pub, next) = match stream_iter.next() {
-        Some(TokenTree::Ident(ident)) if ident.to_string() == "pub" => (true, stream_iter.next()),
-        other => (false, other),
-    };
-    match next {
-        Some(TokenTree::Ident(ident)) if ident.to_string() == "enum" => {}
-        _ => return Err(ERR.to_string()),
-    }
-    let name = match stream_iter.next() {
-        Some(TokenTree::Ident(ident)) => ident.to_string(),
-        _ => return Err(ERR.to_string()),
-    };
-    match stream_iter.next() {
-        Some(TokenTree::Punct(punct)) if punct.as_char() == '=' => {}
-        _ => return Err(ERR.to_string()),
-    };
     let literal = match stream_iter.next() {
         Some(TokenTree::Literal(literal)) => literal,
         _ => return Err(ERR.to_string()),
@@ -122,5 +95,5 @@ pub fn impl_regex(stream: TokenStream) -> Result<TokenStream, String> {
     // if let Some(tree) = attr.into_iter().next() {
     //     return quote_spanned!(tree.span()=>compile_error!("parameters not allowed"););
     // }
-    Ok(generate(literal_string, is_pub, name, parsed_re))
+    Ok(generate(literal_string, parsed_re))
 }
