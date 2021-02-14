@@ -40,7 +40,12 @@ fn build(
             });
             clauses.push(quote! { (Self::#name, Some(_)) => {} });
         }
-        FinalNode::AnyByte => {}
+        FinalNode::AnyByte => {
+            let name = make_name(&mut names, "AnyByte");
+            clauses.push(quote! {
+            (Self::#name, Some(_)) => { next_states.insert(Self::#next_state); }
+            });
+        }
         FinalNode::Class(incl, items) => {}
         FinalNode::Or(nodes) => {
             for node in nodes {
@@ -117,13 +122,17 @@ pub fn generate(literal_re: String, parsed_re: FinalNode) -> safe_proc_macro2::T
                 &self,
                 opt_b: Option<u8>,
                 n: u32,
-                next_states: &mut std::collections::HashSet<Self, std::collections::hash_map::RandomState>,
+                next_states: &mut std::collections::HashSet<
+                    Self,
+                    std::collections::hash_map::RandomState,
+                >,
             ) {
                 println!(
                     "make_next_states {} {} {:?}",
-                    opt_b.map_or(
-                        String::from("None"),
-                        |b| format!("Some({})", safe_regex::internal::escape_ascii(&[b]))),
+                    opt_b.map_or(String::from("None"), |b| format!(
+                        "Some({})",
+                        safe_regex::internal::escape_ascii(&[b])
+                    )),
                     n,
                     self,
                 );

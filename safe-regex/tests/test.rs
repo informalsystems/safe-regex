@@ -32,6 +32,14 @@ fn byte() {
     assert_eq!(None, re.match_all(b"aa"));
 }
 
+#[test]
+fn any_byte() {
+    let re: Matcher<_> = regex!(br".");
+    assert_eq!(None, re.match_all(b""));
+    re.match_all(b"X").unwrap();
+    assert_eq!(None, re.match_all(b"XY"));
+}
+
 // #[test]
 // fn seq() {
 //     let mut re = Seq::new(Byte::new(b'a'), Byte::new(b'b'));
@@ -208,21 +216,7 @@ fn optional_at_start() {
 //     assert_eq!(None, matcher(b"aaaaa"));
 //     assert_eq!(None, matcher(b"aaaaaa"));
 // }
-//
-// #[test]
-// fn any_byte() {
-//     let mut any_byte = AnyByte::new();
-//     assert!(!match_all(&mut any_byte, b""));
-//     assert!(match_all(&mut any_byte, b"X"));
-//     assert!(!match_all(&mut any_byte, b"XY"));
-//     // Debug
-//     assert_eq!("AnyByte", format!("{:?}", any_byte));
-//     // AnyByte should match only one byte.
-//     let mut group = CapturingGroup::new(AnyByte::new());
-//     assert!(match_all(&mut Seq::new(&mut group, AnyByte::new()), b"XY"));
-//     assert_eq!(Some(0..1), group.range());
-// }
-//
+
 // #[test]
 // fn class_inclusive() {
 //     let mut re = Class::new(true, b"abc");

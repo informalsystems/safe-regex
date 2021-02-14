@@ -133,7 +133,6 @@ use core::fmt::Debug;
 use core::hash::Hash;
 use core::ops::Range;
 pub use safe_regex_macro::regex;
-use std::collections::HashSet;
 use std::marker::PhantomData;
 
 pub struct Matcher<T> {
@@ -185,7 +184,6 @@ pub mod internal {
     use core::ops::Range;
     pub use safe_regex_macro::regex;
     use std::collections::HashSet;
-    use std::marker::PhantomData;
 
     /// Converts the bytes into an ASCII string.
     pub fn escape_ascii(input: impl AsRef<[u8]>) -> String {

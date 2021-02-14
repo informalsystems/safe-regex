@@ -56,7 +56,7 @@ pub fn impl_regex(stream: TokenStream) -> Result<TokenStream, String> {
     //     Literal { lit: br"a" }
     //   ]
     // }
-    const ERR: &'static str = "expected `regex!(enum EnumName = br\"a regex pattern\")` or `regex!(pub enum EnumName = br\"a regex pattern\")`";
+    const ERR: &'static str = "expected a raw byte string, like br\"abc\"";
     println!(
         "impl_regex {:?}",
         stream

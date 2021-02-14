@@ -14,48 +14,114 @@ fn opt_b_to_s(opt_b: Option<u8>) -> String {
 
 #[test]
 fn byte() {
-    // "a"
-    #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-    enum Re {
-        Byte0,
-        Accept,
-    }
-    impl Machine for Re {
-        type State = [Range<u32>; 0];
-        fn start() -> Self {
-            Self::Byte0
+    let re = {
+        #[doc = "br\"a\""]
+        #[derive(Clone, Debug, PartialEq, Eq, Hash)]
+        enum CompiledRegex_ {
+            Byte0,
+            Accept,
         }
-        fn accept(&self) -> Option<[Range<u32>; 0]> {
-            match self {
-                Self::Accept => Some([]),
-                _ => None,
+        impl safe_regex::internal::Machine for CompiledRegex_ {
+            type State = [core::ops::Range<u32>; 0usize];
+            fn start() -> Self {
+                Self::Byte0
             }
-        }
-        fn make_next_states(
-            &self,
-            opt_b: Option<u8>,
-            n: u32,
-            next_states: &mut HashSet<Self, RandomState>,
-        ) {
-            println!("make_next_states {} {} {:?}", opt_b_to_s(opt_b), n, self);
-            match (self, opt_b) {
-                (Self::Byte0, Some(b'a')) => {
-                    // Consume byte.
-                    next_states.insert(Self::Accept);
+            fn accept(&self) -> Option<Self::State> {
+                match self {
+                    Self::Accept => Some([]),
+                    _ => None,
                 }
-                (Self::Byte0, Some(_)) => {}
-                (Self::Accept, _) => {}
-                other => panic!("invalid state transition {:?}", other),
+            }
+            fn make_next_states(
+                &self,
+                opt_b: Option<u8>,
+                n: u32,
+                next_states: &mut std::collections::HashSet<
+                    Self,
+                    std::collections::hash_map::RandomState,
+                >,
+            ) {
+                println!(
+                    "make_next_states {} {} {:?}",
+                    opt_b.map_or(String::from("None"), |b| format!(
+                        "Some({})",
+                        safe_regex::internal::escape_ascii(&[b])
+                    )),
+                    n,
+                    self,
+                );
+                match (self, opt_b) {
+                    (Self::Byte0, Some(97u8)) => {
+                        next_states.insert(Self::Accept);
+                    }
+                    (Self::Byte0, Some(_)) => {}
+                    (Self::Accept, _) => {}
+                    other => panic!("invalid state transition {:?}", other),
+                }
             }
         }
-    }
-    println!("size {} bytes", core::mem::size_of_val(&Re::Byte0));
-    assert_eq!(None, Re::match_all(b""));
-    assert_eq!(None, Re::match_all(b"X"));
-    Re::match_all(b"a").unwrap();
-    assert_eq!(None, Re::match_all(b"aX"));
-    assert_eq!(None, Re::match_all(b"Xa"));
-    assert_eq!(None, Re::match_all(b"aa"));
+        <safe_regex::Matcher<CompiledRegex_>>::new()
+    };
+    assert_eq!(None, re.match_all(b""));
+    assert_eq!(None, re.match_all(b"X"));
+    re.match_all(b"a").unwrap();
+    assert_eq!(None, re.match_all(b"aX"));
+    assert_eq!(None, re.match_all(b"Xa"));
+    assert_eq!(None, re.match_all(b"aa"));
+}
+
+#[test]
+fn any_byte() {
+    let re = {
+        #[doc = "br\".\""]
+        #[derive(Clone, Debug, PartialEq, Eq, Hash)]
+        enum CompiledRegex_ {
+            AnyByte0,
+            Accept,
+        }
+        impl safe_regex::internal::Machine for CompiledRegex_ {
+            type State = [core::ops::Range<u32>; 0usize];
+            fn start() -> Self {
+                Self::AnyByte0
+            }
+            fn accept(&self) -> Option<Self::State> {
+                match self {
+                    Self::Accept => Some([]),
+                    _ => None,
+                }
+            }
+            fn make_next_states(
+                &self,
+                opt_b: Option<u8>,
+                n: u32,
+                next_states: &mut std::collections::HashSet<
+                    Self,
+                    std::collections::hash_map::RandomState,
+                >,
+            ) {
+                println!(
+                    "make_next_states {} {} {:?}",
+                    opt_b.map_or(String::from("None"), |b| format!(
+                        "Some({})",
+                        safe_regex::internal::escape_ascii(&[b])
+                    )),
+                    n,
+                    self,
+                );
+                match (self, opt_b) {
+                    (Self::AnyByte0, Some(_)) => {
+                        next_states.insert(Self::Accept);
+                    }
+                    (Self::Accept, _) => {}
+                    other => panic!("invalid state transition {:?}", other),
+                }
+            }
+        }
+        <safe_regex::Matcher<CompiledRegex_>>::new()
+    };
+    assert_eq!(None, re.match_all(b""));
+    re.match_all(b"X").unwrap();
+    assert_eq!(None, re.match_all(b"XY"));
 }
 
 #[test]
