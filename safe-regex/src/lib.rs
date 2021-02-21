@@ -165,16 +165,20 @@ impl<'d, T: AsRef<[Range<u32>]>> Groups<'d, T> {
         Self { ranges, data }
     }
 
-    pub fn group_range(&self, n: usize) -> Range<usize> {
+    pub fn group_range(&self, n: usize) -> Option<Range<usize>> {
         if let Some(r) = self.ranges.as_ref().get(n) {
-            (r.start as usize)..(r.end as usize)
+            if *r == (u32::MAX..u32::MAX) {
+                None
+            } else {
+                Some((r.start as usize)..(r.end as usize))
+            }
         } else {
-            panic!("group {} not found in Match struct", n);
+            panic!("group {} not found in Match struct", n)
         }
     }
 
-    pub fn group(&self, n: usize) -> &[u8] {
-        &self.data[self.group_range(n)]
+    pub fn group(&self, n: usize) -> Option<&[u8]> {
+        Some(&self.data[self.group_range(n)?])
     }
 }
 
@@ -243,15 +247,15 @@ pub mod internal {
         }
     }
 
-    pub fn clone_and_set<T: AsMut<[Range<u32>]> + Clone>(array: &T, n: u32, item: Range<u32>) -> T {
-        let mut array_clone = array.clone();
-        array_clone.as_mut()[n as usize] = item;
-        array_clone
-    }
-
-    pub fn clone_and_increment<T: AsMut<[Range<u32>]> + Clone>(array: &T, n: u32) -> T {
-        let mut array_clone = array.clone();
-        array_clone.as_mut()[n as usize].end += 1;
-        array_clone
+    pub fn println_make_next_states(opt_b: &Option<u8>, n: &u32, value: &impl core::fmt::Debug) {
+        println!(
+            "make_next_states {} {} {:?}",
+            opt_b.map_or(String::from("None"), |b| format!(
+                "Some({})",
+                escape_ascii(&[b])
+            )),
+            n,
+            value,
+        );
     }
 }

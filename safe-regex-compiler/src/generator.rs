@@ -2,6 +2,33 @@
 //! proc macro.
 //!
 //! How-to develop proc macros: <https://github.com/dtolnay/proc-macro-workshop>
+
+// // Each variant is 8 bytes.
+// enum E {
+//     A([Range<usize>; 0]),
+//     B([Range<usize>; 0]),
+//     C([Range<usize>; 0]),
+//     D([Range<usize>; 0]),
+// }
+// // Each variant is 24 bytes.
+// enum E {
+//     A([Range<usize>; 1]),
+//     B([Range<usize>; 1]),
+//     C([Range<usize>; 1]),
+//     D([Range<usize>; 1]),
+// }
+// Each variant is 40 bytes.
+// enum E {
+//     A([Range<usize>; 2]),
+//     B([Range<usize>; 2]),
+//     C([Range<usize>; 2]),
+//     D([Range<usize>; 2]),
+// }
+// println!(
+//     "size is {} bytes",
+//     std::mem::size_of_val(&E::A([0..0, 0..0]))
+// );
+
 #![forbid(unsafe_code)]
 use crate::parser::FinalNode;
 use safe_proc_macro2::{Ident, TokenStream};
@@ -27,39 +54,69 @@ fn make_name(names: &mut Vec<Ident>, prefix: &'static str) -> Ident {
 }
 
 fn build(
+    enclosing_group_num: usize,
     mut names: &mut Vec<Ident>,
     clauses: &mut Vec<TokenStream>,
-    next_state: &Ident,
+    next_state_stmt: &TokenStream,
     node: &FinalNode,
-) {
+) -> Ident {
     match node {
         FinalNode::Byte(b) => {
             let name = make_name(&mut names, "Byte");
             clauses.push(quote! {
-            (Self::#name, Some(#b)) => { next_states.insert(Self::#next_state); }
+                (Self::#name(ranges), Some(#b)) => {
+                    let mut ranges_clone = ranges.clone();
+                    ranges_clone[#enclosing_group_num].end = n + 1;
+                    #next_state_stmt
+                }
+                (Self::#name(_), Some(_)) => {}
             });
-            clauses.push(quote! { (Self::#name, Some(_)) => {} });
+            name
         }
         FinalNode::AnyByte => {
             let name = make_name(&mut names, "AnyByte");
             clauses.push(quote! {
-            (Self::#name, Some(_)) => { next_states.insert(Self::#next_state); }
+                (Self::#name(ranges), Some(_)) => {
+                    let mut ranges_clone = ranges.clone();
+                    ranges_clone[#enclosing_group_num].end = n + 1;
+                    #next_state_stmt
+                }
             });
+            name
         }
-        FinalNode::Class(incl, items) => {}
-        FinalNode::Or(nodes) => {
-            for node in nodes {
-                build(names, clauses, next_state, node);
-            }
+        FinalNode::Class(_incl, _items) => {
+            unimplemented!()
         }
-        FinalNode::Seq(nodes) => {
-            for node in nodes {
-                build(names, clauses, next_state, node);
-            }
+        FinalNode::Or(_nodes) => {
+            unimplemented!()
         }
-        FinalNode::Repeat(node, _, _) => {}
+        FinalNode::Seq(_nodes) => {
+            unimplemented!()
+        }
+        FinalNode::Repeat(_node, _, _) => {
+            unimplemented!()
+        }
         FinalNode::Group(node) => {
-            build(names, clauses, next_state, node);
+            let name = make_name(&mut names, "Group");
+            let matched_name = make_name(&mut names, "GroupMatched");
+            let group_next_stmt = quote! {
+                Self::#matched_name(ranges_clone).make_next_states(None, n, next_states)
+            };
+            let group_number = enclosing_group_num + 1;
+            let child_name = build(group_number, names, clauses, &group_next_stmt, node);
+            clauses.push(quote! {
+                (Self::#name(ranges), Some(b)) => {
+                    let mut ranges_clone = ranges.clone();
+                    ranges_clone[#group_number] = n..n;
+                    Self::#child_name(ranges_clone).make_next_states(Some(b), n, next_states);
+                }
+                (Self::#matched_name(ranges), None) => {
+                    let mut ranges_clone = ranges.clone();
+                    ranges_clone[#enclosing_group_num].end = ranges_clone[#group_number].end;
+                    #next_state_stmt
+                }
+            });
+            name
         }
     }
 }
@@ -68,53 +125,36 @@ fn build(
 /// [`safe_regex::internal::Machine`](https://docs.rs/safe-regex/latest/safe_regex/internal/trait.Machine.html)
 /// trait.
 pub fn generate(literal_re: String, parsed_re: FinalNode) -> safe_proc_macro2::TokenStream {
-    let num_groups = count_groups(&parsed_re);
+    let num_groups = count_groups(&parsed_re) + 1;
     let state_type = quote!([core::ops::Range<u32>; #num_groups]);
     let mut names: Vec<Ident> = Vec::new();
     let mut clauses: Vec<TokenStream> = Vec::new();
     // Perform a depth-first walk of the AST and make trait names and clauses.
-    build(
+    let initial_state_name = build(
+        0,
         &mut names,
         &mut clauses,
-        &format_ident!("Accept"),
+        &quote! { next_states.insert(Self::Accept(ranges_clone)); },
         &parsed_re,
     );
-
-    let first_variant = format_ident!("{}", names.first().unwrap());
-    let variants = names.iter().map(|name| {
-        if num_groups == 0 {
-            quote!(#name)
-        } else {
-            quote!(#name(#state_type))
-        }
-    });
-
-    let default_ranges = core::iter::repeat(quote!(u32::MAX..u32::MAX)).take(num_groups);
-    let initial_state = if num_groups == 0 {
-        quote! { Self::#first_variant }
-    } else {
-        // Self::Group0([u32::MAX..u32::MAX, u32::MAX..u32::MAX, ...])
-        quote! { Self::#first_variant([#(#default_ranges),*]) }
-    };
-    let accept_clause = if num_groups == 0 {
-        quote! { Self::Accept => Some([]) }
-    } else {
-        quote! { Self::Accept(ranges) => Some(ranges.clone()) }
-    };
+    let variants = names.iter().map(|name| quote!(#name(#state_type)));
+    let default_ranges = core::iter::once(quote!(0..0))
+        .chain(core::iter::repeat(quote!(u32::MAX..u32::MAX)))
+        .take(num_groups);
     let result = quote! {
     {
         #[doc = #literal_re]
         #[derive(Clone, Debug, PartialEq, Eq, Hash)]
         enum CompiledRegex_ {
             #( #variants ),* ,
-            Accept,
+            Accept(#state_type),
         }
         impl safe_regex::internal::Machine for CompiledRegex_ {
             type State = #state_type;
-            fn start() -> Self { #initial_state }
+            fn start() -> Self { Self::#initial_state_name([#(#default_ranges),*]) }
             fn accept(&self) -> Option<Self::State> {
                 match self {
-                    #accept_clause,
+                    Self::Accept(ranges) => Some(ranges.clone()),
                     _ => None,
                 }
             }
@@ -127,23 +167,14 @@ pub fn generate(literal_re: String, parsed_re: FinalNode) -> safe_proc_macro2::T
                     std::collections::hash_map::RandomState,
                 >,
             ) {
-                println!(
-                    "make_next_states {} {} {:?}",
-                    opt_b.map_or(String::from("None"), |b| format!(
-                        "Some({})",
-                        safe_regex::internal::escape_ascii(&[b])
-                    )),
-                    n,
-                    self,
-                );
+                safe_regex::internal::println_make_next_states(&opt_b, &n, &self);
                 match (self, opt_b) {
                     #(#clauses)*
-                    (Self::Accept, _) => {}
+                    (Self::Accept(_), _) => {}
                     other => panic!("invalid state transition {:?}", other),
                 }
             }
         }
-
         <safe_regex::Matcher<CompiledRegex_>>::new()
     }
     };

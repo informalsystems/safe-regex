@@ -1,15 +1,5 @@
+use safe_regex::internal::escape_ascii;
 use safe_regex::{regex, Matcher};
-
-// /// Converts the bytes into an ASCII string.
-// pub fn escape_ascii(input: impl AsRef<[u8]>) -> String {
-//     let mut result = String::new();
-//     for byte in input.as_ref() {
-//         for ascii_byte in core::ascii::escape_default(*byte) {
-//             result.push_str(core::str::from_utf8(&[ascii_byte]).unwrap());
-//         }
-//     }
-//     result
-// }
 
 fn match_re_fn(data: &[u8]) -> bool {
     regex!(br"a").match_all(data).is_some()
@@ -23,7 +13,7 @@ fn test_re_fn() {
 
 #[test]
 fn byte() {
-    let re: Matcher<_> = regex!(br"abc\n");
+    let re: Matcher<_> = regex!(br"a");
     assert_eq!(None, re.match_all(b""));
     assert_eq!(None, re.match_all(b"X"));
     re.match_all(b"a").unwrap();
@@ -340,23 +330,20 @@ fn optional_at_start() {
 //     let re: Either<DiscardingRange, _, _> = Either::new(Byte::new(b'a'), Byte::new(b'b'));
 //     assert_eq!("Either(Byte(a),Byte(b))", format!("{:?}", re));
 // }
-//
-// #[test]
-// fn group() {
-//     let mut group = CapturingGroup::new(Byte::new(b'a'));
-//     println!(
-//         "size {} bytes: {:?}",
-//         core::mem::size_of_val(&group),
-//         &group
-//     );
-//     assert!(!match_all(&mut group, b""));
-//     assert!(match_all(&mut group, b"a"));
-//     assert_eq!(Some(0..1), group.range());
-//     assert!(!match_all(&mut group, b"Xa"));
-//     assert!(!match_all(&mut group, b"ab"));
-//     assert!(!match_all(&mut group, b"aa"));
-// }
-//
+
+#[test]
+fn group() {
+    let re: Matcher<_> = regex!(br"(a)");
+    assert_eq!(None, re.match_all(b""));
+    assert_eq!(None, re.match_all(b"Xa"));
+    assert_eq!(None, re.match_all(b"ab"));
+    assert_eq!(None, re.match_all(b"aa"));
+    let groups = re.match_all(b"a").unwrap();
+    assert_eq!(0..1, groups.group_range(0).unwrap());
+    assert_eq!("a", escape_ascii(groups.group(1).unwrap()));
+    assert_eq!(0..1, groups.group_range(1).unwrap());
+}
+
 // #[test]
 // fn group_nested1() {
 //     // ((a))
