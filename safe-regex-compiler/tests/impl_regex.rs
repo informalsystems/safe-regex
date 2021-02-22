@@ -127,6 +127,114 @@ fn any_byte() {
 }
 
 #[test]
+fn class_inclusive() {
+    let expected = quote! {
+    {
+        #[doc = "br\"[abc2-4]\""]
+        #[derive(Clone, Debug, PartialEq, Eq, Hash)]
+        enum CompiledRegex_ {
+            Class0([core::ops::Range<u32>; 1usize]),
+            Accept([core::ops::Range<u32>; 1usize]),
+        }
+        impl safe_regex::internal::Machine for CompiledRegex_ {
+            type State = [core::ops::Range<u32>; 1usize];
+            fn start() -> Self {
+                Self::Class0([0..0])
+            }
+            fn accept(&self) -> Option<Self::State> {
+                match self {
+                    Self::Accept(ranges) => Some(ranges.clone()),
+                    _ => None,
+                }
+            }
+            fn make_next_states(
+                &self,
+                opt_b: Option<u8>,
+                n: u32,
+                next_states: &mut std::collections::HashSet<
+                    Self,
+                    std::collections::hash_map::RandomState,
+                >,
+            ) {
+                safe_regex::internal::println_make_next_states(&opt_b, &n, &self);
+                match (self, opt_b) {
+                    (Self::Class0(ranges), Some(b))
+                        if b == 97u8 || b == 98u8 || b == 99u8 || (50u8..=52u8).contains(&b) =>
+                    {
+                        let mut ranges_clone = ranges.clone();
+                        ranges_clone[0usize].end = n + 1;
+                        next_states.insert(Self::Accept(ranges_clone));
+                    }
+                    (Self::Class0(_), Some(_)) => {}
+                    (Self::Accept(_), _) => {}
+                    other => panic!("invalid state transition {:?}", other),
+                }
+            }
+        }
+        <safe_regex::Matcher<CompiledRegex_>>::new()
+    }
+    };
+    assert_eq!(
+        format!("{}", expected),
+        format!("{}", impl_regex(quote! { br"[abc2-4]" }).unwrap())
+    );
+}
+
+#[test]
+fn class_exclusive() {
+    let expected = quote! {
+    {
+        #[doc = "br\"[^abc2-4]\""]
+        #[derive(Clone, Debug, PartialEq, Eq, Hash)]
+        enum CompiledRegex_ {
+            Class0([core::ops::Range<u32>; 1usize]),
+            Accept([core::ops::Range<u32>; 1usize]),
+        }
+        impl safe_regex::internal::Machine for CompiledRegex_ {
+            type State = [core::ops::Range<u32>; 1usize];
+            fn start() -> Self {
+                Self::Class0([0..0])
+            }
+            fn accept(&self) -> Option<Self::State> {
+                match self {
+                    Self::Accept(ranges) => Some(ranges.clone()),
+                    _ => None,
+                }
+            }
+            fn make_next_states(
+                &self,
+                opt_b: Option<u8>,
+                n: u32,
+                next_states: &mut std::collections::HashSet<
+                    Self,
+                    std::collections::hash_map::RandomState,
+                >,
+            ) {
+                safe_regex::internal::println_make_next_states(&opt_b, &n, &self);
+                match (self, opt_b) {
+                    (Self::Class0(ranges), Some(b))
+                        if b != 97u8 && b != 98u8 && b != 99u8 && !(50u8..=52u8).contains(&b) =>
+                    {
+                        let mut ranges_clone = ranges.clone();
+                        ranges_clone[0usize].end = n + 1;
+                        next_states.insert(Self::Accept(ranges_clone));
+                    }
+                    (Self::Class0(_), Some(_)) => {}
+                    (Self::Accept(_), _) => {}
+                    other => panic!("invalid state transition {:?}", other),
+                }
+            }
+        }
+        <safe_regex::Matcher<CompiledRegex_>>::new()
+    }
+    };
+    assert_eq!(
+        format!("{}", expected),
+        format!("{}", impl_regex(quote! { br"[^abc2-4]" }).unwrap())
+    );
+}
+
+#[test]
 fn group() {
     let expected = quote! {
     {

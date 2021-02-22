@@ -1,6 +1,8 @@
 use safe_regex::internal::escape_ascii;
 use safe_regex::{regex, Matcher};
 
+// TODO(mleonhard) Test Debug.
+
 fn match_re_fn(data: &[u8]) -> bool {
     regex!(br"a").match_all(data).is_some()
 }
@@ -30,47 +32,83 @@ fn any_byte() {
     assert_eq!(None, re.match_all(b"XY"));
 }
 
+#[test]
+fn class_inclusive() {
+    let re: Matcher<_> = regex!(br"[abc2-4]");
+    assert_eq!(None, re.match_all(b""));
+    assert_eq!(None, re.match_all(b"X"));
+    re.match_all(b"a").unwrap();
+    re.match_all(b"b").unwrap();
+    re.match_all(b"c").unwrap();
+    assert_eq!(None, re.match_all(b"1"));
+    re.match_all(b"2").unwrap();
+    re.match_all(b"3").unwrap();
+    re.match_all(b"4").unwrap();
+    assert_eq!(None, re.match_all(b"5"));
+    assert_eq!(None, re.match_all(b"Xa"));
+    assert_eq!(None, re.match_all(b"aX"));
+    assert_eq!(None, re.match_all(b"aa"));
+    assert_eq!(None, re.match_all(b"abc"));
+}
+
+#[test]
+fn class_exclusive() {
+    let re: Matcher<_> = regex!(br"[^abc2-4]");
+    assert_eq!(None, re.match_all(b""));
+    re.match_all(b"X").unwrap();
+    re.match_all(b"Y").unwrap();
+    assert_eq!(None, re.match_all(b"XY"));
+    assert_eq!(None, re.match_all(b"a"));
+    assert_eq!(None, re.match_all(b"b"));
+    assert_eq!(None, re.match_all(b"c"));
+    re.match_all(b"1").unwrap();
+    assert_eq!(None, re.match_all(b"2"));
+    assert_eq!(None, re.match_all(b"3"));
+    assert_eq!(None, re.match_all(b"4"));
+    re.match_all(b"5").unwrap();
+}
+
 // #[test]
 // fn seq() {
 //     let mut re = Seq::new(Byte::new(b'a'), Byte::new(b'b'));
 //     println!("size {} bytes: {:?}", core::mem::size_of_val(&re), &re);
-//     assert!(!match_all(&mut re, b""));
-//     assert!(!match_all(&mut re, b"a"));
+//     assert_eq!(None, re.match_all(b""));
+//     assert_eq!(None, re.match_all(b"a"));
 //     assert!(match_all(&mut re, b"ab"));
-//     assert!(!match_all(&mut re, b"aab"));
-//     assert!(!match_all(&mut re, b"aba"));
-//     assert!(!match_all(&mut re, b"abab"));
+//     assert_eq!(None, re.match_all(b"aab"));
+//     assert_eq!(None, re.match_all(b"aba"));
+//     assert_eq!(None, re.match_all(b"abab"));
 // }
 //
 // #[test]
 // fn seq_reset() {
 //     let mut re = Seq::new(Byte::new(b'a'), Seq::new(Byte::new(b'b'), Byte::new(b'c')));
 //     println!("size {} bytes: {:?}", core::mem::size_of_val(&re), &re);
-//     assert!(!match_all(&mut re, b"a"));
-//     assert!(!match_all(&mut re, b"b"));
-//     assert!(!match_all(&mut re, b"c"));
-//     assert!(!match_all(&mut re, b"X"));
+//     assert_eq!(None, re.match_all(b"a"));
+//     assert_eq!(None, re.match_all(b"b"));
+//     assert_eq!(None, re.match_all(b"c"));
+//     assert_eq!(None, re.match_all(b"X"));
 // }
 //
 // #[test]
 // fn seq_nested() {
 //     let mut re = Seq::new(Byte::new(b'a'), Seq::new(Byte::new(b'b'), Byte::new(b'c')));
 //     println!("size {} bytes: {:?}", core::mem::size_of_val(&re), &re);
-//     assert!(!match_all(&mut re, b""));
-//     assert!(!match_all(&mut re, b"X"));
-//     assert!(!match_all(&mut re, b"a"));
-//     assert!(!match_all(&mut re, b"b"));
-//     assert!(!match_all(&mut re, b"c"));
-//     assert!(!match_all(&mut re, b"ab"));
-//     assert!(!match_all(&mut re, b"bc"));
-//     assert!(!match_all(&mut re, b"cd"));
+//     assert_eq!(None, re.match_all(b""));
+//     assert_eq!(None, re.match_all(b"X"));
+//     assert_eq!(None, re.match_all(b"a"));
+//     assert_eq!(None, re.match_all(b"b"));
+//     assert_eq!(None, re.match_all(b"c"));
+//     assert_eq!(None, re.match_all(b"ab"));
+//     assert_eq!(None, re.match_all(b"bc"));
+//     assert_eq!(None, re.match_all(b"cd"));
 //     assert!(match_all(&mut re, b"abc"));
-//     assert!(!match_all(&mut re, b"Xabc"));
-//     assert!(!match_all(&mut re, b"abcX"));
-//     assert!(!match_all(&mut re, b"aabc"));
-//     assert!(!match_all(&mut re, b"abcc"));
-//     assert!(!match_all(&mut re, b"abca"));
-//     assert!(!match_all(&mut re, b"abcabc"));
+//     assert_eq!(None, re.match_all(b"Xabc"));
+//     assert_eq!(None, re.match_all(b"abcX"));
+//     assert_eq!(None, re.match_all(b"aabc"));
+//     assert_eq!(None, re.match_all(b"abcc"));
+//     assert_eq!(None, re.match_all(b"abca"));
+//     assert_eq!(None, re.match_all(b"abcabc"));
 // }
 //
 // #[test]
@@ -80,29 +118,29 @@ fn any_byte() {
 //         Seq::new(Seq::new(Byte::new(b'b'), Byte::new(b'c')), Byte::new(b'd')),
 //     );
 //     println!("size {} bytes: {:?}", core::mem::size_of_val(&re), &re);
-//     assert!(!match_all(&mut re, b""));
-//     assert!(!match_all(&mut re, b"a"));
-//     assert!(!match_all(&mut re, b"b"));
-//     assert!(!match_all(&mut re, b"c"));
-//     assert!(!match_all(&mut re, b"d"));
-//     assert!(!match_all(&mut re, b"ab"));
-//     assert!(!match_all(&mut re, b"bc"));
-//     assert!(!match_all(&mut re, b"cd"));
-//     assert!(!match_all(&mut re, b"abc"));
-//     assert!(!match_all(&mut re, b"bcd"));
+//     assert_eq!(None, re.match_all(b""));
+//     assert_eq!(None, re.match_all(b"a"));
+//     assert_eq!(None, re.match_all(b"b"));
+//     assert_eq!(None, re.match_all(b"c"));
+//     assert_eq!(None, re.match_all(b"d"));
+//     assert_eq!(None, re.match_all(b"ab"));
+//     assert_eq!(None, re.match_all(b"bc"));
+//     assert_eq!(None, re.match_all(b"cd"));
+//     assert_eq!(None, re.match_all(b"abc"));
+//     assert_eq!(None, re.match_all(b"bcd"));
 //     assert!(match_all(&mut re, b"abcd"));
-//     assert!(!match_all(&mut re, b"Xabcd"));
-//     assert!(!match_all(&mut re, b"abcdX"));
-//     assert!(!match_all(&mut re, b"aabcd"));
-//     assert!(!match_all(&mut re, b"abcda"));
-//     assert!(!match_all(&mut re, b"abcdabcd"));
+//     assert_eq!(None, re.match_all(b"Xabcd"));
+//     assert_eq!(None, re.match_all(b"abcdX"));
+//     assert_eq!(None, re.match_all(b"aabcd"));
+//     assert_eq!(None, re.match_all(b"abcda"));
+//     assert_eq!(None, re.match_all(b"abcdabcd"));
 // }
 //
 // #[test]
 // fn seq_debug() {
 //     let mut re = Seq::new(Byte::new(b'a'), Byte::new(b'b'));
 //     assert_eq!("Seq(Byte(a),None,Byte(b))", format!("{:?}", re));
-//     assert!(!match_all(&mut re, b"a"));
+//     assert_eq!(None, re.match_all(b"a"));
 //     assert_eq!(
 //         "Seq(Byte(a),Some(MatchRange(0..1,())),Byte(b))",
 //         format!("{:?}", re)
@@ -115,38 +153,38 @@ fn any_byte() {
 //     assert_eq!("Optional(Byte(a))", format!("{:?}", re));
 //     assert!(match_all(&mut re, b""));
 //     assert!(match_all(&mut re, b"a"));
-//     assert!(!match_all(&mut re, b"aa"));
-//     assert!(!match_all(&mut re, b"X"));
-//     assert!(!match_all(&mut re, b"aX"));
-//     assert!(!match_all(&mut re, b"Xa"));
+//     assert_eq!(None, re.match_all(b"aa"));
+//     assert_eq!(None, re.match_all(b"X"));
+//     assert_eq!(None, re.match_all(b"aX"));
+//     assert_eq!(None, re.match_all(b"Xa"));
 // }
 
 #[test]
 fn optional_at_start() {
     // let mut re = Seq::new(Optional::new(Byte::new(b'a')), Byte::new(b'a'));
     // assert!(!match_all([0..0_usize; 2], &mut re, b""));
-    // assert!(!match_all(&mut re, b"X"));
-    // assert!(!match_all(&mut re, b"aX"));
-    // assert!(!match_all(&mut re, b"Xa"));
+    // assert_eq!(None, re.match_all(b"X"));
+    // assert_eq!(None, re.match_all(b"aX"));
+    // assert_eq!(None, re.match_all(b"Xa"));
     // assert!(match_all(&mut re, b"a"));
     // assert!(match_all(&mut re, b"aa"));
-    // assert!(!match_all(&mut re, b"aaa"));
-    // assert!(!match_all(&mut re, b"Xaa"));
-    // assert!(!match_all(&mut re, b"aaX"));
+    // assert_eq!(None, re.match_all(b"aaa"));
+    // assert_eq!(None, re.match_all(b"Xaa"));
+    // assert_eq!(None, re.match_all(b"aaX"));
 }
 
 // #[test]
 // fn optional_at_end() {
 //     let mut re = Seq::new(Byte::new(b'a'), Optional::new(Byte::new(b'a')));
-//     assert!(!match_all(&mut re, b""));
-//     assert!(!match_all(&mut re, b"X"));
-//     assert!(!match_all(&mut re, b"aX"));
-//     assert!(!match_all(&mut re, b"Xa"));
+//     assert_eq!(None, re.match_all(b""));
+//     assert_eq!(None, re.match_all(b"X"));
+//     assert_eq!(None, re.match_all(b"aX"));
+//     assert_eq!(None, re.match_all(b"Xa"));
 //     assert!(match_all(&mut re, b"a"));
 //     assert!(match_all(&mut re, b"aa"));
-//     assert!(!match_all(&mut re, b"aaa"));
-//     assert!(!match_all(&mut re, b"Xaa"));
-//     assert!(!match_all(&mut re, b"aaX"));
+//     assert_eq!(None, re.match_all(b"aaa"));
+//     assert_eq!(None, re.match_all(b"Xaa"));
+//     assert_eq!(None, re.match_all(b"aaX"));
 // }
 //
 // #[test]
@@ -155,22 +193,22 @@ fn optional_at_start() {
 //         Byte::new(b'a'),
 //         Seq::new(Optional::new(Byte::new(b'a')), Byte::new(b'a')),
 //     );
-//     assert!(!match_all(&mut re, b""));
-//     assert!(!match_all(&mut re, b"X"));
-//     assert!(!match_all(&mut re, b"a"));
-//     assert!(!match_all(&mut re, b"aX"));
-//     assert!(!match_all(&mut re, b"Xa"));
-//     assert!(!match_all(&mut re, b"Xaa"));
-//     assert!(!match_all(&mut re, b"aaX"));
-//     assert!(!match_all(&mut re, b"aXa"));
+//     assert_eq!(None, re.match_all(b""));
+//     assert_eq!(None, re.match_all(b"X"));
+//     assert_eq!(None, re.match_all(b"a"));
+//     assert_eq!(None, re.match_all(b"aX"));
+//     assert_eq!(None, re.match_all(b"Xa"));
+//     assert_eq!(None, re.match_all(b"Xaa"));
+//     assert_eq!(None, re.match_all(b"aaX"));
+//     assert_eq!(None, re.match_all(b"aXa"));
 //     assert!(match_all(&mut re, b"aa"));
 //     assert!(match_all(&mut re, b"aaa"));
-//     assert!(!match_all(&mut re, b"aaaa"));
-//     assert!(!match_all(&mut re, b"aaaaa"));
-//     assert!(!match_all(&mut re, b"aaaaaa"));
-//     assert!(!match_all(&mut re, b"Xaaa"));
-//     assert!(!match_all(&mut re, b"aaaX"));
-//     assert!(!match_all(&mut re, b"XaaaX"));
+//     assert_eq!(None, re.match_all(b"aaaa"));
+//     assert_eq!(None, re.match_all(b"aaaaa"));
+//     assert_eq!(None, re.match_all(b"aaaaaa"));
+//     assert_eq!(None, re.match_all(b"Xaaa"));
+//     assert_eq!(None, re.match_all(b"aaaX"));
+//     assert_eq!(None, re.match_all(b"XaaaX"));
 // }
 //
 // #[test]
@@ -208,58 +246,20 @@ fn optional_at_start() {
 // }
 
 // #[test]
-// fn class_inclusive() {
-//     let mut re = Class::new(true, b"abc");
-//     assert!(!match_all(&mut re, b""));
-//     assert!(!match_all(&mut re, b"X"));
-//     assert!(!match_all(&mut re, b"Xa"));
-//     assert!(!match_all(&mut re, b"aX"));
-//     assert!(!match_all(&mut re, b"aa"));
-//     assert!(!match_all(&mut re, b"abc"));
-//     assert!(match_all(&mut re, b"a"));
-//     assert!(match_all(&mut re, b"b"));
-//     assert!(match_all(&mut re, b"c"));
-//     // Debug
-//     assert_eq!("Class(abc)", format!("{:?}", re));
-//     // Class should match only one byte.
-//     let mut group = CapturingGroup::new(Class::new(true, b"abc"));
-//     assert!(match_all(&mut Seq::new(&mut group, AnyByte::new()), b"aa"));
-//     assert_eq!(Some(0..1), group.range());
-// }
-//
-// #[test]
-// fn class_exclusive() {
-//     let mut re = Class::new(false, b"abc");
-//     assert!(!match_all(&mut re, b""));
-//     assert!(match_all(&mut re, b"X"));
-//     assert!(match_all(&mut re, b"Y"));
-//     assert!(!match_all(&mut re, b"XY"));
-//     assert!(!match_all(&mut re, b"a"));
-//     assert!(!match_all(&mut re, b"b"));
-//     assert!(!match_all(&mut re, b"c"));
-//     // Debug
-//     assert_eq!("Class^(abc)", format!("{:?}", re));
-//     // Class should match only one byte.
-//     let mut group = CapturingGroup::new(Class::new(false, b"abc"));
-//     assert!(match_all(&mut Seq::new(&mut group, AnyByte::new()), b"XX"));
-//     assert_eq!(Some(0..1), group.range());
-// }
-//
-// #[test]
 // fn either() {
 //     let mut re = Either::new(Byte::new(b'a'), Byte::new(b'b'));
-//     assert!(!match_all(&mut re, b""));
-//     assert!(!match_all(&mut re, b"X"));
-//     assert!(!match_all(&mut re, b"Xa"));
-//     assert!(!match_all(&mut re, b"Xb"));
-//     assert!(!match_all(&mut re, b"aX"));
-//     assert!(!match_all(&mut re, b"bX"));
-//     assert!(!match_all(&mut re, b"XaY"));
-//     assert!(!match_all(&mut re, b"XbY"));
-//     assert!(!match_all(&mut re, b"aa"));
-//     assert!(!match_all(&mut re, b"ab"));
-//     assert!(!match_all(&mut re, b"ba"));
-//     assert!(!match_all(&mut re, b"bb"));
+//     assert_eq!(None, re.match_all(b""));
+//     assert_eq!(None, re.match_all(b"X"));
+//     assert_eq!(None, re.match_all(b"Xa"));
+//     assert_eq!(None, re.match_all(b"Xb"));
+//     assert_eq!(None, re.match_all(b"aX"));
+//     assert_eq!(None, re.match_all(b"bX"));
+//     assert_eq!(None, re.match_all(b"XaY"));
+//     assert_eq!(None, re.match_all(b"XbY"));
+//     assert_eq!(None, re.match_all(b"aa"));
+//     assert_eq!(None, re.match_all(b"ab"));
+//     assert_eq!(None, re.match_all(b"ba"));
+//     assert_eq!(None, re.match_all(b"bb"));
 //     assert!(match_all(&mut re, b"a"));
 //     assert!(match_all(&mut re, b"b"));
 // }
@@ -291,38 +291,38 @@ fn optional_at_start() {
 //         Either::new(Byte::new(b'a'), Byte::new(b'b')),
 //         Either::new(Byte::new(b'c'), Byte::new(b'd')),
 //     );
-//     assert!(!match_all(&mut re, b""));
-//     assert!(!match_all(&mut re, b"X"));
-//     assert!(!match_all(&mut re, b"Xac"));
-//     assert!(!match_all(&mut re, b"Xad"));
-//     assert!(!match_all(&mut re, b"Xbc"));
-//     assert!(!match_all(&mut re, b"Xbd"));
-//     assert!(!match_all(&mut re, b"acX"));
-//     assert!(!match_all(&mut re, b"adX"));
-//     assert!(!match_all(&mut re, b"bcX"));
-//     assert!(!match_all(&mut re, b"bdX"));
-//     assert!(!match_all(&mut re, b"XacY"));
-//     assert!(!match_all(&mut re, b"XadY"));
-//     assert!(!match_all(&mut re, b"XbcY"));
-//     assert!(!match_all(&mut re, b"XbdY"));
-//     assert!(!match_all(&mut re, b"aac"));
-//     assert!(!match_all(&mut re, b"add"));
-//     assert!(!match_all(&mut re, b"acac"));
-//     assert!(!match_all(&mut re, b"acbd"));
+//     assert_eq!(None, re.match_all(b""));
+//     assert_eq!(None, re.match_all(b"X"));
+//     assert_eq!(None, re.match_all(b"Xac"));
+//     assert_eq!(None, re.match_all(b"Xad"));
+//     assert_eq!(None, re.match_all(b"Xbc"));
+//     assert_eq!(None, re.match_all(b"Xbd"));
+//     assert_eq!(None, re.match_all(b"acX"));
+//     assert_eq!(None, re.match_all(b"adX"));
+//     assert_eq!(None, re.match_all(b"bcX"));
+//     assert_eq!(None, re.match_all(b"bdX"));
+//     assert_eq!(None, re.match_all(b"XacY"));
+//     assert_eq!(None, re.match_all(b"XadY"));
+//     assert_eq!(None, re.match_all(b"XbcY"));
+//     assert_eq!(None, re.match_all(b"XbdY"));
+//     assert_eq!(None, re.match_all(b"aac"));
+//     assert_eq!(None, re.match_all(b"add"));
+//     assert_eq!(None, re.match_all(b"acac"));
+//     assert_eq!(None, re.match_all(b"acbd"));
 //     assert!(match_all(&mut re, b"ac"));
 //     assert!(match_all(&mut re, b"ad"));
-//     assert!(!match_all(&mut re, b"ba"));
-//     assert!(!match_all(&mut re, b"bb"));
+//     assert_eq!(None, re.match_all(b"ba"));
+//     assert_eq!(None, re.match_all(b"bb"));
 //     assert!(match_all(&mut re, b"bc"));
 //     assert!(match_all(&mut re, b"bd"));
-//     assert!(!match_all(&mut re, b"ca"));
-//     assert!(!match_all(&mut re, b"cb"));
-//     assert!(!match_all(&mut re, b"cc"));
-//     assert!(!match_all(&mut re, b"cd"));
-//     assert!(!match_all(&mut re, b"da"));
-//     assert!(!match_all(&mut re, b"db"));
-//     assert!(!match_all(&mut re, b"dc"));
-//     assert!(!match_all(&mut re, b"dd"));
+//     assert_eq!(None, re.match_all(b"ca"));
+//     assert_eq!(None, re.match_all(b"cb"));
+//     assert_eq!(None, re.match_all(b"cc"));
+//     assert_eq!(None, re.match_all(b"cd"));
+//     assert_eq!(None, re.match_all(b"da"));
+//     assert_eq!(None, re.match_all(b"db"));
+//     assert_eq!(None, re.match_all(b"dc"));
+//     assert_eq!(None, re.match_all(b"dd"));
 // }
 //
 // #[test]

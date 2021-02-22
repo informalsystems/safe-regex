@@ -30,7 +30,7 @@
 // );
 
 #![forbid(unsafe_code)]
-use crate::parser::FinalNode;
+use crate::parser::{ClassItem, FinalNode};
 use safe_proc_macro2::{Ident, TokenStream};
 use safe_quote::{format_ident, quote};
 
@@ -84,17 +84,41 @@ fn build(
             });
             name
         }
-        FinalNode::Class(_incl, _items) => {
-            unimplemented!()
+        FinalNode::Class(incl, items) => {
+            let name = make_name(&mut names, "Class");
+            let comparisons = items.iter().map(|item| match (incl, item) {
+                (true, ClassItem::Byte(b)) => quote! {b == #b},
+                (false, ClassItem::Byte(b)) => quote! {b != #b},
+                (true, ClassItem::ByteRange(first, last)) => {
+                    quote! {(#first ..= #last).contains(&b)}
+                }
+                (false, ClassItem::ByteRange(first, last)) => {
+                    quote! {!(#first ..= #last).contains(&b)}
+                }
+            });
+            let comparison_expr = if *incl {
+                quote! { #( #comparisons )||* }
+            } else {
+                quote! { #( #comparisons )&&* }
+            };
+            clauses.push(quote! {
+                (Self::#name(ranges), Some(b)) if #comparison_expr => {
+                    let mut ranges_clone = ranges.clone();
+                    ranges_clone[#enclosing_group_num].end = n + 1;
+                    #next_state_stmt
+                }
+                (Self::#name(_), Some(_)) => {}
+            });
+            name
         }
         FinalNode::Or(_nodes) => {
-            unimplemented!()
+            panic!("unimplemented {:?}", node)
         }
         FinalNode::Seq(_nodes) => {
-            unimplemented!()
+            panic!("unimplemented {:?}", node)
         }
         FinalNode::Repeat(_node, _, _) => {
-            unimplemented!()
+            panic!("unimplemented {:?}", node)
         }
         FinalNode::Group(node) => {
             let name = make_name(&mut names, "Group");

@@ -106,7 +106,7 @@ fn any_byte() {
 #[test]
 fn class_inclusive() {
     let re = {
-        #[doc = "br\"[abc]\""]
+        #[doc = "br\"[abc2-4]\""]
         #[derive(Clone, Debug, PartialEq, Eq, Hash)]
         enum CompiledRegex_ {
             Class0([core::ops::Range<u32>; 1usize]),
@@ -134,7 +134,9 @@ fn class_inclusive() {
             ) {
                 safe_regex::internal::println_make_next_states(&opt_b, &n, &self);
                 match (self, opt_b) {
-                    (Self::Class0(ranges), Some(b)) if b"abc".contains(&b) => {
+                    (Self::Class0(ranges), Some(b))
+                        if b == 97u8 || b == 98u8 || b == 99u8 || (50u8..=52u8).contains(&b) =>
+                    {
                         let mut ranges_clone = ranges.clone();
                         ranges_clone[0usize].end = n + 1;
                         next_states.insert(Self::Accept(ranges_clone));
@@ -152,6 +154,11 @@ fn class_inclusive() {
     re.match_all(b"a").unwrap();
     re.match_all(b"b").unwrap();
     re.match_all(b"c").unwrap();
+    assert_eq!(None, re.match_all(b"1"));
+    re.match_all(b"2").unwrap();
+    re.match_all(b"3").unwrap();
+    re.match_all(b"4").unwrap();
+    assert_eq!(None, re.match_all(b"5"));
     assert_eq!(None, re.match_all(b"Xa"));
     assert_eq!(None, re.match_all(b"aX"));
     assert_eq!(None, re.match_all(b"aa"));
@@ -161,7 +168,7 @@ fn class_inclusive() {
 #[test]
 fn class_exclusive() {
     let re = {
-        #[doc = "br\"[abc]\""]
+        #[doc = "br\"[^abc2-4]\""]
         #[derive(Clone, Debug, PartialEq, Eq, Hash)]
         enum CompiledRegex_ {
             Class0([core::ops::Range<u32>; 1usize]),
@@ -189,7 +196,9 @@ fn class_exclusive() {
             ) {
                 safe_regex::internal::println_make_next_states(&opt_b, &n, &self);
                 match (self, opt_b) {
-                    (Self::Class0(ranges), Some(b)) if !b"abc".contains(&b) => {
+                    (Self::Class0(ranges), Some(b))
+                        if b != 97u8 && b != 98u8 && b != 99u8 && !(50u8..=52u8).contains(&b) =>
+                    {
                         let mut ranges_clone = ranges.clone();
                         ranges_clone[0usize].end = n + 1;
                         next_states.insert(Self::Accept(ranges_clone));
@@ -209,6 +218,11 @@ fn class_exclusive() {
     assert_eq!(None, re.match_all(b"a"));
     assert_eq!(None, re.match_all(b"b"));
     assert_eq!(None, re.match_all(b"c"));
+    re.match_all(b"1").unwrap();
+    assert_eq!(None, re.match_all(b"2"));
+    assert_eq!(None, re.match_all(b"3"));
+    assert_eq!(None, re.match_all(b"4"));
+    re.match_all(b"5").unwrap();
 }
 
 #[test]
