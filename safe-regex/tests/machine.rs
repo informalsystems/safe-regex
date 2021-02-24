@@ -31,7 +31,13 @@ fn byte() {
             fn byte0(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
                 println!("byte0 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
                 match opt_b {
-                    Some(97u8) => Self::accept(&ranges.clone(), None, n + 1, next_states),
+                    Some(97u8) => Self::accept(
+                        &ranges.clone(),
+                        None,
+                        n + 1,
+                        next_states,
+                        //
+                    ),
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte0(ranges.clone()));
@@ -105,7 +111,13 @@ fn any_byte() {
             fn anybyte0(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
                 println!("anybyte0 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
                 match opt_b {
-                    Some(_) => Self::accept(&ranges.clone(), None, n + 1, next_states),
+                    Some(_) => Self::accept(
+                        &ranges.clone(),
+                        None,
+                        n + 1,
+                        next_states,
+                        //
+                    ),
                     None => {
                         next_states.insert(Self::AnyByte0(ranges.clone()));
                     }
@@ -178,7 +190,13 @@ fn class_inclusive() {
                     Some(b)
                         if b == 97u8 || b == 98u8 || b == 99u8 || (50u8..=52u8).contains(&b) =>
                     {
-                        Self::accept(&ranges.clone(), None, n + 1, next_states)
+                        Self::accept(
+                            &ranges.clone(),
+                            None,
+                            n + 1,
+                            next_states,
+                            //
+                        )
                     }
                     Some(_) => {}
                     None => {
@@ -264,7 +282,13 @@ fn class_exclusive() {
                     Some(b)
                         if b != 97u8 && b != 98u8 && b != 99u8 && !(50u8..=52u8).contains(&b) =>
                     {
-                        Self::accept(&ranges.clone(), None, n + 1, next_states)
+                        Self::accept(
+                            &ranges.clone(),
+                            None,
+                            n + 1,
+                            next_states,
+                            //
+                        )
                     }
                     Some(_) => {}
                     None => {

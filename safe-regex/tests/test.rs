@@ -50,41 +50,41 @@ fn any_byte() {
     assert_eq!(None, re.match_all(b"XY"));
 }
 
-// #[test]
-// fn class_inclusive() {
-//     let re: Matcher<_> = regex!(br"[abc2-4]");
-//     assert_eq!(None, re.match_all(b""));
-//     assert_eq!(None, re.match_all(b"X"));
-//     re.match_all(b"a").unwrap();
-//     re.match_all(b"b").unwrap();
-//     re.match_all(b"c").unwrap();
-//     assert_eq!(None, re.match_all(b"1"));
-//     re.match_all(b"2").unwrap();
-//     re.match_all(b"3").unwrap();
-//     re.match_all(b"4").unwrap();
-//     assert_eq!(None, re.match_all(b"5"));
-//     assert_eq!(None, re.match_all(b"Xa"));
-//     assert_eq!(None, re.match_all(b"aX"));
-//     assert_eq!(None, re.match_all(b"aa"));
-//     assert_eq!(None, re.match_all(b"abc"));
-// }
-//
-// #[test]
-// fn class_exclusive() {
-//     let re: Matcher<_> = regex!(br"[^abc2-4]");
-//     assert_eq!(None, re.match_all(b""));
-//     re.match_all(b"X").unwrap();
-//     re.match_all(b"Y").unwrap();
-//     assert_eq!(None, re.match_all(b"XY"));
-//     assert_eq!(None, re.match_all(b"a"));
-//     assert_eq!(None, re.match_all(b"b"));
-//     assert_eq!(None, re.match_all(b"c"));
-//     re.match_all(b"1").unwrap();
-//     assert_eq!(None, re.match_all(b"2"));
-//     assert_eq!(None, re.match_all(b"3"));
-//     assert_eq!(None, re.match_all(b"4"));
-//     re.match_all(b"5").unwrap();
-// }
+#[test]
+fn class_inclusive() {
+    let re: Matcher<_> = regex!(br"[abc2-4]");
+    assert_eq!(None, re.match_all(b""));
+    assert_eq!(None, re.match_all(b"X"));
+    re.match_all(b"a").unwrap();
+    re.match_all(b"b").unwrap();
+    re.match_all(b"c").unwrap();
+    assert_eq!(None, re.match_all(b"1"));
+    re.match_all(b"2").unwrap();
+    re.match_all(b"3").unwrap();
+    re.match_all(b"4").unwrap();
+    assert_eq!(None, re.match_all(b"5"));
+    assert_eq!(None, re.match_all(b"Xa"));
+    assert_eq!(None, re.match_all(b"aX"));
+    assert_eq!(None, re.match_all(b"aa"));
+    assert_eq!(None, re.match_all(b"abc"));
+}
+
+#[test]
+fn class_exclusive() {
+    let re: Matcher<_> = regex!(br"[^abc2-4]");
+    assert_eq!(None, re.match_all(b""));
+    re.match_all(b"X").unwrap();
+    re.match_all(b"Y").unwrap();
+    assert_eq!(None, re.match_all(b"XY"));
+    assert_eq!(None, re.match_all(b"a"));
+    assert_eq!(None, re.match_all(b"b"));
+    assert_eq!(None, re.match_all(b"c"));
+    re.match_all(b"1").unwrap();
+    assert_eq!(None, re.match_all(b"2"));
+    assert_eq!(None, re.match_all(b"3"));
+    assert_eq!(None, re.match_all(b"4"));
+    re.match_all(b"5").unwrap();
+}
 
 // #[test]
 // fn seq() {

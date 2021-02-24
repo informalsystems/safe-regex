@@ -119,33 +119,47 @@ fn build(
             });
             fn_name
         }
-        //         FinalNode::Class(incl, items) => {
-        //             let name = make_name(&mut names, "Class");
-        //             let comparisons = items.iter().map(|item| match (incl, item) {
-        //                 (true, ClassItem::Byte(b)) => quote! {b == #b},
-        //                 (false, ClassItem::Byte(b)) => quote! {b != #b},
-        //                 (true, ClassItem::ByteRange(first, last)) => {
-        //                     quote! {(#first ..= #last).contains(&b)}
-        //                 }
-        //                 (false, ClassItem::ByteRange(first, last)) => {
-        //                     quote! {!(#first ..= #last).contains(&b)}
-        //                 }
-        //             });
-        //             let comparison_expr = if *incl {
-        //                 quote! { #( #comparisons )||* }
-        //             } else {
-        //                 quote! { #( #comparisons )&&* }
-        //             };
-        //             clauses.push(quote! {
-        //                 (Self::#name(ranges), Some(b)) if #comparison_expr => {
-        //                     let mut ranges_clone = ranges.clone();
-        //                     ranges_clone[#enclosing_group_num].end = n + 1;
-        //                     #next_state_stmt
-        //                 }
-        //                 (Self::#name(_), Some(_)) => {}
-        //             });
-        //             name
-        //         }
+        FinalNode::Class(incl, items) => {
+            let (variant_name, fn_name) = make_variant_and_fn_names(&mut variant_names, "Class");
+            let format_string = format!("{} {}", fn_name, "opt_b={:?} n={} ranges={:?}");
+            let comparisons = items.iter().map(|item| match (incl, item) {
+                (true, ClassItem::Byte(b)) => quote! {b == #b},
+                (false, ClassItem::Byte(b)) => quote! {b != #b},
+                (true, ClassItem::ByteRange(x, y)) => quote! {(#x ..= #y).contains(&b)},
+                (false, ClassItem::ByteRange(x, y)) => quote! {!(#x ..= #y).contains(&b)},
+            });
+            let comparison_expr = if *incl {
+                quote! { #( #comparisons )||* }
+            } else {
+                quote! { #( #comparisons )&&* }
+            };
+
+            let clone_ranges_and_skip_past_n = if let Some(group_num) = enclosing_group_num {
+                quote! { &ranges.clone().skip_past(#group_num, n) }
+            } else {
+                quote! { &ranges.clone() }
+            };
+            functions.push(quote! {
+                fn #fn_name(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                    println!(#format_string, opt_b, n, ranges);
+                    match opt_b {
+                        Some(b) if #comparison_expr => {
+                            Self::#next_fn_name(
+                                #clone_ranges_and_skip_past_n,
+                                None,
+                                n + 1,
+                                next_states,
+                            )
+                        }
+                        Some(_) => {}
+                        None => {
+                            next_states.insert(Self::#variant_name(ranges.clone()));
+                        }
+                    }
+                }
+            });
+            fn_name
+        }
         //         FinalNode::Seq(nodes) => {
         //             if nodes.is_empty() {
         //                 panic!("unimplemented {:?}", node)
