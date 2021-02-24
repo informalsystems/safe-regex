@@ -3,6 +3,24 @@ use safe_regex::{regex, Matcher};
 
 // TODO(mleonhard) Test Debug.
 
+// TODO(mleonhard) Test regexes that could match the empty string:
+// - ""
+// - a?
+// - a?b?
+// - ()
+// - ()?
+// - (a?)
+// - (a)?
+// - (ab)?
+// - ()a?
+// - ()?a?
+// - ()()
+// - (a?)(a?)
+// - (a)?(b)?
+// - (ab)?(cd)?
+// - (|a)
+// - a{,1}
+
 fn match_re_fn(data: &[u8]) -> bool {
     regex!(br"a").match_all(data).is_some()
 }
