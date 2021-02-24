@@ -306,23 +306,56 @@ fn seq() {
 #[test]
 fn alternates() {
     let re = {
+        #[derive(Clone, Debug, PartialEq, Eq, Hash)]
+        struct Ranges_([core::ops::Range<u32>; 1usize]);
+        impl Ranges_ {
+            pub fn new() -> Self {
+                Self([0..0])
+            }
+            pub fn skip_past(mut self, group: usize, n: u32) -> Self {
+                self.0[group].end = n + 1;
+                self
+            }
+            pub fn inner(&self) -> &[core::ops::Range<u32>; 1usize] {
+                &self.0
+            }
+        }
+        type States_ =
+            std::collections::HashSet<CompiledRegex_, std::collections::hash_map::RandomState>;
         #[doc = "br\"a|b\""]
         #[derive(Clone, Debug, PartialEq, Eq, Hash)]
         enum CompiledRegex_ {
-            Alt0([core::ops::Range<u32>; 1usize]),
-            Alt0Byte0([core::ops::Range<u32>; 1usize]),
-            Alt0Byte1([core::ops::Range<u32>; 1usize]),
-            Alt0Matched([core::ops::Range<u32>; 1usize]),
-            Accept([core::ops::Range<u32>; 1usize]),
+            Start,
+            MatchedByte1(Ranges_),
+            Accept(Ranges_),
+        }
+        impl CompiledRegex_ {
+            fn alt0_(ranges: &Ranges_, b: u8, n: u32, next_states: &mut States_) {
+                println!("alt0_ b={} n={} ranges={:?}", b, n, ranges);
+                Self::byte1_(ranges, b, n, next_states);
+                Self::byte2_(ranges, b, n, next_states);
+            }
+            fn byte1_(ranges: &Ranges_, b: u8, n: u32, next_states: &mut States_) {
+                println!("byte1_ b={} n={} ranges={:?}", b, n, ranges);
+                if b == 97u8 {
+                    next_states.insert(Self::Accept(ranges.clone().skip_past(0usize, n)));
+                }
+            }
+            fn byte2_(ranges: &Ranges_, b: u8, n: u32, next_states: &mut States_) {
+                println!("byte2_ b={} n={} ranges={:?}", b, n, ranges);
+                if b == 98u8 {
+                    next_states.insert(Self::Accept(ranges.clone().skip_past(0usize, n)));
+                }
+            }
         }
         impl safe_regex::internal::Machine for CompiledRegex_ {
             type State = [core::ops::Range<u32>; 1usize];
             fn start() -> Self {
-                Self::Alt0([0..0])
+                Self::Start
             }
             fn accept(&self) -> Option<Self::State> {
                 match self {
-                    Self::Accept(ranges) => Some(ranges.clone()),
+                    Self::Accept(ranges) => Some(ranges.inner().clone()),
                     _ => None,
                 }
             }
@@ -335,30 +368,12 @@ fn alternates() {
                     std::collections::hash_map::RandomState,
                 >,
             ) {
-                safe_regex::internal::println_make_next_states(&opt_b, &n, &self);
-                match (self, opt_b) {
-                    (Self::Alt0(ranges), Some(b)) => {
-                        Self::Alt0Byte0(ranges.clone()).make_next_states(Some(b), n, next_states);
-                        Self::Alt0Byte1(ranges.clone()).make_next_states(Some(b), n, next_states);
-                    }
-                    (Self::Alt0Byte0(ranges), Some(b'a')) => {
-                        let mut ranges_clone = ranges.clone();
-                        ranges_clone[0usize].end = n + 1;
-                        Self::Alt0Matched(ranges_clone).make_next_states(None, n, next_states)
-                    }
-                    (Self::Alt0Byte0(_), Some(_)) => {}
-                    (Self::Alt0Byte1(ranges), Some(b'b')) => {
-                        let mut ranges_clone = ranges.clone();
-                        ranges_clone[0usize].end = n + 1;
-                        Self::Alt0Matched(ranges_clone).make_next_states(None, n, next_states)
-                    }
-                    (Self::Alt0Byte1(_), Some(_)) => {}
-                    (Self::Alt0Matched(ranges), None) => {
-                        let ranges_clone = ranges.clone();
-                        next_states.insert(Self::Accept(ranges_clone));
-                    }
-                    (Self::Accept(_), _) => {}
-                    other => panic!("invalid state transition {:?}", other),
+                let b = opt_b.unwrap();
+                println!("make_next_states b={} n={} {:?}", b, n, self);
+                match self {
+                    Self::Start => Self::alt0_(&Ranges_::new(), b, n, next_states),
+                    Self::MatchedByte1(ranges) => Self::byte2_(ranges, b, n, next_states),
+                    Self::Accept(_) => {}
                 }
             }
         }
