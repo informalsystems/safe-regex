@@ -258,19 +258,19 @@ fn seq() {
             ) {
                 safe_regex::internal::println_make_next_states(&opt_b, &n, &self);
                 match (self, opt_b) {
-                    (Self::Byte0(ranges), Some(b'a')) => {
+                    (Self::Byte0(ranges), Some(97u8)) => {
                         let mut ranges_clone = ranges.clone();
                         ranges_clone[0usize].end = n + 1;
                         next_states.insert(Self::Byte1(ranges_clone));
                     }
                     (Self::Byte0(_), Some(_)) => {}
-                    (Self::Byte1(ranges), Some(b'a')) => {
+                    (Self::Byte1(ranges), Some(97u8)) => {
                         let mut ranges_clone = ranges.clone();
                         ranges_clone[0usize].end = n + 1;
                         next_states.insert(Self::Byte2(ranges_clone));
                     }
                     (Self::Byte1(_), Some(_)) => {}
-                    (Self::Byte2(ranges), Some(b'b')) => {
+                    (Self::Byte2(ranges), Some(98u8)) => {
                         let mut ranges_clone = ranges.clone();
                         ranges_clone[0usize].end = n + 1;
                         next_states.insert(Self::Accept(ranges_clone));
@@ -488,7 +488,7 @@ fn optional() {
                         // '?' doesn't match.
                         Self::Accept(ranges.clone()).make_next_states(Some(b), n, next_states);
                     }
-                    (Self::Optional0Byte0(ranges), Some(b'a')) => {
+                    (Self::Optional0Byte0(ranges), Some(97u8)) => {
                         let mut ranges_clone = ranges.clone();
                         ranges_clone[0usize].end = n + 1;
                         next_states.insert(Self::Accept(ranges_clone));
@@ -553,13 +553,13 @@ fn optional_at_start() {
                         // '?' doesn't match.
                         Self::Byte2(ranges.clone()).make_next_states(Some(b), n, next_states);
                     }
-                    (Self::Optional0Byte1(ranges), Some(b'a')) => {
+                    (Self::Optional0Byte1(ranges), Some(97u8)) => {
                         let mut ranges_clone = ranges.clone();
                         ranges_clone[0usize].end = n + 1;
                         next_states.insert(Self::Byte2(ranges_clone));
                     }
                     (Self::Optional0Byte1(_), Some(_)) => {}
-                    (Self::Byte2(ranges), Some(b'a')) => {
+                    (Self::Byte2(ranges), Some(97u8)) => {
                         let mut ranges_clone = ranges.clone();
                         ranges_clone[0usize].end = n + 1;
                         next_states.insert(Self::Accept(ranges_clone));
@@ -618,7 +618,7 @@ fn optional_at_end() {
             ) {
                 safe_regex::internal::println_make_next_states(&opt_b, &n, &self);
                 match (self, opt_b) {
-                    (Self::Byte0(ranges), Some(b'a')) => {
+                    (Self::Byte0(ranges), Some(97u8)) => {
                         let mut ranges_clone = ranges.clone();
                         ranges_clone[0usize].end = n + 1;
                         next_states.insert(Self::Optional1(ranges_clone));
@@ -634,7 +634,7 @@ fn optional_at_end() {
                         // '?' doesn't match.
                         Self::Accept(ranges.clone()).make_next_states(Some(b), n, next_states);
                     }
-                    (Self::Optional1Byte1(ranges), Some(b'a')) => {
+                    (Self::Optional1Byte1(ranges), Some(97u8)) => {
                         let mut ranges_clone = ranges.clone();
                         ranges_clone[0usize].end = n + 1;
                         next_states.insert(Self::Accept(ranges_clone));
@@ -701,7 +701,7 @@ fn star() {
                         // '*' doesn't match.
                         Self::Byte1(ranges.clone()).make_next_states(Some(b), n, next_states)
                     }
-                    (Self::Star0Byte0(ranges), Some(b'a')) => {
+                    (Self::Star0Byte0(ranges), Some(97u8)) => {
                         let mut ranges_clone = ranges.clone();
                         ranges_clone[0usize].end = n + 1;
                         Self::Star0Matched(ranges_clone).make_next_states(None, n, next_states)
@@ -710,11 +710,11 @@ fn star() {
                     (Self::Star0Matched(ranges), None) => {
                         next_states.insert(Self::Star0(ranges.clone()));
                     }
-                    (Self::Byte1(ranges), Some(b'a')) => {
+                    (Self::Byte1(ranges), Some(97u8)) => {
                         next_states.insert(Self::Byte2(ranges.clone()));
                     }
                     (Self::Byte1(_), Some(_)) => {}
-                    (Self::Byte2(ranges), Some(b'a')) => {
+                    (Self::Byte2(ranges), Some(97u8)) => {
                         let mut ranges_clone = ranges.clone();
                         ranges_clone[0usize].end = n + 1;
                         next_states.insert(Self::Accept(ranges_clone));
@@ -795,13 +795,13 @@ fn seq_in_group() {
                         ranges_clone[1usize] = n..n;
                         Self::Group0Byte0(ranges_clone).make_next_states(Some(b), n, next_states);
                     }
-                    (Self::Group0Byte0(ranges), Some(b'a')) => {
+                    (Self::Group0Byte0(ranges), Some(97u8)) => {
                         let mut ranges_clone = ranges.clone();
                         ranges_clone[1usize].end = n + 1;
                         next_states.insert(Self::Group0Byte1(ranges_clone));
                     }
                     (Self::Group0Byte0(_), Some(_)) => {}
-                    (Self::Group0Byte1(ranges), Some(b'b')) => {
+                    (Self::Group0Byte1(ranges), Some(98u8)) => {
                         let mut ranges_clone = ranges.clone();
                         ranges_clone[1usize].end = n + 1;
                         Self::Group0Matched(ranges_clone).make_next_states(None, n, next_states);
@@ -892,7 +892,7 @@ fn alternates_in_group() {
                             next_states,
                         );
                     }
-                    (Self::Group0Alt0Byte0(ranges), Some(b'a')) => {
+                    (Self::Group0Alt0Byte0(ranges), Some(97u8)) => {
                         let mut ranges_clone = ranges.clone();
                         ranges_clone[1usize].end = n + 1;
                         Self::Group0Alt0Matched(ranges_clone).make_next_states(
@@ -902,7 +902,7 @@ fn alternates_in_group() {
                         );
                     }
                     (Self::Group0Alt0Byte0(_), Some(_)) => {}
-                    (Self::Group0Alt0Byte1(ranges), Some(b'b')) => {
+                    (Self::Group0Alt0Byte1(ranges), Some(98u8)) => {
                         let mut ranges_clone = ranges.clone();
                         ranges_clone[1usize].end = n + 1;
                         Self::Group0Alt0Matched(ranges_clone).make_next_states(
@@ -1013,7 +1013,7 @@ fn optionals_in_groups() {
                             next_states,
                         );
                     }
-                    (Self::Group0Optional0Byte0(ranges), Some(b'a')) => {
+                    (Self::Group0Optional0Byte0(ranges), Some(97u8)) => {
                         let mut ranges_clone = ranges.clone();
                         ranges_clone[1usize].end = n + 1;
                         Self::Group0Matched(ranges_clone).make_next_states(None, n, next_states);
@@ -1034,13 +1034,13 @@ fn optionals_in_groups() {
                         ranges_clone[2usize] = n..n;
                         Self::Group1Byte0(ranges_clone).make_next_states(Some(b), n, next_states);
                     }
-                    (Self::Group1Byte0(ranges), Some(b'a')) => {
+                    (Self::Group1Byte0(ranges), Some(97u8)) => {
                         let mut ranges_clone = ranges.clone();
                         ranges_clone[2usize].end = n + 1;
                         next_states.insert(Self::Group1Byte1(ranges_clone));
                     }
                     (Self::Group1Byte0(_), Some(_)) => {}
-                    (Self::Group1Byte1(ranges), Some(b'b')) => {
+                    (Self::Group1Byte1(ranges), Some(98u8)) => {
                         let mut ranges_clone = ranges.clone();
                         ranges_clone[2usize].end = n + 1;
                         Self::Group1Matched(ranges_clone).make_next_states(None, n, next_states);
