@@ -6,42 +6,69 @@ use safe_regex::internal::escape_ascii;
 #[test]
 fn byte() {
     let re = {
+        #[derive(Clone, Debug, PartialEq, Eq, Hash)]
+        struct Ranges_;
+        impl Ranges_ {
+            pub fn new() -> Self {
+                Self
+            }
+            pub fn skip_past(self, _group: usize, _n: u32) -> Self {
+                self
+            }
+            pub fn into_inner(self) -> [core::ops::Range<u32>; 0usize] {
+                []
+            }
+        }
+        type States_ =
+            std::collections::HashSet<CompiledRegex_, std::collections::hash_map::RandomState>;
         #[doc = "br\"a\""]
         #[derive(Clone, Debug, PartialEq, Eq, Hash)]
         enum CompiledRegex_ {
-            Byte0([core::ops::Range<u32>; 1usize]),
-            Accept([core::ops::Range<u32>; 1usize]),
+            Byte0(Ranges_),
+            Accept(Ranges_),
+        }
+        impl CompiledRegex_ {
+            fn byte0(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("byte0 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                match opt_b {
+                    Some(97u8) => Self::accept(
+                        &ranges.clone().skip_past(0usize, n),
+                        None,
+                        n + 1,
+                        next_states,
+                    ),
+                    Some(_) => {}
+                    None => {
+                        next_states.insert(Self::Byte0(ranges.clone()));
+                    }
+                }
+            }
+            fn accept(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("accept opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                match opt_b {
+                    Some(_) => {}
+                    None => {
+                        next_states.insert(Self::Accept(ranges.clone()));
+                    }
+                }
+            }
         }
         impl safe_regex::internal::Machine for CompiledRegex_ {
-            type State = [core::ops::Range<u32>; 1usize];
-            fn start() -> Self {
-                Self::Byte0([0..0])
+            type GroupRanges = [core::ops::Range<u32>; 0usize];
+            fn start(next_states: &mut States_) {
+                Self::byte0(&Ranges_::new(), None, 0, next_states);
             }
-            fn accept(&self) -> Option<Self::State> {
+            fn try_accept(&self) -> Option<Self::GroupRanges> {
                 match self {
-                    Self::Accept(ranges) => Some(ranges.clone()),
+                    Self::Accept(ranges) => Some(ranges.clone().into_inner()),
                     _ => None,
                 }
             }
-            fn make_next_states(
-                &self,
-                opt_b: Option<u8>,
-                n: u32,
-                next_states: &mut std::collections::HashSet<
-                    Self,
-                    std::collections::hash_map::RandomState,
-                >,
-            ) {
-                safe_regex::internal::println_make_next_states(&opt_b, &n, &self);
-                match (self, opt_b) {
-                    (Self::Byte0(ranges), Some(97u8)) => {
-                        let mut ranges_clone = ranges.clone();
-                        ranges_clone[0usize].end = n + 1;
-                        next_states.insert(Self::Accept(ranges_clone));
-                    }
-                    (Self::Byte0(_), Some(_)) => {}
-                    (Self::Accept(_), _) => {}
-                    other => panic!("invalid state transition {:?}", other),
+            fn make_next_states(&self, b: u8, n: u32, next_states: &mut States_) {
+                println!("make_next_states b={:?} n={} {:?}", b, n, self);
+                match self {
+                    Self::Byte0(ranges) => Self::byte0(ranges, Some(b), n, next_states),
+                    Self::Accept(ranges) => Self::accept(ranges, Some(b), n, next_states),
                 }
             }
         }
@@ -58,41 +85,68 @@ fn byte() {
 #[test]
 fn any_byte() {
     let re = {
+        #[derive(Clone, Debug, PartialEq, Eq, Hash)]
+        struct Ranges_;
+        impl Ranges_ {
+            pub fn new() -> Self {
+                Self
+            }
+            pub fn skip_past(self, _group: usize, _n: u32) -> Self {
+                self
+            }
+            pub fn into_inner(self) -> [core::ops::Range<u32>; 0usize] {
+                []
+            }
+        }
+        type States_ =
+            std::collections::HashSet<CompiledRegex_, std::collections::hash_map::RandomState>;
         #[doc = "br\".\""]
         #[derive(Clone, Debug, PartialEq, Eq, Hash)]
         enum CompiledRegex_ {
-            AnyByte0([core::ops::Range<u32>; 1usize]),
-            Accept([core::ops::Range<u32>; 1usize]),
+            AnyByte0(Ranges_),
+            Accept(Ranges_),
+        }
+        impl CompiledRegex_ {
+            fn any_byte0(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("any_byte0 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                match opt_b {
+                    Some(_) => Self::accept(
+                        &ranges.clone().skip_past(0usize, n),
+                        None,
+                        n + 1,
+                        next_states,
+                    ),
+                    None => {
+                        next_states.insert(Self::AnyByte0(ranges.clone()));
+                    }
+                }
+            }
+            fn accept(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("accept opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                match opt_b {
+                    Some(_) => {}
+                    None => {
+                        next_states.insert(Self::Accept(ranges.clone()));
+                    }
+                }
+            }
         }
         impl safe_regex::internal::Machine for CompiledRegex_ {
-            type State = [core::ops::Range<u32>; 1usize];
-            fn start() -> Self {
-                Self::AnyByte0([0..0])
+            type GroupRanges = [core::ops::Range<u32>; 0usize];
+            fn start(next_states: &mut States_) {
+                Self::any_byte0(&Ranges_::new(), None, 0, next_states);
             }
-            fn accept(&self) -> Option<Self::State> {
+            fn try_accept(&self) -> Option<Self::GroupRanges> {
                 match self {
-                    Self::Accept(ranges) => Some(ranges.clone()),
+                    Self::Accept(ranges) => Some(ranges.clone().into_inner()),
                     _ => None,
                 }
             }
-            fn make_next_states(
-                &self,
-                opt_b: Option<u8>,
-                n: u32,
-                next_states: &mut std::collections::HashSet<
-                    Self,
-                    std::collections::hash_map::RandomState,
-                >,
-            ) {
-                safe_regex::internal::println_make_next_states(&opt_b, &n, &self);
-                match (self, opt_b) {
-                    (Self::AnyByte0(ranges), Some(_)) => {
-                        let mut ranges_clone = ranges.clone();
-                        ranges_clone[0usize].end = n + 1;
-                        next_states.insert(Self::Accept(ranges_clone));
-                    }
-                    (Self::Accept(_), _) => {}
-                    other => panic!("invalid state transition {:?}", other),
+            fn make_next_states(&self, b: u8, n: u32, next_states: &mut States_) {
+                println!("make_next_states b={:?} n={} {:?}", b, n, self);
+                match self {
+                    Self::AnyByte0(ranges) => Self::any_byte0(ranges, Some(b), n, next_states),
+                    Self::Accept(ranges) => Self::accept(ranges, Some(b), n, next_states),
                 }
             }
         }
@@ -106,44 +160,73 @@ fn any_byte() {
 #[test]
 fn class_inclusive() {
     let re = {
+        #[derive(Clone, Debug, PartialEq, Eq, Hash)]
+        struct Ranges_;
+        impl Ranges_ {
+            pub fn new() -> Self {
+                Self
+            }
+            pub fn skip_past(self, _group: usize, _n: u32) -> Self {
+                self
+            }
+            pub fn into_inner(self) -> [core::ops::Range<u32>; 0usize] {
+                []
+            }
+        }
+        type States_ =
+            std::collections::HashSet<CompiledRegex_, std::collections::hash_map::RandomState>;
         #[doc = "br\"[abc2-4]\""]
         #[derive(Clone, Debug, PartialEq, Eq, Hash)]
         enum CompiledRegex_ {
-            Class0([core::ops::Range<u32>; 1usize]),
-            Accept([core::ops::Range<u32>; 1usize]),
+            Class0(Ranges_),
+            Accept(Ranges_),
+        }
+        impl CompiledRegex_ {
+            fn class0(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("class0 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                match opt_b {
+                    Some(b)
+                        if b == 97u8 || b == 98u8 || b == 99u8 || (50u8..=52u8).contains(&b) =>
+                    {
+                        Self::accept(
+                            &ranges.clone().skip_past(0usize, n),
+                            None,
+                            n + 1,
+                            next_states,
+                        )
+                    }
+                    Some(_) => {}
+                    None => {
+                        next_states.insert(Self::Class0(ranges.clone()));
+                    }
+                }
+            }
+            fn accept(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("accept opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                match opt_b {
+                    Some(_) => {}
+                    None => {
+                        next_states.insert(Self::Accept(ranges.clone()));
+                    }
+                }
+            }
         }
         impl safe_regex::internal::Machine for CompiledRegex_ {
-            type State = [core::ops::Range<u32>; 1usize];
-            fn start() -> Self {
-                Self::Class0([0..0])
+            type GroupRanges = [core::ops::Range<u32>; 0usize];
+            fn start(next_states: &mut States_) {
+                Self::class0(&Ranges_::new(), None, 0, next_states);
             }
-            fn accept(&self) -> Option<Self::State> {
+            fn try_accept(&self) -> Option<Self::GroupRanges> {
                 match self {
-                    Self::Accept(ranges) => Some(ranges.clone()),
+                    Self::Accept(ranges) => Some(ranges.clone().into_inner()),
                     _ => None,
                 }
             }
-            fn make_next_states(
-                &self,
-                opt_b: Option<u8>,
-                n: u32,
-                next_states: &mut std::collections::HashSet<
-                    Self,
-                    std::collections::hash_map::RandomState,
-                >,
-            ) {
-                safe_regex::internal::println_make_next_states(&opt_b, &n, &self);
-                match (self, opt_b) {
-                    (Self::Class0(ranges), Some(b))
-                        if b == 97u8 || b == 98u8 || b == 99u8 || (50u8..=52u8).contains(&b) =>
-                    {
-                        let mut ranges_clone = ranges.clone();
-                        ranges_clone[0usize].end = n + 1;
-                        next_states.insert(Self::Accept(ranges_clone));
-                    }
-                    (Self::Class0(_), Some(_)) => {}
-                    (Self::Accept(_), _) => {}
-                    other => panic!("invalid state transition {:?}", other),
+            fn make_next_states(&self, b: u8, n: u32, next_states: &mut States_) {
+                println!("make_next_states b={:?} n={} {:?}", b, n, self);
+                match self {
+                    Self::Class0(ranges) => Self::class0(ranges, Some(b), n, next_states),
+                    Self::Accept(ranges) => Self::accept(ranges, Some(b), n, next_states),
                 }
             }
         }
@@ -168,44 +251,73 @@ fn class_inclusive() {
 #[test]
 fn class_exclusive() {
     let re = {
+        #[derive(Clone, Debug, PartialEq, Eq, Hash)]
+        struct Ranges_;
+        impl Ranges_ {
+            pub fn new() -> Self {
+                Self
+            }
+            pub fn skip_past(self, _group: usize, _n: u32) -> Self {
+                self
+            }
+            pub fn into_inner(self) -> [core::ops::Range<u32>; 0usize] {
+                []
+            }
+        }
+        type States_ =
+            std::collections::HashSet<CompiledRegex_, std::collections::hash_map::RandomState>;
         #[doc = "br\"[^abc2-4]\""]
         #[derive(Clone, Debug, PartialEq, Eq, Hash)]
         enum CompiledRegex_ {
-            Class0([core::ops::Range<u32>; 1usize]),
-            Accept([core::ops::Range<u32>; 1usize]),
+            Class0(Ranges_),
+            Accept(Ranges_),
+        }
+        impl CompiledRegex_ {
+            fn class0(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("class0 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                match opt_b {
+                    Some(b)
+                        if b != 97u8 && b != 98u8 && b != 99u8 && !(50u8..=52u8).contains(&b) =>
+                    {
+                        Self::accept(
+                            &ranges.clone().skip_past(0usize, n),
+                            None,
+                            n + 1,
+                            next_states,
+                        )
+                    }
+                    Some(_) => {}
+                    None => {
+                        next_states.insert(Self::Class0(ranges.clone()));
+                    }
+                }
+            }
+            fn accept(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("accept opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                match opt_b {
+                    Some(_) => {}
+                    None => {
+                        next_states.insert(Self::Accept(ranges.clone()));
+                    }
+                }
+            }
         }
         impl safe_regex::internal::Machine for CompiledRegex_ {
-            type State = [core::ops::Range<u32>; 1usize];
-            fn start() -> Self {
-                Self::Class0([0..0])
+            type GroupRanges = [core::ops::Range<u32>; 0usize];
+            fn start(next_states: &mut States_) {
+                Self::class0(&Ranges_::new(), None, 0, next_states);
             }
-            fn accept(&self) -> Option<Self::State> {
+            fn try_accept(&self) -> Option<Self::GroupRanges> {
                 match self {
-                    Self::Accept(ranges) => Some(ranges.clone()),
+                    Self::Accept(ranges) => Some(ranges.clone().into_inner()),
                     _ => None,
                 }
             }
-            fn make_next_states(
-                &self,
-                opt_b: Option<u8>,
-                n: u32,
-                next_states: &mut std::collections::HashSet<
-                    Self,
-                    std::collections::hash_map::RandomState,
-                >,
-            ) {
-                safe_regex::internal::println_make_next_states(&opt_b, &n, &self);
-                match (self, opt_b) {
-                    (Self::Class0(ranges), Some(b))
-                        if b != 97u8 && b != 98u8 && b != 99u8 && !(50u8..=52u8).contains(&b) =>
-                    {
-                        let mut ranges_clone = ranges.clone();
-                        ranges_clone[0usize].end = n + 1;
-                        next_states.insert(Self::Accept(ranges_clone));
-                    }
-                    (Self::Class0(_), Some(_)) => {}
-                    (Self::Accept(_), _) => {}
-                    other => panic!("invalid state transition {:?}", other),
+            fn make_next_states(&self, b: u8, n: u32, next_states: &mut States_) {
+                println!("make_next_states b={:?} n={} {:?}", b, n, self);
+                match self {
+                    Self::Class0(ranges) => Self::class0(ranges, Some(b), n, next_states),
+                    Self::Accept(ranges) => Self::accept(ranges, Some(b), n, next_states),
                 }
             }
         }
@@ -228,56 +340,103 @@ fn class_exclusive() {
 #[test]
 fn seq() {
     let re = {
+        #[derive(Clone, Debug, PartialEq, Eq, Hash)]
+        struct Ranges_;
+        impl Ranges_ {
+            pub fn new() -> Self {
+                Self
+            }
+            pub fn skip_past(self, _group: usize, _n: u32) -> Self {
+                self
+            }
+            pub fn into_inner(self) -> [core::ops::Range<u32>; 0usize] {
+                []
+            }
+        }
+        type States_ =
+            std::collections::HashSet<CompiledRegex_, std::collections::hash_map::RandomState>;
         #[doc = "br\"aab\""]
         #[derive(Clone, Debug, PartialEq, Eq, Hash)]
         enum CompiledRegex_ {
-            Byte0([core::ops::Range<u32>; 1usize]),
-            Byte1([core::ops::Range<u32>; 1usize]),
-            Byte2([core::ops::Range<u32>; 1usize]),
-            Accept([core::ops::Range<u32>; 1usize]),
+            Byte0(Ranges_),
+            Byte1(Ranges_),
+            Byte2(Ranges_),
+            Accept(Ranges_),
+        }
+        impl CompiledRegex_ {
+            fn byte0(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("byte0 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                match opt_b {
+                    Some(97u8) => Self::byte1(
+                        &ranges.clone().skip_past(0usize, n),
+                        None,
+                        n + 1,
+                        next_states,
+                    ),
+                    Some(_) => {}
+                    None => {
+                        next_states.insert(Self::Byte0(ranges.clone()));
+                    }
+                }
+            }
+            fn byte1(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("byte1 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                match opt_b {
+                    Some(97u8) => Self::byte2(
+                        &ranges.clone().skip_past(0usize, n),
+                        None,
+                        n + 1,
+                        next_states,
+                    ),
+                    Some(_) => {}
+                    None => {
+                        next_states.insert(Self::Byte1(ranges.clone()));
+                    }
+                }
+            }
+            fn byte2(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("byte2 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                match opt_b {
+                    Some(98u8) => Self::accept(
+                        &ranges.clone().skip_past(0usize, n),
+                        None,
+                        n + 1,
+                        next_states,
+                    ),
+                    Some(_) => {}
+                    None => {
+                        next_states.insert(Self::Byte2(ranges.clone()));
+                    }
+                }
+            }
+            fn accept(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("accept opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                match opt_b {
+                    Some(_) => {}
+                    None => {
+                        next_states.insert(Self::Accept(ranges.clone()));
+                    }
+                }
+            }
         }
         impl safe_regex::internal::Machine for CompiledRegex_ {
-            type State = [core::ops::Range<u32>; 1usize];
-            fn start() -> Self {
-                Self::Byte0([0..0])
+            type GroupRanges = [core::ops::Range<u32>; 0usize];
+            fn start(next_states: &mut States_) {
+                Self::byte0(&Ranges_::new(), None, 0, next_states);
             }
-            fn accept(&self) -> Option<Self::State> {
+            fn try_accept(&self) -> Option<Self::GroupRanges> {
                 match self {
-                    Self::Accept(ranges) => Some(ranges.clone()),
+                    Self::Accept(ranges) => Some(ranges.clone().into_inner()),
                     _ => None,
                 }
             }
-            fn make_next_states(
-                &self,
-                opt_b: Option<u8>,
-                n: u32,
-                next_states: &mut std::collections::HashSet<
-                    Self,
-                    std::collections::hash_map::RandomState,
-                >,
-            ) {
-                safe_regex::internal::println_make_next_states(&opt_b, &n, &self);
-                match (self, opt_b) {
-                    (Self::Byte0(ranges), Some(97u8)) => {
-                        let mut ranges_clone = ranges.clone();
-                        ranges_clone[0usize].end = n + 1;
-                        next_states.insert(Self::Byte1(ranges_clone));
-                    }
-                    (Self::Byte0(_), Some(_)) => {}
-                    (Self::Byte1(ranges), Some(97u8)) => {
-                        let mut ranges_clone = ranges.clone();
-                        ranges_clone[0usize].end = n + 1;
-                        next_states.insert(Self::Byte2(ranges_clone));
-                    }
-                    (Self::Byte1(_), Some(_)) => {}
-                    (Self::Byte2(ranges), Some(98u8)) => {
-                        let mut ranges_clone = ranges.clone();
-                        ranges_clone[0usize].end = n + 1;
-                        next_states.insert(Self::Accept(ranges_clone));
-                    }
-                    (Self::Byte2(_), Some(_)) => {}
-                    (Self::Accept(_), _) => {}
-                    other => panic!("invalid state transition {:?}", other),
+            fn make_next_states(&self, b: u8, n: u32, next_states: &mut States_) {
+                println!("make_next_states b={:?} n={} {:?}", b, n, self);
+                match self {
+                    Self::Byte0(ranges) => Self::byte0(ranges, Some(b), n, next_states),
+                    Self::Byte1(ranges) => Self::byte1(ranges, Some(b), n, next_states),
+                    Self::Byte2(ranges) => Self::byte2(ranges, Some(b), n, next_states),
+                    Self::Accept(ranges) => Self::accept(ranges, Some(b), n, next_states),
                 }
             }
         }
@@ -307,17 +466,16 @@ fn seq() {
 fn alternates() {
     let re = {
         #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-        struct Ranges_([core::ops::Range<u32>; 1usize]);
+        struct Ranges_;
         impl Ranges_ {
             pub fn new() -> Self {
-                Self([0..0])
+                Self
             }
-            pub fn skip_past(mut self, group: usize, n: u32) -> Self {
-                self.0[group].end = n + 1;
+            pub fn skip_past(self, _group: usize, _n: u32) -> Self {
                 self
             }
-            pub fn inner(&self) -> &[core::ops::Range<u32>; 1usize] {
-                &self.0
+            pub fn into_inner(self) -> [core::ops::Range<u32>; 0usize] {
+                []
             }
         }
         type States_ =
@@ -325,55 +483,73 @@ fn alternates() {
         #[doc = "br\"a|b\""]
         #[derive(Clone, Debug, PartialEq, Eq, Hash)]
         enum CompiledRegex_ {
-            Start,
-            MatchedByte1(Ranges_),
+            Byte1(Ranges_),
+            Byte2(Ranges_),
             Accept(Ranges_),
         }
         impl CompiledRegex_ {
-            fn alt0_(ranges: &Ranges_, b: u8, n: u32, next_states: &mut States_) {
-                println!("alt0_ b={} n={} ranges={:?}", b, n, ranges);
-                Self::byte1_(ranges, b, n, next_states);
-                Self::byte2_(ranges, b, n, next_states);
+            fn alt0(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("alt0 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                Self::byte1(ranges, opt_b, n, next_states);
+                Self::byte2(ranges, opt_b, n, next_states);
             }
-            fn byte1_(ranges: &Ranges_, b: u8, n: u32, next_states: &mut States_) {
-                println!("byte1_ b={} n={} ranges={:?}", b, n, ranges);
-                if b == 97u8 {
-                    next_states.insert(Self::Accept(ranges.clone().skip_past(0usize, n)));
+            fn byte1(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("byte1 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                match opt_b {
+                    Some(97u8) => Self::accept(
+                        &ranges.clone().skip_past(0usize, n),
+                        None,
+                        n + 1,
+                        next_states,
+                    ),
+                    Some(_) => {}
+                    None => {
+                        next_states.insert(Self::Byte1(ranges.clone()));
+                    }
                 }
             }
-            fn byte2_(ranges: &Ranges_, b: u8, n: u32, next_states: &mut States_) {
-                println!("byte2_ b={} n={} ranges={:?}", b, n, ranges);
-                if b == 98u8 {
-                    next_states.insert(Self::Accept(ranges.clone().skip_past(0usize, n)));
+            fn byte2(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("byte2 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                match opt_b {
+                    Some(98u8) => Self::accept(
+                        &ranges.clone().skip_past(0usize, n),
+                        None,
+                        n + 1,
+                        next_states,
+                    ),
+                    Some(_) => {}
+                    None => {
+                        next_states.insert(Self::Byte2(ranges.clone()));
+                    }
+                }
+            }
+            fn accept(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("accept opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                match opt_b {
+                    Some(_) => {}
+                    None => {
+                        next_states.insert(Self::Accept(ranges.clone()));
+                    }
                 }
             }
         }
         impl safe_regex::internal::Machine for CompiledRegex_ {
-            type State = [core::ops::Range<u32>; 1usize];
-            fn start() -> Self {
-                Self::Start
+            type GroupRanges = [core::ops::Range<u32>; 0usize];
+            fn start(next_states: &mut States_) {
+                Self::alt0(&Ranges_::new(), None, 0, next_states);
             }
-            fn accept(&self) -> Option<Self::State> {
+            fn try_accept(&self) -> Option<Self::GroupRanges> {
                 match self {
-                    Self::Accept(ranges) => Some(ranges.inner().clone()),
+                    Self::Accept(ranges) => Some(ranges.clone().into_inner()),
                     _ => None,
                 }
             }
-            fn make_next_states(
-                &self,
-                opt_b: Option<u8>,
-                n: u32,
-                next_states: &mut std::collections::HashSet<
-                    Self,
-                    std::collections::hash_map::RandomState,
-                >,
-            ) {
-                let b = opt_b.unwrap();
-                println!("make_next_states b={} n={} {:?}", b, n, self);
+            fn make_next_states(&self, b: u8, n: u32, next_states: &mut States_) {
+                println!("make_next_states b={:?} n={} {:?}", b, n, self);
                 match self {
-                    Self::Start => Self::alt0_(&Ranges_::new(), b, n, next_states),
-                    Self::MatchedByte1(ranges) => Self::byte2_(ranges, b, n, next_states),
-                    Self::Accept(_) => {}
+                    Self::Byte1(ranges) => Self::byte1(ranges, Some(b), n, next_states),
+                    Self::Byte2(ranges) => Self::byte2(ranges, Some(b), n, next_states),
+                    Self::Accept(ranges) => Self::accept(ranges, Some(b), n, next_states),
                 }
             }
         }
@@ -396,54 +572,88 @@ fn alternates() {
 #[test]
 fn group() {
     let re = {
+        #[derive(Clone, Debug, PartialEq, Eq, Hash)]
+        struct Ranges_([core::ops::Range<u32>; 1usize]);
+        impl Ranges_ {
+            pub fn new() -> Self {
+                Self([u32::MAX..u32::MAX])
+            }
+            pub fn enter(mut self, group: usize, n: u32) -> Self {
+                self.0[group].start = n;
+                self.0[group].end = n;
+                self
+            }
+            pub fn skip_past(mut self, group: usize, n: u32) -> Self {
+                self.0[group].end = n + 1;
+                self
+            }
+            pub fn inner(&self) -> &[core::ops::Range<u32>; 1usize] {
+                &self.0
+            }
+        }
+        type States_ =
+            std::collections::HashSet<CompiledRegex_, std::collections::hash_map::RandomState>;
         #[doc = "br\"(a)\""]
         #[derive(Clone, Debug, PartialEq, Eq, Hash)]
         enum CompiledRegex_ {
-            Group0([core::ops::Range<u32>; 2usize]),
-            GroupMatched1([core::ops::Range<u32>; 2usize]),
-            Byte2([core::ops::Range<u32>; 2usize]),
-            Accept([core::ops::Range<u32>; 2usize]),
+            Byte1(Ranges_),
+            Accept(Ranges_),
+        }
+        impl CompiledRegex_ {
+            fn group_start0(
+                ranges: &Ranges_,
+                opt_b: Option<u8>,
+                n: u32,
+                next_states: &mut States_,
+            ) {
+                println!("group_start0 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                Self::byte1(&ranges.clone().enter(0usize, n), opt_b, n, next_states);
+            }
+            fn byte1(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("byte1 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                match opt_b {
+                    Some(97u8) => Self::group_end2(
+                        &ranges.clone().skip_past(0usize, n),
+                        None,
+                        n + 1,
+                        next_states,
+                    ),
+                    Some(_) => {}
+                    None => {
+                        next_states.insert(Self::Byte1(ranges.clone()));
+                    }
+                }
+            }
+            fn group_end2(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("group_end2 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                Self::accept(ranges, opt_b, n, next_states);
+            }
+            fn accept(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("accept opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                match opt_b {
+                    Some(_) => {}
+                    None => {
+                        next_states.insert(Self::Accept(ranges.clone()));
+                    }
+                }
+            }
         }
         impl safe_regex::internal::Machine for CompiledRegex_ {
-            type State = [core::ops::Range<u32>; 2usize];
-            fn start() -> Self {
-                Self::Group0([0..0, u32::MAX..u32::MAX])
+            type GroupRanges = [core::ops::Range<u32>; 1usize];
+            fn start(next_states: &mut States_) {
+                Self::group_start0(&Ranges_::new(), None, 0, next_states);
             }
-            fn accept(&self) -> Option<Self::State> {
+            fn try_accept(&self) -> Option<Self::GroupRanges> {
                 match self {
-                    Self::Accept(ranges) => Some(ranges.clone()),
+                    Self::Accept(ranges) => Some(ranges.inner().clone()),
                     _ => None,
                 }
             }
-            fn make_next_states(
-                &self,
-                opt_b: Option<u8>,
-                n: u32,
-                next_states: &mut std::collections::HashSet<
-                    Self,
-                    std::collections::hash_map::RandomState,
-                >,
-            ) {
-                safe_regex::internal::println_make_next_states(&opt_b, &n, &self);
-                match (self, opt_b) {
-                    (Self::Byte2(ranges), Some(97u8)) => {
-                        let mut ranges_clone = ranges.clone();
-                        ranges_clone[1usize].end = n + 1;
-                        Self::GroupMatched1(ranges_clone).make_next_states(None, n, next_states)
-                    }
-                    (Self::Byte2(_), Some(_)) => {}
-                    (Self::Group0(ranges), Some(b)) => {
-                        let mut ranges_clone = ranges.clone();
-                        ranges_clone[1usize] = n..n;
-                        Self::Byte2(ranges_clone).make_next_states(Some(b), n, next_states);
-                    }
-                    (Self::GroupMatched1(ranges), None) => {
-                        let mut ranges_clone = ranges.clone();
-                        ranges_clone[0usize].end = ranges_clone[1usize].end;
-                        next_states.insert(Self::Accept(ranges_clone));
-                    }
-                    (Self::Accept(_), _) => {}
-                    other => panic!("invalid state transition {:?}", other),
+            fn make_next_states(&self, b: u8, n: u32, next_states: &mut States_) {
+                println!("make_next_states b={:?} n={} {:?}", b, n, self);
+                match self {
+                    Self::Byte1(ranges) => Self::byte1(ranges, Some(b), n, next_states),
+                    Self::Accept(ranges) => Self::accept(ranges, Some(b), n, next_states),
                 }
             }
         }
@@ -456,61 +666,80 @@ fn group() {
     assert_eq!(None, re.match_all(b"aa"));
     let groups = re.match_all(b"a").unwrap();
     assert_eq!(0..1, groups.group_range(0).unwrap());
-    assert_eq!(0..1, groups.group_range(1).unwrap());
-    assert_eq!("a", escape_ascii(groups.group(1).unwrap()));
+    assert_eq!("a", escape_ascii(groups.group(0).unwrap()));
 }
 
 #[test]
 fn optional() {
     let re = {
+        #[derive(Clone, Debug, PartialEq, Eq, Hash)]
+        struct Ranges_;
+        impl Ranges_ {
+            pub fn new() -> Self {
+                Self
+            }
+            pub fn skip_past(self, _group: usize, _n: u32) -> Self {
+                self
+            }
+            pub fn into_inner(self) -> [core::ops::Range<u32>; 0usize] {
+                []
+            }
+        }
+        type States_ =
+            std::collections::HashSet<CompiledRegex_, std::collections::hash_map::RandomState>;
         #[doc = "br\"a?\""]
         #[derive(Clone, Debug, PartialEq, Eq, Hash)]
         enum CompiledRegex_ {
-            Optional0([core::ops::Range<u32>; 1usize]),
-            Optional0Byte0([core::ops::Range<u32>; 1usize]),
-            Accept([core::ops::Range<u32>; 1usize]),
+            Byte1(Ranges_),
+            Accept(Ranges_),
+        }
+        impl CompiledRegex_ {
+            fn optional0(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("optional0 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                Self::byte1(ranges, opt_b, n, next_states);
+                Self::accept(ranges, opt_b, n, next_states);
+            }
+            fn byte1(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("byte1 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                match opt_b {
+                    Some(97u8) => Self::accept(
+                        &ranges.clone().skip_past(0usize, n),
+                        None,
+                        n + 1,
+                        next_states,
+                    ),
+                    Some(_) => {}
+                    None => {
+                        next_states.insert(Self::Byte1(ranges.clone()));
+                    }
+                }
+            }
+            fn accept(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("accept opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                match opt_b {
+                    Some(_) => {}
+                    None => {
+                        next_states.insert(Self::Accept(ranges.clone()));
+                    }
+                }
+            }
         }
         impl safe_regex::internal::Machine for CompiledRegex_ {
-            type State = [core::ops::Range<u32>; 1usize];
-            fn start() -> Self {
-                Self::Optional0([0..0])
+            type GroupRanges = [core::ops::Range<u32>; 0usize];
+            fn start(next_states: &mut States_) {
+                Self::optional0(&Ranges_::new(), None, 0, next_states);
             }
-            fn accept(&self) -> Option<Self::State> {
+            fn try_accept(&self) -> Option<Self::GroupRanges> {
                 match self {
-                    Self::Optional0(ranges) | Self::Accept(ranges) => Some(ranges.clone()),
-                    #[allow(unreachable_patterns)]
+                    Self::Accept(ranges) => Some(ranges.clone().into_inner()),
                     _ => None,
                 }
             }
-            fn make_next_states(
-                &self,
-                opt_b: Option<u8>,
-                n: u32,
-                next_states: &mut std::collections::HashSet<
-                    Self,
-                    std::collections::hash_map::RandomState,
-                >,
-            ) {
-                safe_regex::internal::println_make_next_states(&opt_b, &n, &self);
-                match (self, opt_b) {
-                    (Self::Optional0(ranges), Some(b)) => {
-                        // '?' matches.
-                        Self::Optional0Byte0(ranges.clone()).make_next_states(
-                            Some(b),
-                            n,
-                            next_states,
-                        );
-                        // '?' doesn't match.
-                        Self::Accept(ranges.clone()).make_next_states(Some(b), n, next_states);
-                    }
-                    (Self::Optional0Byte0(ranges), Some(97u8)) => {
-                        let mut ranges_clone = ranges.clone();
-                        ranges_clone[0usize].end = n + 1;
-                        next_states.insert(Self::Accept(ranges_clone));
-                    }
-                    (Self::Optional0Byte0(_), Some(_)) => {}
-                    (Self::Accept(_), _) => {}
-                    other => panic!("invalid state transition {:?}", other),
+            fn make_next_states(&self, b: u8, n: u32, next_states: &mut States_) {
+                println!("make_next_states b={:?} n={} {:?}", b, n, self);
+                match self {
+                    Self::Byte1(ranges) => Self::byte1(ranges, Some(b), n, next_states),
+                    Self::Accept(ranges) => Self::accept(ranges, Some(b), n, next_states),
                 }
             }
         }
@@ -527,61 +756,91 @@ fn optional() {
 #[test]
 fn optional_at_start() {
     let re = {
+        #[derive(Clone, Debug, PartialEq, Eq, Hash)]
+        struct Ranges_;
+        impl Ranges_ {
+            pub fn new() -> Self {
+                Self
+            }
+            pub fn skip_past(self, _group: usize, _n: u32) -> Self {
+                self
+            }
+            pub fn into_inner(self) -> [core::ops::Range<u32>; 0usize] {
+                []
+            }
+        }
+        type States_ =
+            std::collections::HashSet<CompiledRegex_, std::collections::hash_map::RandomState>;
         #[doc = "br\"a?a\""]
         #[derive(Clone, Debug, PartialEq, Eq, Hash)]
         enum CompiledRegex_ {
-            Optional0([core::ops::Range<u32>; 1usize]),
-            Optional0Byte1([core::ops::Range<u32>; 1usize]),
-            Byte2([core::ops::Range<u32>; 1usize]),
-            Accept([core::ops::Range<u32>; 1usize]),
+            Byte1(Ranges_),
+            Byte2(Ranges_),
+            Accept(Ranges_),
+        }
+        impl CompiledRegex_ {
+            fn optional0(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("optional0 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                Self::byte1(ranges, opt_b, n, next_states);
+                Self::byte2(ranges, opt_b, n, next_states);
+            }
+            fn byte1(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("byte1 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                match opt_b {
+                    Some(97u8) => Self::byte2(
+                        &ranges.clone().skip_past(0usize, n),
+                        None,
+                        n + 1,
+                        next_states,
+                    ),
+                    Some(_) => {}
+                    None => {
+                        next_states.insert(Self::Byte1(ranges.clone()));
+                    }
+                }
+            }
+            fn byte2(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("byte2 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                match opt_b {
+                    Some(97u8) => Self::accept(
+                        &ranges.clone().skip_past(0usize, n),
+                        None,
+                        n + 1,
+                        next_states,
+                    ),
+                    Some(_) => {}
+                    None => {
+                        next_states.insert(Self::Byte2(ranges.clone()));
+                    }
+                }
+            }
+            fn accept(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("accept opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                match opt_b {
+                    Some(_) => {}
+                    None => {
+                        next_states.insert(Self::Accept(ranges.clone()));
+                    }
+                }
+            }
         }
         impl safe_regex::internal::Machine for CompiledRegex_ {
-            type State = [core::ops::Range<u32>; 1usize];
-            fn start() -> Self {
-                Self::Optional0([0..0])
+            type GroupRanges = [core::ops::Range<u32>; 0usize];
+            fn start(next_states: &mut States_) {
+                Self::optional0(&Ranges_::new(), None, 0, next_states);
             }
-            fn accept(&self) -> Option<Self::State> {
+            fn try_accept(&self) -> Option<Self::GroupRanges> {
                 match self {
-                    Self::Accept(ranges) => Some(ranges.clone()),
-                    #[allow(unreachable_patterns)]
+                    Self::Accept(ranges) => Some(ranges.clone().into_inner()),
                     _ => None,
                 }
             }
-            fn make_next_states(
-                &self,
-                opt_b: Option<u8>,
-                n: u32,
-                next_states: &mut std::collections::HashSet<
-                    Self,
-                    std::collections::hash_map::RandomState,
-                >,
-            ) {
-                safe_regex::internal::println_make_next_states(&opt_b, &n, &self);
-                match (self, opt_b) {
-                    (Self::Optional0(ranges), Some(b)) => {
-                        // '?' matches.
-                        Self::Optional0Byte1(ranges.clone()).make_next_states(
-                            Some(b),
-                            n,
-                            next_states,
-                        );
-                        // '?' doesn't match.
-                        Self::Byte2(ranges.clone()).make_next_states(Some(b), n, next_states);
-                    }
-                    (Self::Optional0Byte1(ranges), Some(97u8)) => {
-                        let mut ranges_clone = ranges.clone();
-                        ranges_clone[0usize].end = n + 1;
-                        next_states.insert(Self::Byte2(ranges_clone));
-                    }
-                    (Self::Optional0Byte1(_), Some(_)) => {}
-                    (Self::Byte2(ranges), Some(97u8)) => {
-                        let mut ranges_clone = ranges.clone();
-                        ranges_clone[0usize].end = n + 1;
-                        next_states.insert(Self::Accept(ranges_clone));
-                    }
-                    (Self::Byte2(_), Some(_)) => {}
-                    (Self::Accept(_), _) => {}
-                    other => panic!("invalid state transition {:?}", other),
+            fn make_next_states(&self, b: u8, n: u32, next_states: &mut States_) {
+                println!("make_next_states b={:?} n={} {:?}", b, n, self);
+                match self {
+                    Self::Byte1(ranges) => Self::byte1(ranges, Some(b), n, next_states),
+                    Self::Byte2(ranges) => Self::byte2(ranges, Some(b), n, next_states),
+                    Self::Accept(ranges) => Self::accept(ranges, Some(b), n, next_states),
                 }
             }
         }
@@ -602,61 +861,91 @@ fn optional_at_start() {
 #[test]
 fn optional_at_end() {
     let re = {
+        #[derive(Clone, Debug, PartialEq, Eq, Hash)]
+        struct Ranges_;
+        impl Ranges_ {
+            pub fn new() -> Self {
+                Self
+            }
+            pub fn skip_past(self, _group: usize, _n: u32) -> Self {
+                self
+            }
+            pub fn into_inner(self) -> [core::ops::Range<u32>; 0usize] {
+                []
+            }
+        }
+        type States_ =
+            std::collections::HashSet<CompiledRegex_, std::collections::hash_map::RandomState>;
         #[doc = "br\"aa?\""]
         #[derive(Clone, Debug, PartialEq, Eq, Hash)]
         enum CompiledRegex_ {
-            Byte0([core::ops::Range<u32>; 1usize]),
-            Optional1([core::ops::Range<u32>; 1usize]),
-            Optional1Byte1([core::ops::Range<u32>; 1usize]),
-            Accept([core::ops::Range<u32>; 1usize]),
+            Byte0(Ranges_),
+            Byte2(Ranges_),
+            Accept(Ranges_),
+        }
+        impl CompiledRegex_ {
+            fn byte0(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("byte0 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                match opt_b {
+                    Some(97u8) => Self::optional1(
+                        &ranges.clone().skip_past(0usize, n),
+                        None,
+                        n + 1,
+                        next_states,
+                    ),
+                    Some(_) => {}
+                    None => {
+                        next_states.insert(Self::Byte0(ranges.clone()));
+                    }
+                }
+            }
+            fn optional1(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("optional1 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                Self::byte2(ranges, opt_b, n, next_states);
+                Self::accept(ranges, opt_b, n, next_states);
+            }
+            fn byte2(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("byte2 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                match opt_b {
+                    Some(97u8) => Self::accept(
+                        &ranges.clone().skip_past(0usize, n),
+                        None,
+                        n + 1,
+                        next_states,
+                    ),
+                    Some(_) => {}
+                    None => {
+                        next_states.insert(Self::Byte2(ranges.clone()));
+                    }
+                }
+            }
+            fn accept(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("accept opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                match opt_b {
+                    Some(_) => {}
+                    None => {
+                        next_states.insert(Self::Accept(ranges.clone()));
+                    }
+                }
+            }
         }
         impl safe_regex::internal::Machine for CompiledRegex_ {
-            type State = [core::ops::Range<u32>; 1usize];
-            fn start() -> Self {
-                Self::Byte0([0..0])
+            type GroupRanges = [core::ops::Range<u32>; 0usize];
+            fn start(next_states: &mut States_) {
+                Self::byte0(&Ranges_::new(), None, 0, next_states);
             }
-            fn accept(&self) -> Option<Self::State> {
+            fn try_accept(&self) -> Option<Self::GroupRanges> {
                 match self {
-                    Self::Optional1(ranges) | Self::Accept(ranges) => Some(ranges.clone()),
-                    #[allow(unreachable_patterns)]
+                    Self::Accept(ranges) => Some(ranges.clone().into_inner()),
                     _ => None,
                 }
             }
-            fn make_next_states(
-                &self,
-                opt_b: Option<u8>,
-                n: u32,
-                next_states: &mut std::collections::HashSet<
-                    Self,
-                    std::collections::hash_map::RandomState,
-                >,
-            ) {
-                safe_regex::internal::println_make_next_states(&opt_b, &n, &self);
-                match (self, opt_b) {
-                    (Self::Byte0(ranges), Some(97u8)) => {
-                        let mut ranges_clone = ranges.clone();
-                        ranges_clone[0usize].end = n + 1;
-                        next_states.insert(Self::Optional1(ranges_clone));
-                    }
-                    (Self::Byte0(_), Some(_)) => {}
-                    (Self::Optional1(ranges), Some(b)) => {
-                        // '?' matches.
-                        Self::Optional1Byte1(ranges.clone()).make_next_states(
-                            Some(b),
-                            n,
-                            next_states,
-                        );
-                        // '?' doesn't match.
-                        Self::Accept(ranges.clone()).make_next_states(Some(b), n, next_states);
-                    }
-                    (Self::Optional1Byte1(ranges), Some(97u8)) => {
-                        let mut ranges_clone = ranges.clone();
-                        ranges_clone[0usize].end = n + 1;
-                        next_states.insert(Self::Accept(ranges_clone));
-                    }
-                    (Self::Optional1Byte1(_), Some(_)) => {}
-                    (Self::Accept(_), _) => {}
-                    other => panic!("invalid state transition {:?}", other),
+            fn make_next_states(&self, b: u8, n: u32, next_states: &mut States_) {
+                println!("make_next_states b={:?} n={} {:?}", b, n, self);
+                match self {
+                    Self::Byte0(ranges) => Self::byte0(ranges, Some(b), n, next_states),
+                    Self::Byte2(ranges) => Self::byte2(ranges, Some(b), n, next_states),
+                    Self::Accept(ranges) => Self::accept(ranges, Some(b), n, next_states),
                 }
             }
         }
@@ -677,66 +966,74 @@ fn optional_at_end() {
 #[test]
 fn star() {
     let re = {
-        #[doc = "br\"a*aa\""]
+        #[derive(Clone, Debug, PartialEq, Eq, Hash)]
+        struct Ranges_;
+        impl Ranges_ {
+            pub fn new() -> Self {
+                Self
+            }
+            pub fn skip_past(self, _group: usize, _n: u32) -> Self {
+                self
+            }
+            pub fn into_inner(self) -> [core::ops::Range<u32>; 0usize] {
+                []
+            }
+        }
+        type States_ =
+            std::collections::HashSet<CompiledRegex_, std::collections::hash_map::RandomState>;
+        #[doc = "br\"a*\""]
         #[derive(Clone, Debug, PartialEq, Eq, Hash)]
         enum CompiledRegex_ {
-            Star0([core::ops::Range<u32>; 1usize]),
-            Star0Byte0([core::ops::Range<u32>; 1usize]),
-            Star0Matched([core::ops::Range<u32>; 1usize]),
-            Byte1([core::ops::Range<u32>; 1usize]),
-            Byte2([core::ops::Range<u32>; 1usize]),
-            Accept([core::ops::Range<u32>; 1usize]),
+            Byte1(Ranges_),
+            Accept(Ranges_),
+        }
+        impl CompiledRegex_ {
+            fn star0(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("star0 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                Self::byte1(ranges, opt_b, n, next_states);
+                Self::accept(ranges, opt_b, n, next_states);
+            }
+            fn byte1(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("byte1 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                match opt_b {
+                    Some(97u8) => Self::star0(
+                        &ranges.clone().skip_past(0usize, n),
+                        None,
+                        n + 1,
+                        next_states,
+                    ),
+                    Some(_) => {}
+                    None => {
+                        next_states.insert(Self::Byte1(ranges.clone()));
+                    }
+                }
+            }
+            fn accept(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("accept opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                match opt_b {
+                    Some(_) => {}
+                    None => {
+                        next_states.insert(Self::Accept(ranges.clone()));
+                    }
+                }
+            }
         }
         impl safe_regex::internal::Machine for CompiledRegex_ {
-            type State = [core::ops::Range<u32>; 1usize];
-            fn start() -> Self {
-                Self::Star0([0..0])
+            type GroupRanges = [core::ops::Range<u32>; 0usize];
+            fn start(next_states: &mut States_) {
+                Self::star0(&Ranges_::new(), None, 0, next_states);
             }
-            fn accept(&self) -> Option<Self::State> {
+            fn try_accept(&self) -> Option<Self::GroupRanges> {
                 match self {
-                    Self::Star0(ranges) | Self::Accept(ranges) => Some(ranges.clone()),
-                    #[allow(unreachable_patterns)]
+                    Self::Accept(ranges) => Some(ranges.clone().into_inner()),
                     _ => None,
                 }
             }
-            fn make_next_states(
-                &self,
-                opt_b: Option<u8>,
-                n: u32,
-                next_states: &mut std::collections::HashSet<
-                    Self,
-                    std::collections::hash_map::RandomState,
-                >,
-            ) {
-                safe_regex::internal::println_make_next_states(&opt_b, &n, &self);
-                match (self, opt_b) {
-                    (Self::Star0(ranges), Some(b)) => {
-                        // '*' matches.
-                        Self::Star0Byte0(ranges.clone()).make_next_states(Some(b), n, next_states);
-                        // '*' doesn't match.
-                        Self::Byte1(ranges.clone()).make_next_states(Some(b), n, next_states)
-                    }
-                    (Self::Star0Byte0(ranges), Some(97u8)) => {
-                        let mut ranges_clone = ranges.clone();
-                        ranges_clone[0usize].end = n + 1;
-                        Self::Star0Matched(ranges_clone).make_next_states(None, n, next_states)
-                    }
-                    (Self::Star0Byte0(_), Some(_)) => {}
-                    (Self::Star0Matched(ranges), None) => {
-                        next_states.insert(Self::Star0(ranges.clone()));
-                    }
-                    (Self::Byte1(ranges), Some(97u8)) => {
-                        next_states.insert(Self::Byte2(ranges.clone()));
-                    }
-                    (Self::Byte1(_), Some(_)) => {}
-                    (Self::Byte2(ranges), Some(97u8)) => {
-                        let mut ranges_clone = ranges.clone();
-                        ranges_clone[0usize].end = n + 1;
-                        next_states.insert(Self::Accept(ranges_clone));
-                    }
-                    (Self::Byte2(_), Some(_)) => {}
-                    (Self::Accept(_), _) => {}
-                    other => panic!("invalid state transition {:?}", other),
+            fn make_next_states(&self, b: u8, n: u32, next_states: &mut States_) {
+                println!("make_next_states b={:?} n={} {:?}", b, n, self);
+                match self {
+                    Self::Byte1(ranges) => Self::byte1(ranges, Some(b), n, next_states),
+                    Self::Accept(ranges) => Self::accept(ranges, Some(b), n, next_states),
                 }
             }
         }
@@ -773,62 +1070,105 @@ fn star() {
 #[test]
 fn seq_in_group() {
     let re = {
+        #[derive(Clone, Debug, PartialEq, Eq, Hash)]
+        struct Ranges_([core::ops::Range<u32>; 1usize]);
+        impl Ranges_ {
+            pub fn new() -> Self {
+                Self([u32::MAX..u32::MAX])
+            }
+            pub fn enter(mut self, group: usize, n: u32) -> Self {
+                self.0[group].start = n;
+                self.0[group].end = n;
+                self
+            }
+            pub fn skip_past(mut self, group: usize, n: u32) -> Self {
+                self.0[group].end = n + 1;
+                self
+            }
+            pub fn inner(&self) -> &[core::ops::Range<u32>; 1usize] {
+                &self.0
+            }
+        }
+        type States_ =
+            std::collections::HashSet<CompiledRegex_, std::collections::hash_map::RandomState>;
         #[doc = "br\"(ab)\""]
         #[derive(Clone, Debug, PartialEq, Eq, Hash)]
         enum CompiledRegex_ {
-            Group0([core::ops::Range<u32>; 2usize]),
-            Group0Byte0([core::ops::Range<u32>; 2usize]),
-            Group0Byte1([core::ops::Range<u32>; 2usize]),
-            Group0Matched([core::ops::Range<u32>; 2usize]),
-            Accept([core::ops::Range<u32>; 2usize]),
+            Byte1(Ranges_),
+            Byte2(Ranges_),
+            Accept(Ranges_),
+        }
+        impl CompiledRegex_ {
+            fn group_start0(
+                ranges: &Ranges_,
+                opt_b: Option<u8>,
+                n: u32,
+                next_states: &mut States_,
+            ) {
+                println!("group_start0 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                Self::byte1(&ranges.clone().enter(0usize, n), opt_b, n, next_states);
+            }
+            fn byte1(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("byte1 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                match opt_b {
+                    Some(97u8) => Self::byte2(
+                        &ranges.clone().skip_past(0usize, n),
+                        None,
+                        n + 1,
+                        next_states,
+                    ),
+                    Some(_) => {}
+                    None => {
+                        next_states.insert(Self::Byte1(ranges.clone()));
+                    }
+                }
+            }
+            fn byte2(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("byte2 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                match opt_b {
+                    Some(98u8) => Self::group_end3(
+                        &ranges.clone().skip_past(0usize, n),
+                        None,
+                        n + 1,
+                        next_states,
+                    ),
+                    Some(_) => {}
+                    None => {
+                        next_states.insert(Self::Byte2(ranges.clone()));
+                    }
+                }
+            }
+            fn group_end3(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("group_end3 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                Self::accept(ranges, opt_b, n, next_states);
+            }
+            fn accept(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("accept opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                match opt_b {
+                    Some(_) => {}
+                    None => {
+                        next_states.insert(Self::Accept(ranges.clone()));
+                    }
+                }
+            }
         }
         impl safe_regex::internal::Machine for CompiledRegex_ {
-            type State = [core::ops::Range<u32>; 2usize];
-            fn start() -> Self {
-                Self::Group0([0..0, u32::MAX..u32::MAX])
+            type GroupRanges = [core::ops::Range<u32>; 1usize];
+            fn start(next_states: &mut States_) {
+                Self::group_start0(&Ranges_::new(), None, 0, next_states);
             }
-            fn accept(&self) -> Option<Self::State> {
+            fn try_accept(&self) -> Option<Self::GroupRanges> {
                 match self {
-                    Self::Accept(ranges) => Some(ranges.clone()),
-                    #[allow(unreachable_patterns)]
+                    Self::Accept(ranges) => Some(ranges.inner().clone()),
                     _ => None,
                 }
             }
-            fn make_next_states(
-                &self,
-                opt_b: Option<u8>,
-                n: u32,
-                next_states: &mut std::collections::HashSet<
-                    Self,
-                    std::collections::hash_map::RandomState,
-                >,
-            ) {
-                safe_regex::internal::println_make_next_states(&opt_b, &n, &self);
-                match (self, opt_b) {
-                    (Self::Group0(ranges), Some(b)) => {
-                        let mut ranges_clone = ranges.clone();
-                        ranges_clone[1usize] = n..n;
-                        Self::Group0Byte0(ranges_clone).make_next_states(Some(b), n, next_states);
-                    }
-                    (Self::Group0Byte0(ranges), Some(97u8)) => {
-                        let mut ranges_clone = ranges.clone();
-                        ranges_clone[1usize].end = n + 1;
-                        next_states.insert(Self::Group0Byte1(ranges_clone));
-                    }
-                    (Self::Group0Byte0(_), Some(_)) => {}
-                    (Self::Group0Byte1(ranges), Some(98u8)) => {
-                        let mut ranges_clone = ranges.clone();
-                        ranges_clone[1usize].end = n + 1;
-                        Self::Group0Matched(ranges_clone).make_next_states(None, n, next_states);
-                    }
-                    (Self::Group0Byte1(_), Some(_)) => {}
-                    (Self::Group0Matched(ranges), None) => {
-                        let mut ranges_clone = ranges.clone();
-                        ranges_clone[0usize].end = ranges_clone[1usize].end;
-                        next_states.insert(Self::Accept(ranges_clone));
-                    }
-                    (Self::Accept(_), _) => {}
-                    other => panic!("invalid state transition {:?}", other),
+            fn make_next_states(&self, b: u8, n: u32, next_states: &mut States_) {
+                println!("make_next_states b={:?} n={} {:?}", b, n, self);
+                match self {
+                    Self::Byte1(ranges) => Self::byte1(ranges, Some(b), n, next_states),
+                    Self::Byte2(ranges) => Self::byte2(ranges, Some(b), n, next_states),
+                    Self::Accept(ranges) => Self::accept(ranges, Some(b), n, next_states),
                 }
             }
         }
@@ -848,95 +1188,116 @@ fn seq_in_group() {
 
     let groups = re.match_all(b"ab").unwrap();
     assert_eq!(0..2, groups.group_range(0).unwrap());
-    assert_eq!(0..2, groups.group_range(1).unwrap());
     assert_eq!("ab", escape_ascii(groups.group(0).unwrap()));
-    assert_eq!("ab", escape_ascii(groups.group(1).unwrap()));
 }
 
 #[test]
 fn alternates_in_group() {
     let re = {
+        #[derive(Clone, Debug, PartialEq, Eq, Hash)]
+        struct Ranges_([core::ops::Range<u32>; 1usize]);
+        impl Ranges_ {
+            pub fn new() -> Self {
+                Self([u32::MAX..u32::MAX])
+            }
+            pub fn enter(mut self, group: usize, n: u32) -> Self {
+                self.0[group].start = n;
+                self.0[group].end = n;
+                self
+            }
+            pub fn skip_past(mut self, group: usize, n: u32) -> Self {
+                self.0[group].end = n + 1;
+                self
+            }
+            pub fn inner(&self) -> &[core::ops::Range<u32>; 1usize] {
+                &self.0
+            }
+        }
+        type States_ =
+            std::collections::HashSet<CompiledRegex_, std::collections::hash_map::RandomState>;
         #[doc = "br\"(a|b)\""]
         #[derive(Clone, Debug, PartialEq, Eq, Hash)]
         enum CompiledRegex_ {
-            Group0([core::ops::Range<u32>; 2usize]),
-            Group0Alt0([core::ops::Range<u32>; 2usize]),
-            Group0Alt0Byte0([core::ops::Range<u32>; 2usize]),
-            Group0Alt0Byte1([core::ops::Range<u32>; 2usize]),
-            Group0Alt0Matched([core::ops::Range<u32>; 2usize]),
-            Group0Matched([core::ops::Range<u32>; 2usize]),
-            Accept([core::ops::Range<u32>; 2usize]),
+            Byte2(Ranges_),
+            Byte3(Ranges_),
+            Accept(Ranges_),
+        }
+        impl CompiledRegex_ {
+            fn group_start0(
+                ranges: &Ranges_,
+                opt_b: Option<u8>,
+                n: u32,
+                next_states: &mut States_,
+            ) {
+                println!("group_start0 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                Self::alt1(&ranges.clone().enter(0usize, n), opt_b, n, next_states);
+            }
+            fn alt1(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("alt1 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                Self::byte2(ranges, opt_b, n, next_states);
+                Self::byte3(ranges, opt_b, n, next_states);
+            }
+            fn byte2(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("byte2 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                match opt_b {
+                    Some(97u8) => Self::group_end3(
+                        &ranges.clone().skip_past(0usize, n),
+                        None,
+                        n + 1,
+                        next_states,
+                    ),
+                    Some(_) => {}
+                    None => {
+                        next_states.insert(Self::Byte2(ranges.clone()));
+                    }
+                }
+            }
+            fn byte3(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("byte3 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                match opt_b {
+                    Some(98u8) => Self::group_end3(
+                        &ranges.clone().skip_past(0usize, n),
+                        None,
+                        n + 1,
+                        next_states,
+                    ),
+                    Some(_) => {}
+                    None => {
+                        next_states.insert(Self::Byte3(ranges.clone()));
+                    }
+                }
+            }
+            fn group_end3(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("group_end3 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                Self::accept(ranges, opt_b, n, next_states);
+            }
+            fn accept(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("accept opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                match opt_b {
+                    Some(_) => {}
+                    None => {
+                        next_states.insert(Self::Accept(ranges.clone()));
+                    }
+                }
+            }
         }
         impl safe_regex::internal::Machine for CompiledRegex_ {
-            type State = [core::ops::Range<u32>; 2usize];
-            fn start() -> Self {
-                Self::Group0([0..0, u32::MAX..u32::MAX])
+            type GroupRanges = [core::ops::Range<u32>; 1usize];
+            fn start(next_states: &mut States_) {
+                Self::group_start0(&Ranges_::new(), None, 0, next_states);
             }
-            fn accept(&self) -> Option<Self::State> {
+            fn try_accept(&self) -> Option<Self::GroupRanges> {
                 match self {
-                    Self::Accept(ranges) => Some(ranges.clone()),
-                    #[allow(unreachable_patterns)]
+                    Self::Accept(ranges) => Some(ranges.inner().clone()),
                     _ => None,
                 }
             }
-            fn make_next_states(
-                &self,
-                opt_b: Option<u8>,
-                n: u32,
-                next_states: &mut std::collections::HashSet<
-                    Self,
-                    std::collections::hash_map::RandomState,
-                >,
-            ) {
-                safe_regex::internal::println_make_next_states(&opt_b, &n, &self);
-                match (self, opt_b) {
-                    (Self::Group0(ranges), Some(b)) => {
-                        let mut ranges_clone = ranges.clone();
-                        ranges_clone[1usize] = n..n;
-                        Self::Group0Alt0(ranges_clone).make_next_states(Some(b), n, next_states);
-                    }
-                    (Self::Group0Alt0(ranges), Some(b)) => {
-                        Self::Group0Alt0Byte0(ranges.clone()).make_next_states(
-                            Some(b),
-                            n,
-                            next_states,
-                        );
-                        Self::Group0Alt0Byte1(ranges.clone()).make_next_states(
-                            Some(b),
-                            n,
-                            next_states,
-                        );
-                    }
-                    (Self::Group0Alt0Byte0(ranges), Some(97u8)) => {
-                        let mut ranges_clone = ranges.clone();
-                        ranges_clone[1usize].end = n + 1;
-                        Self::Group0Alt0Matched(ranges_clone).make_next_states(
-                            None,
-                            n,
-                            next_states,
-                        );
-                    }
-                    (Self::Group0Alt0Byte0(_), Some(_)) => {}
-                    (Self::Group0Alt0Byte1(ranges), Some(98u8)) => {
-                        let mut ranges_clone = ranges.clone();
-                        ranges_clone[1usize].end = n + 1;
-                        Self::Group0Alt0Matched(ranges_clone).make_next_states(
-                            None,
-                            n,
-                            next_states,
-                        );
-                    }
-                    (Self::Group0Alt0Byte1(_), Some(_)) => {}
-                    (Self::Group0Alt0Matched(ranges), None) => {
-                        Self::Group0Matched(ranges.clone()).make_next_states(None, n, next_states)
-                    }
-                    (Self::Group0Matched(ranges), None) => {
-                        let mut ranges_clone = ranges.clone();
-                        ranges_clone[0usize].end = ranges_clone[1usize].end;
-                        next_states.insert(Self::Accept(ranges_clone));
-                    }
-                    (Self::Accept(_), _) => {}
-                    other => panic!("invalid state transition {:?}", other),
+            fn make_next_states(&self, b: u8, n: u32, next_states: &mut States_) {
+                println!("make_next_states b={:?} n={} {:?}", b, n, self);
+                match self {
+                    Self::Byte2(ranges) => Self::byte2(ranges, Some(b), n, next_states),
+                    Self::Byte3(ranges) => Self::byte3(ranges, Some(b), n, next_states),
+                    Self::Accept(ranges) => Self::accept(ranges, Some(b), n, next_states),
                 }
             }
         }
@@ -955,119 +1316,150 @@ fn alternates_in_group() {
 
     let groups = re.match_all(b"a").unwrap();
     assert_eq!(0..1, groups.group_range(0).unwrap());
-    assert_eq!(0..1, groups.group_range(1).unwrap());
     assert_eq!("a", escape_ascii(groups.group(0).unwrap()));
-    assert_eq!("a", escape_ascii(groups.group(1).unwrap()));
 
     let groups = re.match_all(b"b").unwrap();
     assert_eq!(0..1, groups.group_range(0).unwrap());
-    assert_eq!(0..1, groups.group_range(1).unwrap());
     assert_eq!("b", escape_ascii(groups.group(0).unwrap()));
-    assert_eq!("b", escape_ascii(groups.group(1).unwrap()));
 }
 
 #[test]
 fn optionals_in_groups() {
     let re = {
+        #[derive(Clone, Debug, PartialEq, Eq, Hash)]
+        struct Ranges_([core::ops::Range<u32>; 2usize]);
+        impl Ranges_ {
+            pub fn new() -> Self {
+                Self([u32::MAX..u32::MAX, u32::MAX..u32::MAX])
+            }
+            pub fn enter(mut self, group: usize, n: u32) -> Self {
+                self.0[group].start = n;
+                self.0[group].end = n;
+                self
+            }
+            pub fn skip_past(mut self, group: usize, n: u32) -> Self {
+                self.0[group].end = n + 1;
+                self
+            }
+            pub fn inner(&self) -> &[core::ops::Range<u32>; 2usize] {
+                &self.0
+            }
+        }
+        type States_ =
+            std::collections::HashSet<CompiledRegex_, std::collections::hash_map::RandomState>;
         #[doc = "br\"(a?)(ab)\""]
         #[derive(Clone, Debug, PartialEq, Eq, Hash)]
         enum CompiledRegex_ {
-            Group0Start([core::ops::Range<u32>; 3usize]),
-            Group0Matched([core::ops::Range<u32>; 3usize]),
-            Group0Optional0([core::ops::Range<u32>; 3usize]),
-            Group0Optional0Byte0([core::ops::Range<u32>; 3usize]),
-            Group1Start([core::ops::Range<u32>; 3usize]),
-            Group1Matched([core::ops::Range<u32>; 3usize]),
-            Group1Byte0([core::ops::Range<u32>; 3usize]),
-            Group1Byte1([core::ops::Range<u32>; 3usize]),
-            Accept([core::ops::Range<u32>; 3usize]),
+            Byte2(Ranges_),
+            Byte5(Ranges_),
+            Byte6(Ranges_),
+            Accept(Ranges_),
+        }
+        impl CompiledRegex_ {
+            fn group_start0(
+                ranges: &Ranges_,
+                opt_b: Option<u8>,
+                n: u32,
+                next_states: &mut States_,
+            ) {
+                println!("group_start0 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                Self::optional1(&ranges.clone().enter(0usize, n), opt_b, n, next_states);
+            }
+            fn optional1(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("optional1 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                Self::byte2(ranges, opt_b, n, next_states);
+                Self::group_end3(ranges, opt_b, n, next_states);
+            }
+            fn byte2(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("byte2 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                match opt_b {
+                    Some(97u8) => Self::group_end3(
+                        &ranges.clone().skip_past(0usize, n),
+                        None,
+                        n + 1,
+                        next_states,
+                    ),
+                    Some(_) => {}
+                    None => {
+                        next_states.insert(Self::Byte2(ranges.clone()));
+                    }
+                }
+            }
+            fn group_end3(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("group_end3 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                Self::group_start4(ranges, opt_b, n, next_states);
+            }
+            fn group_start4(
+                ranges: &Ranges_,
+                opt_b: Option<u8>,
+                n: u32,
+                next_states: &mut States_,
+            ) {
+                println!("group_start4 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                Self::byte5(&ranges.clone().enter(1usize, n), opt_b, n, next_states);
+            }
+            fn byte5(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("byte5 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                match opt_b {
+                    Some(97u8) => Self::byte6(
+                        &ranges.clone().skip_past(1usize, n),
+                        None,
+                        n + 1,
+                        next_states,
+                    ),
+                    Some(_) => {}
+                    None => {
+                        next_states.insert(Self::Byte5(ranges.clone()));
+                    }
+                }
+            }
+            fn byte6(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("byte6 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                match opt_b {
+                    Some(98u8) => Self::group_end7(
+                        &ranges.clone().skip_past(1usize, n),
+                        None,
+                        n + 1,
+                        next_states,
+                    ),
+                    Some(_) => {}
+                    None => {
+                        next_states.insert(Self::Byte6(ranges.clone()));
+                    }
+                }
+            }
+            fn group_end7(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("group_end7 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                Self::accept(ranges, opt_b, n, next_states);
+            }
+            fn accept(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("accept opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+                match opt_b {
+                    Some(_) => {}
+                    None => {
+                        next_states.insert(Self::Accept(ranges.clone()));
+                    }
+                }
+            }
         }
         impl safe_regex::internal::Machine for CompiledRegex_ {
-            type State = [core::ops::Range<u32>; 3usize];
-            fn start() -> Self {
-                Self::Group0Start([0..0, u32::MAX..u32::MAX, u32::MAX..u32::MAX])
+            type GroupRanges = [core::ops::Range<u32>; 2usize];
+            fn start(next_states: &mut States_) {
+                Self::group_start0(&Ranges_::new(), None, 0, next_states);
             }
-            fn accept(&self) -> Option<Self::State> {
+            fn try_accept(&self) -> Option<Self::GroupRanges> {
                 match self {
-                    Self::Accept(ranges) => Some(ranges.clone()),
-                    #[allow(unreachable_patterns)]
+                    Self::Accept(ranges) => Some(ranges.inner().clone()),
                     _ => None,
                 }
             }
-            fn make_next_states(
-                &self,
-                opt_b: Option<u8>,
-                n: u32,
-                next_states: &mut std::collections::HashSet<
-                    Self,
-                    std::collections::hash_map::RandomState,
-                >,
-            ) {
-                safe_regex::internal::println_make_next_states(&opt_b, &n, &self);
-                match (self, opt_b) {
-                    (Self::Group0Start(ranges), Some(b)) => {
-                        let mut ranges_clone = ranges.clone();
-                        ranges_clone[1usize] = n..n;
-                        Self::Group0Optional0(ranges_clone).make_next_states(
-                            Some(b),
-                            n,
-                            next_states,
-                        );
-                    }
-                    (Self::Group0Optional0(ranges), Some(b)) => {
-                        // '?' matches
-                        Self::Group0Optional0Byte0(ranges.clone()).make_next_states(
-                            Some(b),
-                            n,
-                            next_states,
-                        );
-                        // '?' doesn't match
-                        Self::Group0Matched(ranges.clone()).make_next_states(
-                            Some(b),
-                            n,
-                            next_states,
-                        );
-                    }
-                    (Self::Group0Optional0Byte0(ranges), Some(97u8)) => {
-                        let mut ranges_clone = ranges.clone();
-                        ranges_clone[1usize].end = n + 1;
-                        Self::Group0Matched(ranges_clone).make_next_states(None, n, next_states);
-                    }
-                    (Self::Group0Optional0Byte0(_), Some(_)) => {}
-                    (Self::Group0Matched(ranges), Some(b)) => {
-                        let mut ranges_clone = ranges.clone();
-                        ranges_clone[0usize].end = ranges_clone[1usize].end;
-                        Self::Group1Start(ranges_clone).make_next_states(Some(b), n, next_states);
-                    }
-                    (Self::Group0Matched(ranges), None) => {
-                        let mut ranges_clone = ranges.clone();
-                        ranges_clone[0usize].end = ranges_clone[1usize].end;
-                        next_states.insert(Self::Group1Start(ranges_clone));
-                    }
-                    (Self::Group1Start(ranges), Some(b)) => {
-                        let mut ranges_clone = ranges.clone();
-                        ranges_clone[2usize] = n..n;
-                        Self::Group1Byte0(ranges_clone).make_next_states(Some(b), n, next_states);
-                    }
-                    (Self::Group1Byte0(ranges), Some(97u8)) => {
-                        let mut ranges_clone = ranges.clone();
-                        ranges_clone[2usize].end = n + 1;
-                        next_states.insert(Self::Group1Byte1(ranges_clone));
-                    }
-                    (Self::Group1Byte0(_), Some(_)) => {}
-                    (Self::Group1Byte1(ranges), Some(98u8)) => {
-                        let mut ranges_clone = ranges.clone();
-                        ranges_clone[2usize].end = n + 1;
-                        Self::Group1Matched(ranges_clone).make_next_states(None, n, next_states);
-                    }
-                    (Self::Group1Byte1(_), Some(_)) => {}
-                    (Self::Group1Matched(ranges), None) => {
-                        let mut ranges_clone = ranges.clone();
-                        ranges_clone[0usize].end = ranges_clone[2usize].end;
-                        next_states.insert(Self::Accept(ranges_clone));
-                    }
-                    (Self::Accept(_), _) => {}
-                    other => panic!("invalid state transition {:?}", other),
+            fn make_next_states(&self, b: u8, n: u32, next_states: &mut States_) {
+                println!("make_next_states b={:?} n={} {:?}", b, n, self);
+                match self {
+                    Self::Byte2(ranges) => Self::byte2(ranges, Some(b), n, next_states),
+                    Self::Byte5(ranges) => Self::byte5(ranges, Some(b), n, next_states),
+                    Self::Byte6(ranges) => Self::byte6(ranges, Some(b), n, next_states),
+                    Self::Accept(ranges) => Self::accept(ranges, Some(b), n, next_states),
                 }
             }
         }
@@ -1094,15 +1486,12 @@ fn optionals_in_groups() {
     assert_eq!(None, re.match_all(b"aabaab"));
 
     let groups = re.match_all(b"ab").unwrap();
-    assert_eq!("ab", escape_ascii(groups.group(0).unwrap()));
-    assert_eq!("", escape_ascii(groups.group(1).unwrap()));
-    assert_eq!("ab", escape_ascii(groups.group(2).unwrap()));
+    assert_eq!("", escape_ascii(groups.group(0).unwrap()));
+    assert_eq!("ab", escape_ascii(groups.group(1).unwrap()));
 
     let groups = re.match_all(b"aab").unwrap();
-    assert_eq!(0..3, groups.group_range(0).unwrap());
-    assert_eq!(0..1, groups.group_range(1).unwrap());
-    assert_eq!(1..3, groups.group_range(2).unwrap());
-    assert_eq!("aab", escape_ascii(groups.group(0).unwrap()));
-    assert_eq!("a", escape_ascii(groups.group(1).unwrap()));
-    assert_eq!("ab", escape_ascii(groups.group(2).unwrap()));
+    assert_eq!(0..1, groups.group_range(0).unwrap());
+    assert_eq!(1..3, groups.group_range(1).unwrap());
+    assert_eq!("a", escape_ascii(groups.group(0).unwrap()));
+    assert_eq!("ab", escape_ascii(groups.group(1).unwrap()));
 }

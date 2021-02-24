@@ -141,7 +141,7 @@ pub struct Matcher<T> {
 impl<S, T> Matcher<T>
 where
     S: AsRef<[std::ops::Range<u32>]> + Debug,
-    T: internal::Machine<State = S> + Eq + Hash + Debug + Sized,
+    T: internal::Machine<GroupRanges = S> + Eq + Hash + Debug + Sized,
 {
     /// We can make this function `const` when
     /// [trait bounds on \`const fn\` parameters are stable](https://github.com/rust-lang/rust/issues/57563).
@@ -150,11 +150,12 @@ where
             phantom: PhantomData,
         }
     }
-    pub fn match_all<'d>(&self, data: &'d [u8]) -> Option<Groups<'d, T::State>> {
+    pub fn match_all<'d>(&self, data: &'d [u8]) -> Option<Groups<'d, T::GroupRanges>> {
         T::match_all(data)
     }
 }
 
+// TODO(mleonhard) Replace this run-time checking with compile-time checking.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Groups<'d, T: AsRef<[Range<u32>]>> {
     ranges: T,
@@ -201,27 +202,26 @@ pub mod internal {
     }
 
     pub trait Machine {
-        type State;
-        fn start() -> Self;
-        fn accept(&self) -> Option<Self::State>;
-        fn make_next_states(&self, opt_b: Option<u8>, n: u32, next_states: &mut HashSet<Self>)
+        type GroupRanges;
+        fn start(next_states: &mut HashSet<Self>)
+        where
+            Self: Sized;
+        fn try_accept(&self) -> Option<Self::GroupRanges>;
+        fn make_next_states(&self, b: u8, n: u32, next_states: &mut HashSet<Self>)
         where
             Self: Sized;
 
-        fn match_all(data: &[u8]) -> Option<crate::Groups<Self::State>>
+        fn match_all(data: &[u8]) -> Option<crate::Groups<Self::GroupRanges>>
         where
             Self: Eq + Hash + Debug + Sized,
-            Self::State: AsRef<[Range<u32>]> + Debug,
+            Self::GroupRanges: AsRef<[Range<u32>]> + Debug,
         {
-            let start = Self::start();
-            println!("match_all b\"{}\" {:?}", escape_ascii(data), start);
-            if data.is_empty() {
-                return start.accept().map(|s| crate::Groups::new(s, data));
-            }
+            println!("match_all b\"{}\"", escape_ascii(data));
             // We store states in a set to eliminate duplicate states.
             // This is necessary for the algorithm to work in useful time and memory.
             let mut states: HashSet<Self> = HashSet::new();
-            states.insert(start);
+            Self::start(&mut states);
+            println!("states = {:?}", states);
             let mut next_states: HashSet<Self> = HashSet::new();
             for (n, b) in data.iter().enumerate() {
                 println!("process_byte {}", escape_ascii([*b]));
@@ -229,7 +229,7 @@ pub mod internal {
                 // It might be faster to just use `iter()` and then call
                 // `HashSet::clear` after the loop.  Let's test before changing it.
                 for state in states.drain() {
-                    state.make_next_states(Some(*b), n as u32, &mut next_states);
+                    state.make_next_states(*b, n as u32, &mut next_states);
                 }
                 core::mem::swap(&mut states, &mut next_states);
                 println!("states = {:?}", states);
@@ -238,9 +238,9 @@ pub mod internal {
                 }
             }
             for state in states {
-                if let Some(accept) = state.accept() {
-                    println!("accept = {:?}", accept);
-                    return Some(crate::Groups::new(accept, data));
+                if let Some(group_ranges) = state.try_accept() {
+                    println!("group_ranges = {:?}", group_ranges);
+                    return Some(crate::Groups::new(group_ranges, data));
                 }
             }
             None
