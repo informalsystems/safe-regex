@@ -1,10 +1,8 @@
-#!/usr/bin/env sh
-(
-  set -e
-  set -x
-  ../check.sh +stable
-  ../check.sh +nightly
-) || exit 1
+#!/usr/bin/env bash
+set -e
+set -x
+../check.sh +stable
+../check.sh +nightly
 
 if ! (git branch --show-current | grep -q -E '^main$'); then
   echo "Current git branch is not main."

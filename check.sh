@@ -4,6 +4,8 @@
 . "$(dirname "$0")"/lib.sh
 
 check() {
+  set -e
+  set -x
   cargo_check_build_test
   if [ "$TOOLCHAIN" != '+nightly' ]; then
     cargo_fmt_clippy
@@ -12,7 +14,7 @@ check() {
     # https://github.com/rust-secure-code/cargo-geiger/issues/181
     check_readme
   fi
-  time $CARGO publish --dry-run $ALLOW_DIRTY
+  cargo_publish_dryrun
   echo "$0 finished"
 }
 
