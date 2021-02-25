@@ -46,7 +46,7 @@ fn byte() {
         }
         impl CompiledRegex_ {
             fn byte0(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                println!("{} {:?} {:?}", stringify!(byte0), ib, ranges);
+                // println!("{} {:?} {:?}", stringify!(byte0), ib, ranges);
                 match ib.byte() {
                     Some(b) if b == 97u8 => {
                         Self::accept(
@@ -62,7 +62,7 @@ fn byte() {
                 }
             }
             fn accept(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                println!("accept {:?} {:?}", ib, ranges);
+                // println!("accept {:?} {:?}", ib, ranges);
                 match ib.byte() {
                     Some(_) => {}
                     None => {
@@ -84,7 +84,7 @@ fn byte() {
             }
             fn make_next_states(&self, b: u8, n: u32, next_states: &mut States_) {
                 let ib = InputByte::Available(b, n);
-                println!("make_next_states {:?} {:?}", ib, self);
+                // println!("make_next_states {:?} {:?}", ib, self);
                 match self {
                     Self::Byte0(ranges) => Self::byte0(ranges, ib, next_states),
                     Self::Accept(ranges) => Self::accept(ranges, ib, next_states),
@@ -123,7 +123,7 @@ fn any_byte() {
         }
         impl CompiledRegex_ {
             fn byte0(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                println!("{} {:?} {:?}", stringify!(byte0), ib, ranges);
+                // println!("{} {:?} {:?}", stringify!(byte0), ib, ranges);
                 match ib.byte() {
                     Some(_) => {
                         Self::accept(
@@ -138,7 +138,7 @@ fn any_byte() {
                 }
             }
             fn accept(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                println!("accept {:?} {:?}", ib, ranges);
+                // println!("accept {:?} {:?}", ib, ranges);
                 match ib.byte() {
                     Some(_) => {}
                     None => {
@@ -160,7 +160,7 @@ fn any_byte() {
             }
             fn make_next_states(&self, b: u8, n: u32, next_states: &mut States_) {
                 let ib = InputByte::Available(b, n);
-                println!("make_next_states {:?} {:?}", ib, self);
+                // println!("make_next_states {:?} {:?}", ib, self);
                 match self {
                     Self::Byte0(ranges) => Self::byte0(ranges, ib, next_states),
                     Self::Accept(ranges) => Self::accept(ranges, ib, next_states),
@@ -199,7 +199,7 @@ fn class_inclusive() {
         }
         impl CompiledRegex_ {
             fn byte0(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                println!("{} {:?} {:?}", stringify!(byte0), ib, ranges);
+                // println!("{} {:?} {:?}", stringify!(byte0), ib, ranges);
                 match ib.byte() {
                     Some(b)
                         if b == 97u8 || b == 98u8 || b == 99u8 || (50u8..=52u8).contains(&b) =>
@@ -217,7 +217,7 @@ fn class_inclusive() {
                 }
             }
             fn accept(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                println!("accept {:?} {:?}", ib, ranges);
+                // println!("accept {:?} {:?}", ib, ranges);
                 match ib.byte() {
                     Some(_) => {}
                     None => {
@@ -239,7 +239,7 @@ fn class_inclusive() {
             }
             fn make_next_states(&self, b: u8, n: u32, next_states: &mut States_) {
                 let ib = InputByte::Available(b, n);
-                println!("make_next_states {:?} {:?}", ib, self);
+                // println!("make_next_states {:?} {:?}", ib, self);
                 match self {
                     Self::Byte0(ranges) => Self::byte0(ranges, ib, next_states),
                     Self::Accept(ranges) => Self::accept(ranges, ib, next_states),
@@ -278,7 +278,7 @@ fn class_exclusive() {
         }
         impl CompiledRegex_ {
             fn byte0(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                println!("{} {:?} {:?}", stringify!(byte0), ib, ranges);
+                // println!("{} {:?} {:?}", stringify!(byte0), ib, ranges);
                 match ib.byte() {
                     Some(b)
                         if b != 97u8 && b != 98u8 && b != 99u8 && !(50u8..=52u8).contains(&b) =>
@@ -296,7 +296,7 @@ fn class_exclusive() {
                 }
             }
             fn accept(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                println!("accept {:?} {:?}", ib, ranges);
+                // println!("accept {:?} {:?}", ib, ranges);
                 match ib.byte() {
                     Some(_) => {}
                     None => {
@@ -318,7 +318,7 @@ fn class_exclusive() {
             }
             fn make_next_states(&self, b: u8, n: u32, next_states: &mut States_) {
                 let ib = InputByte::Available(b, n);
-                println!("make_next_states {:?} {:?}", ib, self);
+                // println!("make_next_states {:?} {:?}", ib, self);
                 match self {
                     Self::Byte0(ranges) => Self::byte0(ranges, ib, next_states),
                     Self::Accept(ranges) => Self::accept(ranges, ib, next_states),
@@ -359,7 +359,7 @@ fn seq() {
         }
         impl CompiledRegex_ {
             fn byte2(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                println!("{} {:?} {:?}", stringify!(byte2), ib, ranges);
+                // println!("{} {:?} {:?}", stringify!(byte2), ib, ranges);
                 match ib.byte() {
                     Some(b) if b == 98u8 => {
                         Self::accept(
@@ -375,7 +375,7 @@ fn seq() {
                 }
             }
             fn byte1(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                println!("{} {:?} {:?}", stringify!(byte1), ib, ranges);
+                // println!("{} {:?} {:?}", stringify!(byte1), ib, ranges);
                 match ib.byte() {
                     Some(b) if b == 97u8 => {
                         Self::byte2(
@@ -391,7 +391,7 @@ fn seq() {
                 }
             }
             fn byte0(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                println!("{} {:?} {:?}", stringify!(byte0), ib, ranges);
+                // println!("{} {:?} {:?}", stringify!(byte0), ib, ranges);
                 match ib.byte() {
                     Some(b) if b == 97u8 => {
                         Self::byte1(
@@ -407,7 +407,7 @@ fn seq() {
                 }
             }
             fn accept(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                println!("accept {:?} {:?}", ib, ranges);
+                // println!("accept {:?} {:?}", ib, ranges);
                 match ib.byte() {
                     Some(_) => {}
                     None => {
@@ -429,7 +429,7 @@ fn seq() {
             }
             fn make_next_states(&self, b: u8, n: u32, next_states: &mut States_) {
                 let ib = InputByte::Available(b, n);
-                println!("make_next_states {:?} {:?}", ib, self);
+                // println!("make_next_states {:?} {:?}", ib, self);
                 match self {
                     Self::Byte2(ranges) => Self::byte2(ranges, ib, next_states),
                     Self::Byte1(ranges) => Self::byte1(ranges, ib, next_states),
@@ -471,7 +471,7 @@ fn alt() {
         }
         impl CompiledRegex_ {
             fn byte1(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                println!("{} {:?} {:?}", stringify!(byte1), ib, ranges);
+                // println!("{} {:?} {:?}", stringify!(byte1), ib, ranges);
                 match ib.byte() {
                     Some(b) if b == 97u8 => {
                         Self::accept(
@@ -487,7 +487,7 @@ fn alt() {
                 }
             }
             fn byte2(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                println!("{} {:?} {:?}", stringify!(byte2), ib, ranges);
+                // println!("{} {:?} {:?}", stringify!(byte2), ib, ranges);
                 match ib.byte() {
                     Some(b) if b == 98u8 => {
                         Self::accept(
@@ -503,12 +503,12 @@ fn alt() {
                 }
             }
             fn alt0(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                println!("{} {:?} {:?}", stringify!(alt0), ib, ranges);
+                // println!("{} {:?} {:?}", stringify!(alt0), ib, ranges);
                 Self::byte1(ranges, ib, next_states);
                 Self::byte2(ranges, ib, next_states);
             }
             fn accept(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                println!("accept {:?} {:?}", ib, ranges);
+                // println!("accept {:?} {:?}", ib, ranges);
                 match ib.byte() {
                     Some(_) => {}
                     None => {
@@ -530,7 +530,7 @@ fn alt() {
             }
             fn make_next_states(&self, b: u8, n: u32, next_states: &mut States_) {
                 let ib = InputByte::Available(b, n);
-                println!("make_next_states {:?} {:?}", ib, self);
+                // println!("make_next_states {:?} {:?}", ib, self);
                 match self {
                     Self::Byte1(ranges) => Self::byte1(ranges, ib, next_states),
                     Self::Byte2(ranges) => Self::byte2(ranges, ib, next_states),
@@ -583,7 +583,7 @@ fn group() {
         }
         impl CompiledRegex_ {
             fn byte1(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                println!("{} {:?} {:?}", stringify!(byte1), ib, ranges);
+                // println!("{} {:?} {:?}", stringify!(byte1), ib, ranges);
                 match ib.byte() {
                     Some(b) if b == 97u8 => {
                         Self::group_end0(
@@ -599,15 +599,15 @@ fn group() {
                 }
             }
             fn group_start0(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                println!("{} {:?} {:?}", stringify!(group_start0), ib, ranges);
+                // println!("{} {:?} {:?}", stringify!(group_start0), ib, ranges);
                 Self::byte1(&ranges.clone().enter(0usize, ib.index()), ib, next_states);
             }
             fn group_end0(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                println!("{} {:?} {:?}", stringify!(group_end0), ib, ranges);
+                // println!("{} {:?} {:?}", stringify!(group_end0), ib, ranges);
                 Self::accept(ranges, ib, next_states);
             }
             fn accept(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                println!("accept {:?} {:?}", ib, ranges);
+                // println!("accept {:?} {:?}", ib, ranges);
                 match ib.byte() {
                     Some(_) => {}
                     None => {
@@ -629,7 +629,7 @@ fn group() {
             }
             fn make_next_states(&self, b: u8, n: u32, next_states: &mut States_) {
                 let ib = InputByte::Available(b, n);
-                println!("make_next_states {:?} {:?}", ib, self);
+                // println!("make_next_states {:?} {:?}", ib, self);
                 match self {
                     Self::Byte1(ranges) => Self::byte1(ranges, ib, next_states),
                     Self::Accept(ranges) => Self::accept(ranges, ib, next_states),
@@ -668,7 +668,7 @@ fn optional() {
         }
         impl CompiledRegex_ {
             fn byte1(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                println!("{} {:?} {:?}", stringify!(byte1), ib, ranges);
+                // println!("{} {:?} {:?}", stringify!(byte1), ib, ranges);
                 match ib.byte() {
                     Some(b) if b == 97u8 => {
                         Self::accept(
@@ -684,12 +684,12 @@ fn optional() {
                 }
             }
             fn optional0(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                println!("{} {:?} {:?}", stringify!(optional0), ib, ranges);
+                // println!("{} {:?} {:?}", stringify!(optional0), ib, ranges);
                 Self::byte1(ranges, ib, next_states);
                 Self::accept(ranges, ib, next_states);
             }
             fn accept(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                println!("accept {:?} {:?}", ib, ranges);
+                // println!("accept {:?} {:?}", ib, ranges);
                 match ib.byte() {
                     Some(_) => {}
                     None => {
@@ -711,7 +711,7 @@ fn optional() {
             }
             fn make_next_states(&self, b: u8, n: u32, next_states: &mut States_) {
                 let ib = InputByte::Available(b, n);
-                println!("make_next_states {:?} {:?}", ib, self);
+                // println!("make_next_states {:?} {:?}", ib, self);
                 match self {
                     Self::Byte1(ranges) => Self::byte1(ranges, ib, next_states),
                     Self::Accept(ranges) => Self::accept(ranges, ib, next_states),
@@ -750,7 +750,7 @@ fn star() {
         }
         impl CompiledRegex_ {
             fn byte1(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                println!("{} {:?} {:?}", stringify!(byte1), ib, ranges);
+                // println!("{} {:?} {:?}", stringify!(byte1), ib, ranges);
                 match ib.byte() {
                     Some(b) if b == 97u8 => {
                         Self::star0(
@@ -766,12 +766,12 @@ fn star() {
                 }
             }
             fn star0(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                println!("{} {:?} {:?}", stringify!(star0), ib, ranges);
+                // println!("{} {:?} {:?}", stringify!(star0), ib, ranges);
                 Self::byte1(ranges, ib, next_states);
                 Self::accept(ranges, ib, next_states);
             }
             fn accept(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                println!("accept {:?} {:?}", ib, ranges);
+                // println!("accept {:?} {:?}", ib, ranges);
                 match ib.byte() {
                     Some(_) => {}
                     None => {
@@ -793,7 +793,7 @@ fn star() {
             }
             fn make_next_states(&self, b: u8, n: u32, next_states: &mut States_) {
                 let ib = InputByte::Available(b, n);
-                println!("make_next_states {:?} {:?}", ib, self);
+                // println!("make_next_states {:?} {:?}", ib, self);
                 match self {
                     Self::Byte1(ranges) => Self::byte1(ranges, ib, next_states),
                     Self::Accept(ranges) => Self::accept(ranges, ib, next_states),
@@ -846,7 +846,7 @@ fn empty_group_in_seq() {
         }
         impl CompiledRegex_ {
             fn byte2(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                println!("{} {:?} {:?}", stringify!(byte2), ib, ranges);
+                // println!("{} {:?} {:?}", stringify!(byte2), ib, ranges);
                 match ib.byte() {
                     Some(b) if b == 97u8 => {
                         Self::accept(
@@ -862,7 +862,7 @@ fn empty_group_in_seq() {
                 }
             }
             fn empty1(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                println!("{} {:?} {:?}", stringify!(empty1), ib, ranges);
+                // println!("{} {:?} {:?}", stringify!(empty1), ib, ranges);
                 Self::group_end0(
                     ranges,
                     ib,
@@ -870,15 +870,15 @@ fn empty_group_in_seq() {
                 );
             }
             fn group_start0(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                println!("{} {:?} {:?}", stringify!(group_start0), ib, ranges);
+                // println!("{} {:?} {:?}", stringify!(group_start0), ib, ranges);
                 Self::empty1(&ranges.clone().enter(0usize, ib.index()), ib, next_states);
             }
             fn group_end0(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                println!("{} {:?} {:?}", stringify!(group_end0), ib, ranges);
+                // println!("{} {:?} {:?}", stringify!(group_end0), ib, ranges);
                 Self::byte2(ranges, ib, next_states);
             }
             fn accept(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                println!("accept {:?} {:?}", ib, ranges);
+                // println!("accept {:?} {:?}", ib, ranges);
                 match ib.byte() {
                     Some(_) => {}
                     None => {
@@ -900,7 +900,7 @@ fn empty_group_in_seq() {
             }
             fn make_next_states(&self, b: u8, n: u32, next_states: &mut States_) {
                 let ib = InputByte::Available(b, n);
-                println!("make_next_states {:?} {:?}", ib, self);
+                // println!("make_next_states {:?} {:?}", ib, self);
                 match self {
                     Self::Byte2(ranges) => Self::byte2(ranges, ib, next_states),
                     Self::Empty1(ranges) => Self::empty1(ranges, ib, next_states),

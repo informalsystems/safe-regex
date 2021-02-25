@@ -281,7 +281,7 @@ fn build(
     next_fn_name: &Ident,
     node: &TaggedNode,
 ) -> Ident {
-    println!("build {:?}", node);
+    // println!("build {:?}", node);
     let result = match node {
         TaggedNode::Byte(fn_num, enclosing_group, predicate) => {
             let fn_name = format_ident!("byte{}", fn_num);
@@ -316,7 +316,7 @@ fn build(
             };
             functions.push(quote! {
                 fn #fn_name(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                    println!("{} {:?} {:?}", stringify!(#fn_name), ib, ranges);
+                    // println!("{} {:?} {:?}", stringify!(#fn_name), ib, ranges);
                     match ib.byte() {
                         #pattern => {
                             Self::#next_fn_name(
@@ -340,7 +340,7 @@ fn build(
             variant_and_fn_names.push((variant_name.clone(), fn_name.clone()));
             functions.push(quote! {
                 fn #fn_name(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                    println!("{} {:?} {:?}", stringify!(#fn_name), ib, ranges);
+                    // println!("{} {:?} {:?}", stringify!(#fn_name), ib, ranges);
                     Self::#next_fn_name(
                         ranges,
                         ib,
@@ -375,7 +375,7 @@ fn build(
                 .collect();
             functions.push(quote! {
                 fn #fn_name(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                    println!("{} {:?} {:?}", stringify!(#fn_name), ib, ranges);
+                    // println!("{} {:?} {:?}", stringify!(#fn_name), ib, ranges);
                     #( #call_arm_fn_stmts )*
                 }
             });
@@ -392,11 +392,11 @@ fn build(
             };
             functions.push(quote! {
                 fn #start_fn_name(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                    println!("{} {:?} {:?}", stringify!(#start_fn_name), ib, ranges);
+                    // println!("{} {:?} {:?}", stringify!(#start_fn_name), ib, ranges);
                     Self::#child_fn_name(&ranges.clone().enter(#group_num, ib.index()), ib, next_states);
                 }
                 fn #end_fn_name(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                    println!("{} {:?} {:?}", stringify!(#end_fn_name), ib, ranges);
+                    // println!("{} {:?} {:?}", stringify!(#end_fn_name), ib, ranges);
                     Self::#next_fn_name(#exit_range_expr, ib, next_states);
                 }
             });
@@ -407,7 +407,7 @@ fn build(
             let child_fn_name = build(variant_and_fn_names, functions, &next_fn_name, node);
             functions.push(quote! {
                 fn #fn_name(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                    println!("{} {:?} {:?}", stringify!(#fn_name), ib, ranges);
+                    // println!("{} {:?} {:?}", stringify!(#fn_name), ib, ranges);
                     Self::#child_fn_name(ranges, ib, next_states);
                     Self::#next_fn_name(ranges, ib, next_states);
                 }
@@ -419,7 +419,7 @@ fn build(
             let child_fn_name = build(variant_and_fn_names, functions, &fn_name, node);
             functions.push(quote! {
                 fn #fn_name(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                    println!("{} {:?} {:?}", stringify!(#fn_name), ib, ranges);
+                    // println!("{} {:?} {:?}", stringify!(#fn_name), ib, ranges);
                     Self::#child_fn_name(ranges, ib, next_states);
                     Self::#next_fn_name(ranges, ib, next_states);
                 }
@@ -427,7 +427,7 @@ fn build(
             fn_name
         }
     };
-    println!("build returning {:?}", result);
+    // println!("build returning {:?}", result);
     result
 }
 
@@ -518,7 +518,7 @@ pub fn generate(literal_re: String, final_node: FinalNode) -> safe_proc_macro2::
         impl CompiledRegex_ {
             #( #functions )*
             fn accept(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                println!("accept {:?} {:?}", ib, ranges);
+                // println!("accept {:?} {:?}", ib, ranges);
                 match ib.byte() {
                     Some(_) => {}
                     None => {
@@ -540,7 +540,7 @@ pub fn generate(literal_re: String, final_node: FinalNode) -> safe_proc_macro2::
             }
             fn make_next_states(&self, b: u8, n: u32, next_states: &mut States_) {
                 let ib = InputByte::Available(b, n);
-                println!("make_next_states {:?} {:?}", ib, self);
+                // println!("make_next_states {:?} {:?}", ib, self);
                 match self {
                     #( #clauses ),* ,
                     Self::Accept(ranges) => Self::accept(ranges, ib, next_states),
@@ -549,6 +549,6 @@ pub fn generate(literal_re: String, final_node: FinalNode) -> safe_proc_macro2::
         }
         <safe_regex::Matcher<CompiledRegex_>>::new()
     } };
-    println!("result={}", result);
+    // println!("result={}", result);
     result
 }

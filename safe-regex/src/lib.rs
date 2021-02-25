@@ -256,15 +256,15 @@ pub mod internal {
             Self::GroupRanges: AsRef<[Range<u32>]> + Debug,
         {
             assert!(data.len() < u32::MAX as usize);
-            println!("match_all b\"{}\"", escape_ascii(data));
+            // println!("match_all b\"{}\"", escape_ascii(data));
             // We store states in a set to eliminate duplicate states.
             // This is necessary for the algorithm to work in useful time and memory.
             let mut states: HashSet<Self> = HashSet::new();
             Self::start(&mut states);
-            println!("states = {:?}", states);
+            // println!("states = {:?}", states);
             let mut next_states: HashSet<Self> = HashSet::new();
             for (n, b) in data.iter().enumerate() {
-                println!("process_byte {}", escape_ascii([*b]));
+                // println!("process_byte {}", escape_ascii([*b]));
                 // We call `HashSet::drain` to use less memory.
                 // It might be faster to just use `iter()` and then call
                 // `HashSet::clear` after the loop.  Let's test before changing it.
@@ -272,30 +272,18 @@ pub mod internal {
                     state.make_next_states(*b, n as u32, &mut next_states);
                 }
                 core::mem::swap(&mut states, &mut next_states);
-                println!("states = {:?}", states);
+                // println!("states = {:?}", states);
                 if states.is_empty() {
                     return None;
                 }
             }
             for state in states {
                 if let Some(group_ranges) = state.try_accept() {
-                    println!("group_ranges = {:?}", group_ranges);
+                    // println!("group_ranges = {:?}", group_ranges);
                     return Some(crate::Groups::new(group_ranges, data));
                 }
             }
             None
         }
-    }
-
-    pub fn println_make_next_states(opt_b: &Option<u8>, n: &u32, value: &impl core::fmt::Debug) {
-        println!(
-            "make_next_states {} {} {:?}",
-            opt_b.map_or(String::from("None"), |b| format!(
-                "Some({})",
-                escape_ascii(&[b])
-            )),
-            n,
-            value,
-        );
     }
 }

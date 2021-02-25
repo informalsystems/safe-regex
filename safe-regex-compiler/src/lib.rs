@@ -57,14 +57,14 @@ pub fn impl_regex(stream: TokenStream) -> Result<TokenStream, String> {
     //   ]
     // }
     const ERR: &'static str = "expected a raw byte string, like br\"abc\"";
-    println!(
-        "impl_regex {:?}",
-        stream
-            .clone()
-            .into_iter()
-            .map(|tree| format!("{:?} ", tree))
-            .collect::<String>()
-    );
+    // println!(
+    //     "impl_regex {:?}",
+    //     stream
+    //         .clone()
+    //         .into_iter()
+    //         .map(|tree| format!("{:?} ", tree))
+    //         .collect::<String>()
+    // );
     let mut stream_iter = stream.into_iter();
     let literal = match stream_iter.next() {
         Some(TokenTree::Literal(literal)) => literal,
