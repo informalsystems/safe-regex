@@ -139,6 +139,19 @@ fn group() {
     assert_eq!(0..1, groups.group_range(0).unwrap());
 }
 
+#[test]
+fn empty_group_in_seq() {
+    let re: Matcher<_> = regex!(br"()a");
+    assert_eq!(None, re.match_all(b""));
+    assert_eq!(None, re.match_all(b"X"));
+    assert_eq!(None, re.match_all(b"aX"));
+    assert_eq!(None, re.match_all(b"Xa"));
+    assert_eq!(None, re.match_all(b"aa"));
+    let groups = re.match_all(b"a").unwrap();
+    assert_eq!(0..0, groups.group_range(0).unwrap());
+    assert_eq!("", escape_ascii(groups.group(0).unwrap()));
+}
+
 // #[test]
 // fn seq_nested() {
 //     let mut re = Seq::new(Byte::new(b'a'), Seq::new(Byte::new(b'b'), Byte::new(b'c')));

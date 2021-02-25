@@ -1036,7 +1036,7 @@ fn star() {
 }
 
 #[test]
-fn empty_seq_empty_group() {
+fn empty_group_in_seq() {
     #[allow(dead_code)]
     let re = {
         use safe_regex::internal::InputByte;
@@ -1068,35 +1068,42 @@ fn empty_seq_empty_group() {
         #[doc = "br\"()a\""]
         #[derive(Clone, Debug, PartialEq, Eq, Hash)]
         enum CompiledRegex_ {
-            Byte3(Ranges_),
+            Byte2(Ranges_),
+            Empty1(Ranges_),
             Accept(Ranges_),
         }
         impl CompiledRegex_ {
-            fn group_start0(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                println!("{} {:?} {:?}", stringify!(group_start0), ib, ranges);
-                Self::seq1(&ranges.clone().enter(0usize, ib.index()), ib, next_states);
-            }
-            fn seq1(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                println!("{} {:?} {:?}", stringify!(seq1), ib, ranges);
-                Self::group_end2(ranges, ib, next_states);
-            }
-            fn group_end2(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                println!("{} {:?} {:?}", stringify!(group_end2), ib, ranges);
-                Self::byte3(ranges, ib, next_states);
-            }
-            fn byte3(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                println!("{} {:?} {:?}", stringify!(byte3), ib, ranges);
+            fn byte2(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+                println!("{} {:?} {:?}", stringify!(byte2), ib, ranges);
                 match ib.byte() {
-                    Some(97u8) => Self::accept(
-                        &ranges.clone().skip_past(0usize, ib.index()),
-                        ib.consume(),
-                        next_states,
-                    ),
+                    Some(b) if b == 97u8 => {
+                        Self::accept(
+                            ranges,
+                            ib.consume(),
+                            next_states, //
+                        ) //
+                    }
                     Some(_) => {}
                     None => {
-                        next_states.insert(Self::Byte3(ranges.clone()));
+                        next_states.insert(Self::Byte2(ranges.clone()));
                     }
                 }
+            }
+            fn empty1(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+                println!("{} {:?} {:?}", stringify!(empty1), ib, ranges);
+                Self::group_end0(
+                    ranges,
+                    ib,
+                    next_states, //
+                );
+            }
+            fn group_start0(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+                println!("{} {:?} {:?}", stringify!(group_start0), ib, ranges);
+                Self::empty1(&ranges.clone().enter(0usize, ib.index()), ib, next_states);
+            }
+            fn group_end0(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+                println!("{} {:?} {:?}", stringify!(group_end0), ib, ranges);
+                Self::byte2(ranges, ib, next_states);
             }
             fn accept(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 println!("accept {:?} {:?}", ib, ranges);
@@ -1123,7 +1130,8 @@ fn empty_seq_empty_group() {
                 let ib = InputByte::Available(b, n);
                 println!("make_next_states {:?} {:?}", ib, self);
                 match self {
-                    Self::Byte3(ranges) => Self::byte3(ranges, ib, next_states),
+                    Self::Byte2(ranges) => Self::byte2(ranges, ib, next_states),
+                    Self::Empty1(ranges) => Self::empty1(ranges, ib, next_states),
                     Self::Accept(ranges) => Self::accept(ranges, ib, next_states),
                 }
             }
@@ -1136,8 +1144,8 @@ fn empty_seq_empty_group() {
     assert_eq!(None, re.match_all(b"Xa"));
     assert_eq!(None, re.match_all(b"aa"));
     let groups = re.match_all(b"a").unwrap();
-    assert_eq!(0..1, groups.group_range(0).unwrap());
-    assert_eq!("a", escape_ascii(groups.group(0).unwrap()));
+    assert_eq!(0..0, groups.group_range(0).unwrap());
+    assert_eq!("", escape_ascii(groups.group(0).unwrap()));
 }
 
 #[test]

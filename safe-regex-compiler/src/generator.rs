@@ -338,15 +338,14 @@ fn build(
             let fn_name = format_ident!("empty{}", fn_num);
             let variant_name = format_ident!("Empty{}", fn_num);
             variant_and_fn_names.push((variant_name.clone(), fn_name.clone()));
-            let format_string = format!("{} {}", fn_name, "opt_b={:?} n={} ranges={:?}");
             functions.push(quote! {
-                fn #fn_name(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
-                    println!(#format_string, opt_b, n, ranges);
+                fn #fn_name(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+                    println!("{} {:?} {:?}", stringify!(#fn_name), ib, ranges);
                     Self::#next_fn_name(
                         ranges,
                         ib,
                         next_states,
-                    ),
+                    );
                 }
             });
             fn_name
