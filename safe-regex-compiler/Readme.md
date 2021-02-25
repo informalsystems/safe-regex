@@ -39,15 +39,14 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 ## TO DO
 - DONE - Read about regular expressions
 - DONE - Read about parsing
-- DONE - Implement `parser`
-- DONE - Add tests for `parser`
-- Implement `macro_generator`
-- Add tests for `macro_generator`
-- Add unwrap functions for other `FinalNode` variants
+- DONE - Implement parser
+- DONE - Add tests for parser
+- DONE - Implement macro generator
+- DONE - Add tests for macro generator
 - Add fuzzing tests
 
 ## Release Process
 1. Edit `Cargo.toml` and bump version number.
-1. Run `./release.sh`
+1. Run `../release.sh`
 
 License: Apache-2.0

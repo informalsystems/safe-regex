@@ -42,6 +42,6 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 
 ## Release Process
 1. Edit `Cargo.toml` and bump version number.
-1. Run `./release.sh`
+1. Run `../release.sh`
 
 License: Apache-2.0

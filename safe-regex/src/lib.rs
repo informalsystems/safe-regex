@@ -82,7 +82,7 @@
 //!
 //! # Release Process
 //! 1. Edit `Cargo.toml` and bump version number.
-//! 1. Run `./release.sh`
+//! 1. Run `../release.sh`
 
 // https://swtch.com/~rsc/regexp/regexp1.html
 

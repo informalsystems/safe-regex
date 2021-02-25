@@ -108,6 +108,6 @@ assert_eq!(None, groups2.group_range(0));
 
 ## Release Process
 1. Edit `Cargo.toml` and bump version number.
-1. Run `./release.sh`
+1. Run `../release.sh`
 
 License: Apache-2.0
