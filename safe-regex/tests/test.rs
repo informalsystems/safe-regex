@@ -127,6 +127,18 @@ fn alt() {
     re.match_all(b"b").unwrap();
 }
 
+#[test]
+fn group() {
+    let re: Matcher<_> = regex!(br"(a)");
+    assert_eq!(None, re.match_all(b""));
+    assert_eq!(None, re.match_all(b"Xa"));
+    assert_eq!(None, re.match_all(b"ab"));
+    assert_eq!(None, re.match_all(b"aa"));
+    let groups = re.match_all(b"a").unwrap();
+    assert_eq!("a", escape_ascii(groups.group(0).unwrap()));
+    assert_eq!(0..1, groups.group_range(0).unwrap());
+}
+
 // #[test]
 // fn seq_nested() {
 //     let mut re = Seq::new(Byte::new(b'a'), Seq::new(Byte::new(b'b'), Byte::new(b'c')));
@@ -196,19 +208,19 @@ fn alt() {
 //     assert_eq!(None, re.match_all(b"Xa"));
 // }
 
-#[test]
-fn optional_at_start() {
-    // let mut re = Seq::new(Optional::new(Byte::new(b'a')), Byte::new(b'a'));
-    // assert!(!match_all([0..0_usize; 2], &mut re, b""));
-    // assert_eq!(None, re.match_all(b"X"));
-    // assert_eq!(None, re.match_all(b"aX"));
-    // assert_eq!(None, re.match_all(b"Xa"));
-    // assert!(match_all(&mut re, b"a"));
-    // assert!(match_all(&mut re, b"aa"));
-    // assert_eq!(None, re.match_all(b"aaa"));
-    // assert_eq!(None, re.match_all(b"Xaa"));
-    // assert_eq!(None, re.match_all(b"aaX"));
-}
+// #[test]
+// fn optional_at_start() {
+// let mut re = Seq::new(Optional::new(Byte::new(b'a')), Byte::new(b'a'));
+// assert!(!match_all([0..0_usize; 2], &mut re, b""));
+// assert_eq!(None, re.match_all(b"X"));
+// assert_eq!(None, re.match_all(b"aX"));
+// assert_eq!(None, re.match_all(b"Xa"));
+// assert!(match_all(&mut re, b"a"));
+// assert!(match_all(&mut re, b"aa"));
+// assert_eq!(None, re.match_all(b"aaa"));
+// assert_eq!(None, re.match_all(b"Xaa"));
+// assert_eq!(None, re.match_all(b"aaX"));
+// }
 
 // #[test]
 // fn optional_at_end() {
@@ -347,19 +359,6 @@ fn optional_at_start() {
 // fn either_debug() {
 //     let re: Either<DiscardingRange, _, _> = Either::new(Byte::new(b'a'), Byte::new(b'b'));
 //     assert_eq!("Either(Byte(a),Byte(b))", format!("{:?}", re));
-// }
-
-// #[test]
-// fn group() {
-//     let re: Matcher<_> = regex!(br"(a)");
-//     assert_eq!(None, re.match_all(b""));
-//     assert_eq!(None, re.match_all(b"Xa"));
-//     assert_eq!(None, re.match_all(b"ab"));
-//     assert_eq!(None, re.match_all(b"aa"));
-//     let groups = re.match_all(b"a").unwrap();
-//     assert_eq!(0..1, groups.group_range(0).unwrap());
-//     assert_eq!("a", escape_ascii(groups.group(1).unwrap()));
-//     assert_eq!(0..1, groups.group_range(1).unwrap());
 // }
 
 // #[test]

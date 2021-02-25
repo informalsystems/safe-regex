@@ -310,7 +310,7 @@ fn build(
                 quote! { Some(_) => {} }
             };
             let clone_ranges_and_skip_past_n = if let Some(group_num) = enclosing_group {
-                quote! { &ranges.clone().skip_past(#group_num, n) }
+                quote! { &ranges.clone().skip_past(#group_num, ib.index()) }
             } else {
                 quote! { ranges }
             };
@@ -382,34 +382,27 @@ fn build(
             });
             fn_name
         }
-        //         TaggedNode::Alt(_nodes) => {
-        //             panic!("unimplemented {:?}", node)
-        //         }
-        //         TaggedNode::Repeat(_node, _, _) => {
-        //             panic!("unimplemented {:?}", node)
-        //         }
-        //         TaggedNode::Group(node) => {
-        //             let name = make_name(&mut names, "Group");
-        //             let matched_name = make_name(&mut names, "GroupMatched");
-        //             let group_next_stmt = quote! {
-        //                 Self::#matched_name(ranges_clone).make_next_states(None, n, next_states)
-        //             };
-        //             let group_number = enclosing_group_num + 1;
-        //             let child_name = build(group_number, names, clauses, &group_next_stmt, node);
-        //             clauses.push(quote! {
-        //                 (Self::#name(ranges), Some(b)) => {
-        //                     let mut ranges_clone = ranges.clone();
-        //                     ranges_clone[#group_number] = n..n;
-        //                     Self::#child_name(ranges_clone).make_next_states(Some(b), n, next_states);
-        //                 }
-        //                 (Self::#matched_name(ranges), None) => {
-        //                     let mut ranges_clone = ranges.clone();
-        //                     ranges_clone[#enclosing_group_num].end = ranges_clone[#group_number].end;
-        //                     #next_state_stmt
-        //                 }
-        //             });
-        //             name
-        //         }
+        TaggedNode::Group(fn_num, group_num, enclosing_group, node) => {
+            let start_fn_name = format_ident!("group_start{}", fn_num);
+            let end_fn_name = format_ident!("group_end{}", fn_num);
+            let child_fn_name = build(variant_and_fn_names, functions, &end_fn_name, node);
+            let exit_range_expr = if let Some(enclosing) = enclosing_group {
+                quote! { &ranges.clone().exit(#enclosing, ib.index()) }
+            } else {
+                quote! { ranges }
+            };
+            functions.push(quote! {
+                fn #start_fn_name(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+                    println!("{} {:?} {:?}", stringify!(#start_fn_name), ib, ranges);
+                    Self::#child_fn_name(&ranges.clone().enter(#group_num, ib.index()), ib, next_states);
+                }
+                fn #end_fn_name(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+                    println!("{} {:?} {:?}", stringify!(#end_fn_name), ib, ranges);
+                    Self::#next_fn_name(#exit_range_expr, ib, next_states);
+                }
+            });
+            start_fn_name
+        }
         other => panic!("unimplemented {:?}", other),
     };
     println!("build returning {:?}", result);
@@ -435,8 +428,8 @@ pub fn generate(literal_re: String, final_node: FinalNode) -> safe_proc_macro2::
                 pub fn new() -> Self {
                     Self
                 }
-                pub fn into_inner(self) -> [core::ops::Range<u32>; 0usize] {
-                    []
+                pub fn inner(&self) -> &[core::ops::Range<u32>; 0usize] {
+                    &[]
                 }
             }
         }
@@ -451,6 +444,10 @@ pub fn generate(literal_re: String, final_node: FinalNode) -> safe_proc_macro2::
                 }
                 pub fn enter(mut self, group: usize, n: u32) -> Self {
                     self.0[group].start = n;
+                    self.0[group].end = n;
+                    self
+                }
+                pub fn exit(mut self, group: usize, n: u32) -> Self {
                     self.0[group].end = n;
                     self
                 }
@@ -515,7 +512,7 @@ pub fn generate(literal_re: String, final_node: FinalNode) -> safe_proc_macro2::
             }
             fn try_accept(&self) -> Option<Self::GroupRanges> {
                 match self {
-                    Self::Accept(ranges) => Some(ranges.clone().into_inner()),
+                    Self::Accept(ranges) => Some(ranges.inner().clone()),
                     _ => None,
                 }
             }

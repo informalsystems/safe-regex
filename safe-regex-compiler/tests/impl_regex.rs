@@ -32,8 +32,8 @@ fn byte() {
             pub fn new() -> Self {
                 Self
             }
-            pub fn into_inner(self) -> [core::ops::Range<u32>; 0usize] {
-                []
+            pub fn inner(&self) -> &[core::ops::Range<u32>; 0usize] {
+                &[]
             }
         }
         type States_ =
@@ -78,7 +78,7 @@ fn byte() {
             }
             fn try_accept(&self) -> Option<Self::GroupRanges> {
                 match self {
-                    Self::Accept(ranges) => Some(ranges.clone().into_inner()),
+                    Self::Accept(ranges) => Some(ranges.inner().clone()),
                     _ => None,
                 }
             }
@@ -109,8 +109,8 @@ fn any_byte() {
             pub fn new() -> Self {
                 Self
             }
-            pub fn into_inner(self) -> [core::ops::Range<u32>; 0usize] {
-                []
+            pub fn inner(&self) -> &[core::ops::Range<u32>; 0usize] {
+                &[]
             }
         }
         type States_ =
@@ -154,7 +154,7 @@ fn any_byte() {
             }
             fn try_accept(&self) -> Option<Self::GroupRanges> {
                 match self {
-                    Self::Accept(ranges) => Some(ranges.clone().into_inner()),
+                    Self::Accept(ranges) => Some(ranges.inner().clone()),
                     _ => None,
                 }
             }
@@ -185,8 +185,8 @@ fn class_inclusive() {
             pub fn new() -> Self {
                 Self
             }
-            pub fn into_inner(self) -> [core::ops::Range<u32>; 0usize] {
-                []
+            pub fn inner(&self) -> &[core::ops::Range<u32>; 0usize] {
+                &[]
             }
         }
         type States_ =
@@ -233,7 +233,7 @@ fn class_inclusive() {
             }
             fn try_accept(&self) -> Option<Self::GroupRanges> {
                 match self {
-                    Self::Accept(ranges) => Some(ranges.clone().into_inner()),
+                    Self::Accept(ranges) => Some(ranges.inner().clone()),
                     _ => None,
                 }
             }
@@ -264,8 +264,8 @@ fn class_exclusive() {
             pub fn new() -> Self {
                 Self
             }
-            pub fn into_inner(self) -> [core::ops::Range<u32>; 0usize] {
-                []
+            pub fn inner(&self) -> &[core::ops::Range<u32>; 0usize] {
+                &[]
             }
         }
         type States_ =
@@ -312,7 +312,7 @@ fn class_exclusive() {
             }
             fn try_accept(&self) -> Option<Self::GroupRanges> {
                 match self {
-                    Self::Accept(ranges) => Some(ranges.clone().into_inner()),
+                    Self::Accept(ranges) => Some(ranges.inner().clone()),
                     _ => None,
                 }
             }
@@ -343,8 +343,8 @@ fn seq() {
             pub fn new() -> Self {
                 Self
             }
-            pub fn into_inner(self) -> [core::ops::Range<u32>; 0usize] {
-                []
+            pub fn inner(&self) -> &[core::ops::Range<u32>; 0usize] {
+                &[]
             }
         }
         type States_ =
@@ -423,7 +423,7 @@ fn seq() {
             }
             fn try_accept(&self) -> Option<Self::GroupRanges> {
                 match self {
-                    Self::Accept(ranges) => Some(ranges.clone().into_inner()),
+                    Self::Accept(ranges) => Some(ranges.inner().clone()),
                     _ => None,
                 }
             }
@@ -456,8 +456,8 @@ fn alt() {
             pub fn new() -> Self {
                 Self
             }
-            pub fn into_inner(self) -> [core::ops::Range<u32>; 0usize] {
-                []
+            pub fn inner(&self) -> &[core::ops::Range<u32>; 0usize] {
+                &[]
             }
         }
         type States_ =
@@ -524,7 +524,7 @@ fn alt() {
             }
             fn try_accept(&self) -> Option<Self::GroupRanges> {
                 match self {
-                    Self::Accept(ranges) => Some(ranges.clone().into_inner()),
+                    Self::Accept(ranges) => Some(ranges.inner().clone()),
                     _ => None,
                 }
             }
@@ -561,6 +561,10 @@ fn group() {
                 self.0[group].end = n;
                 self
             }
+            pub fn exit(mut self, group: usize, n: u32) -> Self {
+                self.0[group].end = n;
+                self
+            }
             pub fn skip_past(mut self, group: usize, n: u32) -> Self {
                 self.0[group].end = n + 1;
                 self
@@ -578,16 +582,11 @@ fn group() {
             Accept(Ranges_),
         }
         impl CompiledRegex_ {
-            fn group_start0(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                println!("{} {:?} {:?}", stringify!(group_start0), ib, ranges);
-                Self::byte1(&ranges.clone().enter(0usize, ib.index()), ib, next_states);
-            }
-
             fn byte1(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 println!("{} {:?} {:?}", stringify!(byte1), ib, ranges);
                 match ib.byte() {
                     Some(b) if b == 97u8 => {
-                        Self::group_end2(
+                        Self::group_end0(
                             &ranges.clone().skip_past(0usize, ib.index()),
                             ib.consume(),
                             next_states, //
@@ -599,8 +598,12 @@ fn group() {
                     }
                 }
             }
-            fn group_end2(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                println!("{} {:?} {:?}", stringify!(group_end2), ib, ranges);
+            fn group_start0(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+                println!("{} {:?} {:?}", stringify!(group_start0), ib, ranges);
+                Self::byte1(&ranges.clone().enter(0usize, ib.index()), ib, next_states);
+            }
+            fn group_end0(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+                println!("{} {:?} {:?}", stringify!(group_end0), ib, ranges);
                 Self::accept(ranges, ib, next_states);
             }
             fn accept(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
