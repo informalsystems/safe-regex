@@ -203,6 +203,43 @@ pub mod internal {
         result
     }
 
+    #[derive(Copy, Clone, PartialEq, Eq)]
+    pub enum InputByte {
+        Available(u8, u32),
+        Consumed(u32),
+    }
+    impl InputByte {
+        pub fn byte(&self) -> Option<u8> {
+            match self {
+                InputByte::Available(b, _n) => Some(*b),
+                InputByte::Consumed(_n) => None,
+            }
+        }
+        pub fn index(&self) -> u32 {
+            match self {
+                InputByte::Available(_b, n) => *n,
+                InputByte::Consumed(n) => *n,
+            }
+        }
+        pub fn consume(self) -> Self {
+            if let Self::Available(_b, n) = self {
+                Self::Consumed(n + 1)
+            } else {
+                panic!("`consume()` called on {:?}", self)
+            }
+        }
+    }
+    impl core::fmt::Debug for InputByte {
+        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+            match self {
+                InputByte::Available(b, n) => {
+                    write!(f, "InputByte::Available(b'{}',{})", escape_ascii([*b]), n)
+                }
+                InputByte::Consumed(n) => write!(f, "InputByte::Consumed({})", n),
+            }
+        }
+    }
+
     pub trait Machine {
         type GroupRanges;
         fn start(next_states: &mut HashSet<Self>)
@@ -218,6 +255,7 @@ pub mod internal {
             Self: Eq + Hash + Debug + Sized,
             Self::GroupRanges: AsRef<[Range<u32>]> + Debug,
         {
+            assert!(data.len() < u32::MAX as usize);
             println!("match_all b\"{}\"", escape_ascii(data));
             // We store states in a set to eliminate duplicate states.
             // This is necessary for the algorithm to work in useful time and memory.

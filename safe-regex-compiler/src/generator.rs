@@ -287,7 +287,6 @@ fn build(
             let fn_name = format_ident!("byte{}", fn_num);
             let variant_name = format_ident!("Byte{}", fn_num);
             variant_and_fn_names.push((variant_name.clone(), fn_name.clone()));
-            let format_string = format!("{} {}", fn_name, "opt_b={:?} n={} ranges={:?}");
             let pattern = match predicate {
                 Predicate::Any => quote! { Some(_) },
                 Predicate::Incl(items) => {
@@ -316,14 +315,13 @@ fn build(
                 quote! { &ranges.clone() }
             };
             functions.push(quote! {
-                fn #fn_name(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
-                    println!(#format_string, opt_b, n, ranges);
-                    match opt_b {
+                fn #fn_name(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+                    println!("{} {:?} {:?}", stringify!(#fn_name), ib, ranges);
+                    match ib.byte() {
                         #pattern => {
                             Self::#next_fn_name(
                                 #clone_ranges_and_skip_past_n,
-                                None,
-                                n + 1,
+                                ib.consume(),
                                 next_states,
                             )
                         }
@@ -461,11 +459,12 @@ pub fn generate(literal_re: String, final_node: FinalNode) -> safe_proc_macro2::
         .iter()
         .map(|(variant_name, fn_name)| {
             quote! {
-                Self::#variant_name(ranges) => Self::#fn_name(ranges, Some(b), n, next_states)
+                Self::#variant_name(ranges) => Self::#fn_name(ranges, ib, next_states)
             }
         })
         .collect();
     let result = quote! { {
+        use safe_regex::internal::InputByte;
         #ranges_struct
         type States_ =
             std::collections::HashSet<CompiledRegex_, std::collections::hash_map::RandomState>;
@@ -477,9 +476,9 @@ pub fn generate(literal_re: String, final_node: FinalNode) -> safe_proc_macro2::
         }
         impl CompiledRegex_ {
             #( #functions )*
-            fn accept(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
-                println!("accept opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
-                match opt_b {
+            fn accept(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+                println!("accept {:?} {:?}", ib, ranges);
+                match ib.byte() {
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Accept(ranges.clone()));
@@ -490,7 +489,7 @@ pub fn generate(literal_re: String, final_node: FinalNode) -> safe_proc_macro2::
         impl safe_regex::internal::Machine for CompiledRegex_ {
             type GroupRanges = #ranges_inner;
             fn start(next_states: &mut States_) {
-                Self::#initial_fn_name(&Ranges_::new(), None, 0, next_states);
+                Self::#initial_fn_name(&Ranges_::new(), InputByte::Consumed(0), next_states);
             }
             fn try_accept(&self) -> Option<Self::GroupRanges> {
                 match self {
@@ -499,10 +498,11 @@ pub fn generate(literal_re: String, final_node: FinalNode) -> safe_proc_macro2::
                 }
             }
             fn make_next_states(&self, b: u8, n: u32, next_states: &mut States_) {
-                println!("make_next_states b={:?} n={} {:?}", b, n, self);
+                let ib = InputByte::Available(b, n);
+                println!("make_next_states {:?} {:?}", ib, self);
                 match self {
                     #( #clauses ),* ,
-                    Self::Accept(ranges) => Self::accept(ranges, Some(b), n, next_states),
+                    Self::Accept(ranges) => Self::accept(ranges, ib, next_states),
                 }
             }
         }
