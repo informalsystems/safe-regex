@@ -727,6 +727,88 @@ fn optional() {
 }
 
 #[test]
+fn star() {
+    let expected = quote! { {
+        use safe_regex::internal::InputByte;
+        #[derive(Clone, Debug, PartialEq, Eq, Hash)]
+        struct Ranges_;
+        impl Ranges_ {
+            pub fn new() -> Self {
+                Self
+            }
+            pub fn inner(&self) -> &[core::ops::Range<u32>; 0usize] {
+                &[]
+            }
+        }
+        type States_ =
+            std::collections::HashSet<CompiledRegex_, std::collections::hash_map::RandomState>;
+        #[doc = "br\"a*\""]
+        #[derive(Clone, Debug, PartialEq, Eq, Hash)]
+        enum CompiledRegex_ {
+            Byte1(Ranges_),
+            Accept(Ranges_),
+        }
+        impl CompiledRegex_ {
+            fn byte1(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+                println!("{} {:?} {:?}", stringify!(byte1), ib, ranges);
+                match ib.byte() {
+                    Some(b) if b == 97u8 => {
+                        Self::star0(
+                            ranges,
+                            ib.consume(),
+                            next_states, //
+                        ) //
+                    }
+                    Some(_) => {}
+                    None => {
+                        next_states.insert(Self::Byte1(ranges.clone()));
+                    }
+                }
+            }
+            fn star0(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+                println!("{} {:?} {:?}", stringify!(star0), ib, ranges);
+                Self::byte1(ranges, ib, next_states);
+                Self::accept(ranges, ib, next_states);
+            }
+            fn accept(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+                println!("accept {:?} {:?}", ib, ranges);
+                match ib.byte() {
+                    Some(_) => {}
+                    None => {
+                        next_states.insert(Self::Accept(ranges.clone()));
+                    }
+                }
+            }
+        }
+        impl safe_regex::internal::Machine for CompiledRegex_ {
+            type GroupRanges = [core::ops::Range<u32>; 0usize];
+            fn start(next_states: &mut States_) {
+                Self::star0(&Ranges_::new(), InputByte::Consumed(0), next_states);
+            }
+            fn try_accept(&self) -> Option<Self::GroupRanges> {
+                match self {
+                    Self::Accept(ranges) => Some(ranges.inner().clone()),
+                    _ => None,
+                }
+            }
+            fn make_next_states(&self, b: u8, n: u32, next_states: &mut States_) {
+                let ib = InputByte::Available(b, n);
+                println!("make_next_states {:?} {:?}", ib, self);
+                match self {
+                    Self::Byte1(ranges) => Self::byte1(ranges, ib, next_states),
+                    Self::Accept(ranges) => Self::accept(ranges, ib, next_states),
+                }
+            }
+        }
+        <safe_regex::Matcher<CompiledRegex_>>::new()
+    } };
+    assert_eq!(
+        format!("{}", expected),
+        format!("{}", impl_regex(quote! { br"a*" }).unwrap())
+    );
+}
+
+#[test]
 fn empty_group_in_seq() {
     let expected = quote! { {
         use safe_regex::internal::InputByte;

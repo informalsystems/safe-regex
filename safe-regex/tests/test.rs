@@ -181,6 +181,37 @@ fn optional_at_end() {
 }
 
 #[test]
+fn star() {
+    let re: Matcher<_> = regex!(br"a*");
+    re.match_all(b"").unwrap();
+    assert_eq!(None, re.match_all(b"X"));
+    re.match_all(b"a").unwrap();
+    assert_eq!(None, re.match_all(b"aX"));
+    assert_eq!(None, re.match_all(b"Xa"));
+    re.match_all(b"aa").unwrap();
+    assert_eq!(None, re.match_all(b"Xaa"));
+    assert_eq!(None, re.match_all(b"aXa"));
+    assert_eq!(None, re.match_all(b"aaX"));
+    re.match_all(b"aaa").unwrap();
+    assert_eq!(None, re.match_all(b"Xaaa"));
+    assert_eq!(None, re.match_all(b"aXaa"));
+    assert_eq!(None, re.match_all(b"aaXa"));
+    assert_eq!(None, re.match_all(b"aaaX"));
+    re.match_all(b"aaaa").unwrap();
+    assert_eq!(None, re.match_all(b"Xaaaa"));
+    assert_eq!(None, re.match_all(b"aXaaa"));
+    assert_eq!(None, re.match_all(b"aaXaa"));
+    assert_eq!(None, re.match_all(b"aaaXa"));
+    assert_eq!(None, re.match_all(b"aaaaX"));
+    re.match_all(b"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+        .unwrap();
+    assert_eq!(
+        None,
+        re.match_all(b"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaX")
+    );
+}
+
+#[test]
 fn empty_group_in_seq() {
     let re: Matcher<_> = regex!(br"()a");
     assert_eq!(None, re.match_all(b""));
@@ -249,35 +280,7 @@ fn empty_group_in_seq() {
 //         format!("{:?}", re)
 //     );
 // }
-//
-// #[test]
-// fn optional_at_start() {
-// let mut re = Seq::new(Optional::new(Byte::new(b'a')), Byte::new(b'a'));
-// assert!(!match_all([0..0_usize; 2], &mut re, b""));
-// assert_eq!(None, re.match_all(b"X"));
-// assert_eq!(None, re.match_all(b"aX"));
-// assert_eq!(None, re.match_all(b"Xa"));
-// assert!(match_all(&mut re, b"a"));
-// assert!(match_all(&mut re, b"aa"));
-// assert_eq!(None, re.match_all(b"aaa"));
-// assert_eq!(None, re.match_all(b"Xaa"));
-// assert_eq!(None, re.match_all(b"aaX"));
-// }
 
-// #[test]
-// fn optional_at_end() {
-//     let mut re = Seq::new(Byte::new(b'a'), Optional::new(Byte::new(b'a')));
-//     assert_eq!(None, re.match_all(b""));
-//     assert_eq!(None, re.match_all(b"X"));
-//     assert_eq!(None, re.match_all(b"aX"));
-//     assert_eq!(None, re.match_all(b"Xa"));
-//     assert!(match_all(&mut re, b"a"));
-//     assert!(match_all(&mut re, b"aa"));
-//     assert_eq!(None, re.match_all(b"aaa"));
-//     assert_eq!(None, re.match_all(b"Xaa"));
-//     assert_eq!(None, re.match_all(b"aaX"));
-// }
-//
 // #[test]
 // fn optional_in_middle() {
 //     let mut re = Seq::new(

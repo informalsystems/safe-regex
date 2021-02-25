@@ -414,7 +414,18 @@ fn build(
             });
             fn_name
         }
-        other => panic!("unimplemented {:?}", other),
+        TaggedNode::Star(fn_num, node) => {
+            let fn_name = format_ident!("star{}", fn_num);
+            let child_fn_name = build(variant_and_fn_names, functions, &fn_name, node);
+            functions.push(quote! {
+                fn #fn_name(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+                    println!("{} {:?} {:?}", stringify!(#fn_name), ib, ranges);
+                    Self::#child_fn_name(ranges, ib, next_states);
+                    Self::#next_fn_name(ranges, ib, next_states);
+                }
+            });
+            fn_name
+        }
     };
     println!("build returning {:?}", result);
     result

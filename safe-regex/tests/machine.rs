@@ -888,7 +888,13 @@ fn optional_at_end() {
             fn byte0(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 println!("{} {:?} {:?}", stringify!(byte0), ib, ranges);
                 match ib.byte() {
-                    Some(97u8) => Self::optional1(ranges, ib.consume(), next_states),
+                    Some(b) if b == 97u8 => {
+                        Self::optional1(
+                            ranges,
+                            ib.consume(),
+                            next_states, //
+                        ) //
+                    }
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte0(ranges.clone()));
@@ -978,20 +984,26 @@ fn star() {
             Accept(Ranges_),
         }
         impl CompiledRegex_ {
-            fn star0(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                println!("{} {:?} {:?}", stringify!(star0), ib, ranges);
-                Self::byte1(ranges, ib, next_states);
-                Self::accept(ranges, ib, next_states);
-            }
             fn byte1(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 println!("{} {:?} {:?}", stringify!(byte1), ib, ranges);
                 match ib.byte() {
-                    Some(97u8) => Self::star0(ranges, ib.consume(), next_states),
+                    Some(b) if b == 97u8 => {
+                        Self::star0(
+                            ranges,
+                            ib.consume(),
+                            next_states, //
+                        ) //
+                    }
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte1(ranges.clone()));
                     }
                 }
+            }
+            fn star0(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+                println!("{} {:?} {:?}", stringify!(star0), ib, ranges);
+                Self::byte1(ranges, ib, next_states);
+                Self::accept(ranges, ib, next_states);
             }
             fn accept(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 println!("accept {:?} {:?}", ib, ranges);
