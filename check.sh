@@ -12,7 +12,7 @@ check() {
     # https://github.com/rust-secure-code/cargo-geiger/issues/181
     check_readme
   fi
-  time $CARGO publish --dry-run "$ALLOW_DIRTY"
+  time $CARGO publish --dry-run $ALLOW_DIRTY
   echo "$0 finished"
 }
 
