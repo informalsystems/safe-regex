@@ -779,25 +779,37 @@ fn optional_at_start() {
             Accept(Ranges_),
         }
         impl CompiledRegex_ {
-            fn optional0(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                println!("{} {:?} {:?}", stringify!(optional0), ib, ranges);
-                Self::byte1(ranges, ib, next_states);
-                Self::byte2(ranges, ib, next_states);
-            }
             fn byte1(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 println!("{} {:?} {:?}", stringify!(byte1), ib, ranges);
                 match ib.byte() {
-                    Some(97u8) => Self::byte2(ranges, ib.consume(), next_states),
+                    Some(b) if b == 97u8 => {
+                        Self::byte2(
+                            ranges,
+                            ib.consume(),
+                            next_states, //
+                        ) //
+                    }
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte1(ranges.clone()));
                     }
                 }
             }
+            fn optional0(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+                println!("{} {:?} {:?}", stringify!(optional0), ib, ranges);
+                Self::byte1(ranges, ib, next_states);
+                Self::byte2(ranges, ib, next_states);
+            }
             fn byte2(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 println!("{} {:?} {:?}", stringify!(byte2), ib, ranges);
                 match ib.byte() {
-                    Some(97u8) => Self::accept(ranges, ib.consume(), next_states),
+                    Some(b) if b == 97u8 => {
+                        Self::accept(
+                            ranges,
+                            ib.consume(),
+                            next_states, //
+                        ) //
+                    }
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte2(ranges.clone()));

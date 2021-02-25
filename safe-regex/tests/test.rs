@@ -151,6 +151,36 @@ fn optional() {
 }
 
 #[test]
+fn optional_at_start() {
+    let re: Matcher<_> = regex!(br"a?a");
+    assert_eq!(None, re.match_all(b""));
+    assert_eq!(None, re.match_all(b"X"));
+    re.match_all(b"a").unwrap();
+    assert_eq!(None, re.match_all(b"aX"));
+    assert_eq!(None, re.match_all(b"Xa"));
+    re.match_all(b"aa").unwrap();
+    assert_eq!(None, re.match_all(b"aaX"));
+    assert_eq!(None, re.match_all(b"Xaa"));
+    assert_eq!(None, re.match_all(b"aXa"));
+    assert_eq!(None, re.match_all(b"aaa"));
+}
+
+#[test]
+fn optional_at_end() {
+    let re: Matcher<_> = regex!(br"aa?");
+    assert_eq!(None, re.match_all(b""));
+    assert_eq!(None, re.match_all(b"X"));
+    re.match_all(b"a").unwrap();
+    assert_eq!(None, re.match_all(b"aX"));
+    assert_eq!(None, re.match_all(b"Xa"));
+    re.match_all(b"aa").unwrap();
+    assert_eq!(None, re.match_all(b"aaX"));
+    assert_eq!(None, re.match_all(b"Xaa"));
+    assert_eq!(None, re.match_all(b"aXa"));
+    assert_eq!(None, re.match_all(b"aaa"));
+}
+
+#[test]
 fn empty_group_in_seq() {
     let re: Matcher<_> = regex!(br"()a");
     assert_eq!(None, re.match_all(b""));
