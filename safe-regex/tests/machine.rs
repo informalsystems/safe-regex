@@ -1303,7 +1303,7 @@ fn seq_in_group() {
 }
 
 #[test]
-fn alternates_in_group() {
+fn alt_in_group() {
     #[allow(dead_code)]
     let re = {
         use safe_regex::internal::InputByte;
