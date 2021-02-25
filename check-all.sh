@@ -4,7 +4,7 @@
 . "$(dirname "$0")"/lib.sh
 
 check_crate() {
-  cd "$1/"
+  cd "$TOP_LEVEL_DIR/$1"
   if [ "$TOOLCHAIN" != '+nightly' ]; then
     cargo_fmt_clippy
     # Once cargo-geiger builds on nightly,
@@ -16,6 +16,7 @@ check_crate() {
 }
 
 check_all() {
+  cd "$TOP_LEVEL_DIR"
   cargo_check_build_test
   time check_crate safe-regex-compiler
   time check_crate safe-regex-macro
@@ -24,6 +25,5 @@ check_all() {
 }
 
 set -e
-cd "$TOP_LEVEL_DIR"
 set -x
 time check_all "$@"

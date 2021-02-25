@@ -54,8 +54,8 @@ cargo_check_build_test() {
 cargo_fmt_clippy() {
   set -e
   set -x
-  time $CARGO fmt --all -- --check
-  time $CARGO clippy --all-targets --all-features -- -D clippy::pedantic
+  time $CARGO fmt -- --check
+  time $CARGO clippy --all-features -- -D clippy::pedantic
 }
 
 cargo_publish_dryrun() {
