@@ -30,7 +30,6 @@
 // );
 
 #![forbid(unsafe_code)]
-use crate::escape_ascii;
 use crate::parser::{ClassItem, FinalNode};
 use safe_proc_macro2::{Ident, TokenStream};
 use safe_quote::{format_ident, quote};

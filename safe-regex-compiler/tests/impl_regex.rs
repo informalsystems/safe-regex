@@ -3,12 +3,11 @@ use safe_proc_macro2::TokenStream;
 use safe_quote::quote;
 use safe_regex_compiler::impl_regex;
 
-fn to_s(s: TokenStream) -> String {
-    format!("{}", s)
-}
-
 #[test]
 fn syntax_errors() {
+    fn to_s(s: TokenStream) -> String {
+        format!("{}", s)
+    }
     let err = Err("expected a raw byte string, like br\"abc\"".to_string());
     assert_eq!(err, impl_regex(quote! {"a"}).map(to_s));
     assert_eq!(err, impl_regex(quote! {r"a"}).map(to_s));
@@ -194,12 +193,12 @@ fn class_inclusive() {
         #[doc = "br\"[abc2-4]\""]
         #[derive(Clone, Debug, PartialEq, Eq, Hash)]
         enum CompiledRegex_ {
-            Class0(Ranges_),
+            Byte0(Ranges_),
             Accept(Ranges_),
         }
         impl CompiledRegex_ {
-            fn class0(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
-                println!("class0 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+            fn byte0(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("byte0 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
                 match opt_b {
                     Some(b)
                         if b == 97u8 || b == 98u8 || b == 99u8 || (50u8..=52u8).contains(&b) =>
@@ -214,7 +213,7 @@ fn class_inclusive() {
                     }
                     Some(_) => {}
                     None => {
-                        next_states.insert(Self::Class0(ranges.clone()));
+                        next_states.insert(Self::Byte0(ranges.clone()));
                     }
                 }
             }
@@ -231,7 +230,7 @@ fn class_inclusive() {
         impl safe_regex::internal::Machine for CompiledRegex_ {
             type GroupRanges = [core::ops::Range<u32>; 0usize];
             fn start(next_states: &mut States_) {
-                Self::class0(&Ranges_::new(), None, 0, next_states);
+                Self::byte0(&Ranges_::new(), None, 0, next_states);
             }
             fn try_accept(&self) -> Option<Self::GroupRanges> {
                 match self {
@@ -242,7 +241,7 @@ fn class_inclusive() {
             fn make_next_states(&self, b: u8, n: u32, next_states: &mut States_) {
                 println!("make_next_states b={:?} n={} {:?}", b, n, self);
                 match self {
-                    Self::Class0(ranges) => Self::class0(ranges, Some(b), n, next_states),
+                    Self::Byte0(ranges) => Self::byte0(ranges, Some(b), n, next_states),
                     Self::Accept(ranges) => Self::accept(ranges, Some(b), n, next_states),
                 }
             }
@@ -273,12 +272,12 @@ fn class_exclusive() {
         #[doc = "br\"[^abc2-4]\""]
         #[derive(Clone, Debug, PartialEq, Eq, Hash)]
         enum CompiledRegex_ {
-            Class0(Ranges_),
+            Byte0(Ranges_),
             Accept(Ranges_),
         }
         impl CompiledRegex_ {
-            fn class0(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
-                println!("class0 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+            fn byte0(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("byte0 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
                 match opt_b {
                     Some(b)
                         if b != 97u8 && b != 98u8 && b != 99u8 && !(50u8..=52u8).contains(&b) =>
@@ -293,7 +292,7 @@ fn class_exclusive() {
                     }
                     Some(_) => {}
                     None => {
-                        next_states.insert(Self::Class0(ranges.clone()));
+                        next_states.insert(Self::Byte0(ranges.clone()));
                     }
                 }
             }
@@ -310,7 +309,7 @@ fn class_exclusive() {
         impl safe_regex::internal::Machine for CompiledRegex_ {
             type GroupRanges = [core::ops::Range<u32>; 0usize];
             fn start(next_states: &mut States_) {
-                Self::class0(&Ranges_::new(), None, 0, next_states);
+                Self::byte0(&Ranges_::new(), None, 0, next_states);
             }
             fn try_accept(&self) -> Option<Self::GroupRanges> {
                 match self {
@@ -321,7 +320,7 @@ fn class_exclusive() {
             fn make_next_states(&self, b: u8, n: u32, next_states: &mut States_) {
                 println!("make_next_states b={:?} n={} {:?}", b, n, self);
                 match self {
-                    Self::Class0(ranges) => Self::class0(ranges, Some(b), n, next_states),
+                    Self::Byte0(ranges) => Self::byte0(ranges, Some(b), n, next_states),
                     Self::Accept(ranges) => Self::accept(ranges, Some(b), n, next_states),
                 }
             }
@@ -352,39 +351,66 @@ fn seq() {
         #[doc = "br\"aab\""]
         #[derive(Clone, Debug, PartialEq, Eq, Hash)]
         enum CompiledRegex_ {
-            Byte0(Ranges_),
-            Byte1(Ranges_),
             Byte2(Ranges_),
+            Byte1(Ranges_),
+            Byte0(Ranges_),
             Accept(Ranges_),
         }
         impl CompiledRegex_ {
-            fn byte0(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
-                println!("byte0 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+            fn byte2(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("byte2 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
                 match opt_b {
-                    Some(97u8) => Self::byte1(&ranges.clone(), None, n + 1, next_states),
+                    Some(b) if b == 98u8 => {
+                        Self::accept(
+                            &ranges.clone(),
+                            None,
+                            n + 1,
+                            next_states,
+                            //
+                        )
+                        //
+                    }
                     Some(_) => {}
                     None => {
-                        next_states.insert(Self::Byte0(ranges.clone()));
+                        next_states.insert(Self::Byte2(ranges.clone()));
                     }
                 }
             }
             fn byte1(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
                 println!("byte1 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
                 match opt_b {
-                    Some(97u8) => Self::byte2(&ranges.clone(), None, n + 1, next_states),
+                    Some(b) if b == 97u8 => {
+                        Self::byte2(
+                            &ranges.clone(),
+                            None,
+                            n + 1,
+                            next_states,
+                            //
+                        )
+                        //
+                    }
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte1(ranges.clone()));
                     }
                 }
             }
-            fn byte2(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
-                println!("byte2 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
+            fn byte0(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
+                println!("byte0 opt_b={:?} n={} ranges={:?}", opt_b, n, ranges);
                 match opt_b {
-                    Some(98u8) => Self::accept(&ranges.clone(), None, n + 1, next_states),
+                    Some(b) if b == 97u8 => {
+                        Self::byte1(
+                            &ranges.clone(),
+                            None,
+                            n + 1,
+                            next_states,
+                            //
+                        )
+                        //
+                    }
                     Some(_) => {}
                     None => {
-                        next_states.insert(Self::Byte2(ranges.clone()));
+                        next_states.insert(Self::Byte0(ranges.clone()));
                     }
                 }
             }
@@ -412,9 +438,9 @@ fn seq() {
             fn make_next_states(&self, b: u8, n: u32, next_states: &mut States_) {
                 println!("make_next_states b={:?} n={} {:?}", b, n, self);
                 match self {
-                    Self::Byte0(ranges) => Self::byte0(ranges, Some(b), n, next_states),
-                    Self::Byte1(ranges) => Self::byte1(ranges, Some(b), n, next_states),
                     Self::Byte2(ranges) => Self::byte2(ranges, Some(b), n, next_states),
+                    Self::Byte1(ranges) => Self::byte1(ranges, Some(b), n, next_states),
+                    Self::Byte0(ranges) => Self::byte0(ranges, Some(b), n, next_states),
                     Self::Accept(ranges) => Self::accept(ranges, Some(b), n, next_states),
                 }
             }
