@@ -202,7 +202,7 @@ pub mod spanned;
 /// ```
 /// # #[cfg(any())]
 /// extern crate proc_macro;
-/// # extern crate proc_macro2;
+/// # extern crate safe_proc_macro2;
 ///
 /// # #[cfg(any())]
 /// use proc_macro::TokenStream;

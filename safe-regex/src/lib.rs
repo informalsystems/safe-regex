@@ -41,67 +41,23 @@
 //! - [`rec`](https://crates.io/crates/rec)
 //!
 //! # Cargo Geiger Safety Report
-//! `update_readme.sh` generates `Readme.md`
-//! and replaces this section with the report.
 //!
 //! # Examples
 //! ```rust
-//! // use safe_regex::simple;
-//! // use safe_regex::simple::Regex;
-//! //
-//! // // "."
-//! // simple::any_byte()
-//! //     .match_all(b"a")
-//! //     .unwrap();
-//! //
-//! // // "[0-9]"
-//! // (b'0'..=b'9').match_all(b"7").unwrap();
-//! //
-//! // // "[^0-9]"
-//! // simple::not(b'0'..=b'9')
-//! //     .match_all(b"a")
-//! //     .unwrap();
-//! //
-//! // // "a?"
-//! // ("a", ..=1).match_all(b"").unwrap();
-//! // ("a", ..=1).match_all(b"a").unwrap();
-//! //
-//! // // "a+"
-//! // ("a", 1..).match_all(b"a").unwrap();
-//! // ("a", 1..).match_all(b"aaa").unwrap();
-//! //
-//! // // "a{3}"
-//! // ("a", 3..=3).match_all(b"aaa").unwrap();
-//! //
-//! // // "a{2,3}"
-//! // ("a", 2..=3).match_all(b"aa").unwrap();
-//! // ("a", 2..=3).match_all(b"aaa").unwrap();
-//! //
-//! // // "a|b"
-//! // simple::or("a", "b")
-//! //     .match_all(b"b")
-//! //     .unwrap();
-//! //
-//! // // "a|b|c|d|e"
-//! // simple::or5("a", "b", "c", "d", "e")
-//! //     .match_all(b"b").unwrap();
-//! //
-//! // // "(a|b)(c|d)"
-//! // simple::seq(
-//! //     simple::or("a", "b"),
-//! //     simple::or("c", "d"),
-//! // ).match_all(b"bc").unwrap();
-//! //
-//! // // "id([0-9]+)" capturing group
-//! // use std::cell::Cell;
-//! // let cell: Cell<Option<&[u8]>> =
-//! //     Cell::new(None);
-//! // simple::seq(
-//! //     "id",
-//! //     simple::group(
-//! //         &cell, (b'0'..b'9', 1..)
-//! // )).match_all(b"id42").unwrap();
-//! // assert_eq!(b"42", cell.get().unwrap());
+//! use safe_regex::{regex, Matcher};
+//! let re: Matcher<_> = regex!(br"(ab)?c");
+//! assert_eq!(None, re.match_all(b""));
+//! assert_eq!(None, re.match_all(b"abcX"));
+//!
+//! let groups1 = re.match_all(b"abc").unwrap();
+//! assert_eq!(b"ab", groups1.group(0).unwrap());
+//! assert_eq!(0..2, groups1.group_range(0).unwrap());
+//!
+//! let groups2 = re.match_all(b"c").unwrap();
+//! assert_eq!(None, groups2.group(0));
+//! assert_eq!(None, groups2.group_range(0));
+//!
+//! // groups2.group(1); // panics
 //! ```
 //!
 //! # Changelog
@@ -110,10 +66,10 @@
 //! # TO DO
 //! - DONE - Read about regular expressions
 //! - DONE - Read about NFAs, <https://swtch.com/~rsc/regexp/>
-//! - Design API
-//! - Implement
-//! - Add integration tests
-//! - Add macro, `regex!(r"[a-z][0-9]")`
+//! - DONE - Design API
+//! - DONE - Implement
+//! - DONE - Add integration tests
+//! - DONE - Add macro, `regex!(r"[a-z][0-9]")`
 //! - Add fuzzing tests
 //! - Add common character classes: whitespace, letters, punctuation, etc.
 //! - Match strings
@@ -137,6 +93,11 @@ use core::ops::Range;
 pub use safe_regex_macro::regex;
 use std::marker::PhantomData;
 
+/// A compiled regular expression.
+///
+/// This is a zero-length type.
+/// The `regex!` macro generates a Rust type that implements the regular expression.
+/// This `Matcher` is just a holder for that type.
 pub struct Matcher<T> {
     phantom: PhantomData<T>,
 }
@@ -145,6 +106,21 @@ where
     S: AsRef<[std::ops::Range<u32>]> + Debug,
     T: internal::Machine<GroupRanges = S> + Eq + Hash + Debug + Sized,
 {
+    /// Executes the regular expression against the byte string `data`.
+    ///
+    /// Returns `Some` if the expresison matched all of the bytes in `data`.
+    ///
+    /// This is not a sub-string search.
+    /// If you need a sub-string search,
+    /// put `.*` at the beginning and end of the regex.
+    ///
+    /// Returns `None` if the expression did not match `data`.
+    pub fn match_all<'d>(&self, data: &'d [u8]) -> Option<Groups<'d, T::GroupRanges>> {
+        T::match_all(data)
+    }
+
+    /// This is used internally by the `regex!` macro.
+    ///
     /// We can make this function `const` when
     /// [trait bounds on \`const fn\` parameters are stable](https://github.com/rust-lang/rust/issues/57563).
     pub fn new() -> Self {
@@ -152,22 +128,54 @@ where
             phantom: PhantomData,
         }
     }
-    pub fn match_all<'d>(&self, data: &'d [u8]) -> Option<Groups<'d, T::GroupRanges>> {
-        T::match_all(data)
-    }
 }
 
 // TODO(mleonhard) Replace this run-time checking with compile-time checking.
 #[derive(Clone, Debug, PartialEq)]
+/// Groups captured by a regular expression.
 pub struct Groups<'d, T: AsRef<[Range<u32>]>> {
     ranges: T,
     data: &'d [u8],
 }
 impl<'d, T: AsRef<[Range<u32>]>> Groups<'d, T> {
+    /// Creates a new struct.
+    ///
+    /// `data` is the byte string the regular expression matched against.
+    ///
+    /// `ranges` is an array of ranges which are the regions inside `data`
+    /// that matched capturing groups.
     pub fn new(ranges: T, data: &'d [u8]) -> Self {
         Self { ranges, data }
     }
 
+    /// Get the range of capturing group number `n`.
+    /// To find the `n` value for a particular group in a regex, count the
+    /// number of open parenthesis `(` symbols that appear before the group.
+    ///
+    /// Note: Group 0 is the first group.
+    /// It is NOT the matching portion of the string.
+    ///
+    /// Returns None if the group did not match any portion of the string.
+    ///
+    /// Panics if the regular expression does not have a capturing group `n`.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use safe_regex::{regex, Matcher};
+    /// let re: Matcher<_> = regex!(br"(a)(b)");
+    /// let groups = re.match_all(b"ab").unwrap();
+    /// assert_eq!(0..1, groups.group_range(0).unwrap());
+    /// assert_eq!(1..2, groups.group_range(1).unwrap());
+    /// // groups.group_range(2); // panics
+    /// ```
+    ///
+    /// ```rust
+    /// use safe_regex::{regex, Matcher};
+    /// let re: Matcher<_> = regex!(br"(a)|(b)");
+    /// let groups = re.match_all(b"b").unwrap();
+    /// assert_eq!(None, groups.group_range(0));
+    /// assert_eq!(Some(0..1), groups.group_range(1));
+    /// ```
     pub fn group_range(&self, n: usize) -> Option<Range<usize>> {
         if let Some(r) = self.ranges.as_ref().get(n) {
             if *r == (u32::MAX..u32::MAX) {
@@ -180,6 +188,35 @@ impl<'d, T: AsRef<[Range<u32>]>> Groups<'d, T> {
         }
     }
 
+    /// Gets the slice matched by capturing group number `n`.
+    ///
+    /// To find the `n` value for a particular group in a regex, count the
+    /// number of open parenthesis `(` symbols that appear before the group.
+    ///
+    /// Note: Group 0 is the first group.
+    /// It is NOT the matching portion of the string.
+    ///
+    /// Returns None if the group did not match any portion of the string.
+    ///
+    /// Panics if the regular expression does not have a capturing group `n`.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use safe_regex::{regex, Matcher};
+    /// let re: Matcher<_> = regex!(br"(a)(b)");
+    /// let groups = re.match_all(b"ab").unwrap();
+    /// assert_eq!(b"a", groups.group(0).unwrap());
+    /// assert_eq!(b"b", groups.group(1).unwrap());
+    /// // groups.group(2); // panics
+    /// ```
+    ///
+    /// ```rust
+    /// use safe_regex::{regex, Matcher};
+    /// let re: Matcher<_> = regex!(br"(a)|(b)");
+    /// let groups = re.match_all(b"b").unwrap();
+    /// assert_eq!(None, groups.group(0));
+    /// assert_eq!(b"b", groups.group(1).unwrap());
+    /// ```
     pub fn group(&self, n: usize) -> Option<&[u8]> {
         Some(&self.data[self.group_range(n)?])
     }

@@ -12,14 +12,6 @@ It is a thin wrapper around the
 [`safe-regex-compiler`](https://crates.io/crates/safe-regex-compiler)
 crate.
 
-## Changelog
-- v0.1.0 - First published version
-
-## Release Process
-1. Edit `Cargo.toml` and bump version number.
-1. Run `./release.sh`
-
-License: Apache-2.0
 ## Cargo Geiger Safety Report
 ```
 
@@ -45,3 +37,11 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 0/0        0/0          0/0    0/0     0/0    
 
 ```
+## Changelog
+- v0.1.0 - First published version
+
+## Release Process
+1. Edit `Cargo.toml` and bump version number.
+1. Run `./release.sh`
+
+License: Apache-2.0

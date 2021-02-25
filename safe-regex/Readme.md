@@ -70,62 +70,20 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 ```
 ## Examples
 ```rust
-// use safe_regex::simple;
-// use safe_regex::simple::Regex;
-//
-// // "."
-// simple::any_byte()
-//     .match_all(b"a")
-//     .unwrap();
-//
-// // "[0-9]"
-// (b'0'..=b'9').match_all(b"7").unwrap();
-//
-// // "[^0-9]"
-// simple::not(b'0'..=b'9')
-//     .match_all(b"a")
-//     .unwrap();
-//
-// // "a?"
-// ("a", ..=1).match_all(b"").unwrap();
-// ("a", ..=1).match_all(b"a").unwrap();
-//
-// // "a+"
-// ("a", 1..).match_all(b"a").unwrap();
-// ("a", 1..).match_all(b"aaa").unwrap();
-//
-// // "a{3}"
-// ("a", 3..=3).match_all(b"aaa").unwrap();
-//
-// // "a{2,3}"
-// ("a", 2..=3).match_all(b"aa").unwrap();
-// ("a", 2..=3).match_all(b"aaa").unwrap();
-//
-// // "a|b"
-// simple::or("a", "b")
-//     .match_all(b"b")
-//     .unwrap();
-//
-// // "a|b|c|d|e"
-// simple::or5("a", "b", "c", "d", "e")
-//     .match_all(b"b").unwrap();
-//
-// // "(a|b)(c|d)"
-// simple::seq(
-//     simple::or("a", "b"),
-//     simple::or("c", "d"),
-// ).match_all(b"bc").unwrap();
-//
-// // "id([0-9]+)" capturing group
-// use std::cell::Cell;
-// let cell: Cell<Option<&[u8]>> =
-//     Cell::new(None);
-// simple::seq(
-//     "id",
-//     simple::group(
-//         &cell, (b'0'..b'9', 1..)
-// )).match_all(b"id42").unwrap();
-// assert_eq!(b"42", cell.get().unwrap());
+use safe_regex::{regex, Matcher};
+let re: Matcher<_> = regex!(br"(ab)?c");
+assert_eq!(None, re.match_all(b""));
+assert_eq!(None, re.match_all(b"abcX"));
+
+let groups1 = re.match_all(b"abc").unwrap();
+assert_eq!(b"ab", groups1.group(0).unwrap());
+assert_eq!(0..2, groups1.group_range(0).unwrap());
+
+let groups2 = re.match_all(b"c").unwrap();
+assert_eq!(None, groups2.group(0));
+assert_eq!(None, groups2.group_range(0));
+
+// groups2.group(1); // panics
 ```
 
 ## Changelog
@@ -134,15 +92,17 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 ## TO DO
 - DONE - Read about regular expressions
 - DONE - Read about NFAs, <https://swtch.com/~rsc/regexp/>
-- Design API
-- Implement
-- Add integration tests
-- Add macro, `regex!(r"[a-z][0-9]")`
+- DONE - Design API
+- DONE - Implement
+- DONE - Add integration tests
+- DONE - Add macro, `regex!(r"[a-z][0-9]")`
 - Add fuzzing tests
 - Add common character classes: whitespace, letters, punctuation, etc.
 - Match strings
 
 ## TO DO
+- Add a memory-limited `match_all` fn, for use on untrusted data.
+  Make it the default.
 - Once [const generics](https://github.com/rust-lang/rust/issues/44580)
   are stable, use the feature to simplify `Repeat` and other types.
 
