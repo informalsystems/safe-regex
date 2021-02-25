@@ -56,4 +56,4 @@ rust-nightly:
     - cargo fmt --version || rustup component add rustfmt || cargo +nightly install --git https://github.com/rust-lang/rustfmt.git --branch master --force --features "rustfmt cargo-fmt" rustfmt-nightly
     - cargo clippy --version || rustup component add clippy || cargo install --git https://github.com/rust-lang/rust-clippy/ --force clippy
     - ./check-all.sh +nightly
-  #allow_failure: true
+  allow_failure: true
