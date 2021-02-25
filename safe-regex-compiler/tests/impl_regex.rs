@@ -454,6 +454,68 @@ fn seq() {
 }
 
 #[test]
+fn group() {
+    let expected = quote! { {
+        #[doc = "br\"(a)\""]
+        #[derive(Clone, Debug, PartialEq, Eq, Hash)]
+        enum CompiledRegex_ {
+            Group0([core::ops::Range<u32>; 2usize]),
+            GroupMatched1([core::ops::Range<u32>; 2usize]),
+            Byte2([core::ops::Range<u32>; 2usize]),
+            Accept([core::ops::Range<u32>; 2usize]),
+        }
+        impl safe_regex::internal::Machine for CompiledRegex_ {
+            type State = [core::ops::Range<u32>; 2usize];
+            fn start() -> Self {
+                Self::Group0([0..0, u32::MAX..u32::MAX])
+            }
+            fn accept(&self) -> Option<Self::State> {
+                match self {
+                    Self::Accept(ranges) => Some(ranges.clone()),
+                    _ => None,
+                }
+            }
+            fn make_next_states(
+                &self,
+                opt_b: Option<u8>,
+                n: u32,
+                next_states: &mut std::collections::HashSet<
+                    Self,
+                    std::collections::hash_map::RandomState,
+                >,
+            ) {
+                safe_regex::internal::println_make_next_states(&opt_b, &n, &self);
+                match (self, opt_b) {
+                    (Self::Byte2(ranges), Some(97u8)) => {
+                        let mut ranges_clone = ranges.clone();
+                        ranges_clone[1usize].end = n + 1;
+                        Self::GroupMatched1(ranges_clone).make_next_states(None, n, next_states)
+                    }
+                    (Self::Byte2(_), Some(_)) => {}
+                    (Self::Group0(ranges), Some(b)) => {
+                        let mut ranges_clone = ranges.clone();
+                        ranges_clone[1usize] = n..n;
+                        Self::Byte2(ranges_clone).make_next_states(Some(b), n, next_states);
+                    }
+                    (Self::GroupMatched1(ranges), None) => {
+                        let mut ranges_clone = ranges.clone();
+                        ranges_clone[0usize].end = ranges_clone[1usize].end;
+                        next_states.insert(Self::Accept(ranges_clone));
+                    }
+                    (Self::Accept(_), _) => {}
+                    other => panic!("invalid state transition {:?}", other),
+                }
+            }
+        }
+        <safe_regex::Matcher<CompiledRegex_>>::new()
+    } };
+    assert_eq!(
+        format!("{}", expected),
+        format!("{}", impl_regex(quote! { br"(a)" }).unwrap())
+    );
+}
+
+#[test]
 fn empty_seq_empty_group() {
     let expected = quote! { {
         #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -550,67 +612,5 @@ fn empty_seq_empty_group() {
     assert_eq!(
         format!("{}", expected),
         format!("{}", impl_regex(quote! { br"()a" }).unwrap())
-    );
-}
-
-#[test]
-fn group() {
-    let expected = quote! { {
-        #[doc = "br\"(a)\""]
-        #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-        enum CompiledRegex_ {
-            Group0([core::ops::Range<u32>; 2usize]),
-            GroupMatched1([core::ops::Range<u32>; 2usize]),
-            Byte2([core::ops::Range<u32>; 2usize]),
-            Accept([core::ops::Range<u32>; 2usize]),
-        }
-        impl safe_regex::internal::Machine for CompiledRegex_ {
-            type State = [core::ops::Range<u32>; 2usize];
-            fn start() -> Self {
-                Self::Group0([0..0, u32::MAX..u32::MAX])
-            }
-            fn accept(&self) -> Option<Self::State> {
-                match self {
-                    Self::Accept(ranges) => Some(ranges.clone()),
-                    _ => None,
-                }
-            }
-            fn make_next_states(
-                &self,
-                opt_b: Option<u8>,
-                n: u32,
-                next_states: &mut std::collections::HashSet<
-                    Self,
-                    std::collections::hash_map::RandomState,
-                >,
-            ) {
-                safe_regex::internal::println_make_next_states(&opt_b, &n, &self);
-                match (self, opt_b) {
-                    (Self::Byte2(ranges), Some(97u8)) => {
-                        let mut ranges_clone = ranges.clone();
-                        ranges_clone[1usize].end = n + 1;
-                        Self::GroupMatched1(ranges_clone).make_next_states(None, n, next_states)
-                    }
-                    (Self::Byte2(_), Some(_)) => {}
-                    (Self::Group0(ranges), Some(b)) => {
-                        let mut ranges_clone = ranges.clone();
-                        ranges_clone[1usize] = n..n;
-                        Self::Byte2(ranges_clone).make_next_states(Some(b), n, next_states);
-                    }
-                    (Self::GroupMatched1(ranges), None) => {
-                        let mut ranges_clone = ranges.clone();
-                        ranges_clone[0usize].end = ranges_clone[1usize].end;
-                        next_states.insert(Self::Accept(ranges_clone));
-                    }
-                    (Self::Accept(_), _) => {}
-                    other => panic!("invalid state transition {:?}", other),
-                }
-            }
-        }
-        <safe_regex::Matcher<CompiledRegex_>>::new()
-    } };
-    assert_eq!(
-        format!("{}", expected),
-        format!("{}", impl_regex(quote! { br"(a)" }).unwrap())
     );
 }
