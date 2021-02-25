@@ -86,28 +86,28 @@ fn class_exclusive() {
     re.match_all(b"5").unwrap();
 }
 
-// #[test]
-// fn seq() {
-//     let mut re = Seq::new(Byte::new(b'a'), Byte::new(b'b'));
-//     println!("size {} bytes: {:?}", core::mem::size_of_val(&re), &re);
-//     assert_eq!(None, re.match_all(b""));
-//     assert_eq!(None, re.match_all(b"a"));
-//     assert!(match_all(&mut re, b"ab"));
-//     assert_eq!(None, re.match_all(b"aab"));
-//     assert_eq!(None, re.match_all(b"aba"));
-//     assert_eq!(None, re.match_all(b"abab"));
-// }
-//
-// #[test]
-// fn seq_reset() {
-//     let mut re = Seq::new(Byte::new(b'a'), Seq::new(Byte::new(b'b'), Byte::new(b'c')));
-//     println!("size {} bytes: {:?}", core::mem::size_of_val(&re), &re);
-//     assert_eq!(None, re.match_all(b"a"));
-//     assert_eq!(None, re.match_all(b"b"));
-//     assert_eq!(None, re.match_all(b"c"));
-//     assert_eq!(None, re.match_all(b"X"));
-// }
-//
+#[test]
+fn seq() {
+    let re: Matcher<_> = regex!(br"ab");
+    assert_eq!(None, re.match_all(b""));
+    assert_eq!(None, re.match_all(b"a"));
+    assert_eq!(None, re.match_all(b"b"));
+    assert_eq!(None, re.match_all(b"X"));
+    assert_eq!(None, re.match_all(b"aX"));
+    assert_eq!(None, re.match_all(b"Xa"));
+    assert_eq!(None, re.match_all(b"Xb"));
+    assert_eq!(None, re.match_all(b"ba"));
+    re.match_all(b"ab").unwrap();
+    assert_eq!(None, re.match_all(b"Xab"));
+    assert_eq!(None, re.match_all(b"aXb"));
+    assert_eq!(None, re.match_all(b"abX"));
+    assert_eq!(None, re.match_all(b"aab"));
+    assert_eq!(None, re.match_all(b"aba"));
+    assert_eq!(None, re.match_all(b"abb"));
+    assert_eq!(None, re.match_all(b"abab"));
+    assert_eq!(None, re.match_all(b"abXab"));
+}
+
 // #[test]
 // fn seq_nested() {
 //     let mut re = Seq::new(Byte::new(b'a'), Seq::new(Byte::new(b'b'), Byte::new(b'c')));
