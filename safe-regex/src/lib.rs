@@ -119,6 +119,8 @@
 //! - Match strings
 //!
 //! # TO DO
+//! - Add a memory-limited `match_all` fn, for use on untrusted data.
+//!   Make it the default.
 //! - Once [const generics](https://github.com/rust-lang/rust/issues/44580)
 //!   are stable, use the feature to simplify `Repeat` and other types.
 //!

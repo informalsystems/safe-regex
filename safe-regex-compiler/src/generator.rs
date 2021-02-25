@@ -50,6 +50,16 @@ impl core::fmt::Debug for Predicate {
     }
 }
 
+// TODO(mleonhard) Add more tree simplifications:
+// - Collapse nested Seq into one
+// - Collapse nested Or into one
+// - Merge peer Bytes in Or
+// - Remove Empty from Seq
+// - Deduplicate Empty in Or
+// - Remove Optional(Empty) and Star(Empty)
+// - Collapse Or & Seq with one entry
+// - Drop Optional(x) that comes right after Star(x)
+// - Reorder Optional(x),x so the optional comes later.
 #[derive(Clone, PartialOrd, PartialEq)]
 enum OptimizedNode {
     Byte(Predicate),
