@@ -140,6 +140,17 @@ fn group() {
 }
 
 #[test]
+fn optional() {
+    let re: Matcher<_> = regex!(br"a?");
+    re.match_all(b"").unwrap();
+    re.match_all(b"a").unwrap();
+    assert_eq!(None, re.match_all(b"aa"));
+    assert_eq!(None, re.match_all(b"X"));
+    assert_eq!(None, re.match_all(b"aX"));
+    assert_eq!(None, re.match_all(b"Xa"));
+}
+
+#[test]
 fn empty_group_in_seq() {
     let re: Matcher<_> = regex!(br"()a");
     assert_eq!(None, re.match_all(b""));
@@ -209,18 +220,6 @@ fn empty_group_in_seq() {
 //     );
 // }
 //
-// #[test]
-// fn optional() {
-//     let mut re = Optional::new(Byte::new(b'a'));
-//     assert_eq!("Optional(Byte(a))", format!("{:?}", re));
-//     assert!(match_all(&mut re, b""));
-//     assert!(match_all(&mut re, b"a"));
-//     assert_eq!(None, re.match_all(b"aa"));
-//     assert_eq!(None, re.match_all(b"X"));
-//     assert_eq!(None, re.match_all(b"aX"));
-//     assert_eq!(None, re.match_all(b"Xa"));
-// }
-
 // #[test]
 // fn optional_at_start() {
 // let mut re = Seq::new(Optional::new(Byte::new(b'a')), Byte::new(b'a'));
