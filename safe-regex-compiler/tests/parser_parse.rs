@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_lines)]
-use safe_regex_compiler::parser::FinalNode::{AnyByte, Byte, Class, Group, Or, Repeat, Seq};
+use safe_regex_compiler::parser::FinalNode::{Alt, AnyByte, Byte, Class, Group, Repeat, Seq};
 use safe_regex_compiler::parser::{parse, ClassItem};
 
 #[test]
@@ -98,13 +98,13 @@ fn or() {
         Err(r"missing element after bar `|`".to_string()),
         parse(br"(a|bc|)d")
     );
-    assert_eq!(Ok(Or(vec![Byte(b'a'), Byte(b'b')])), parse(br"a|b"));
+    assert_eq!(Ok(Alt(vec![Byte(b'a'), Byte(b'b')])), parse(br"a|b"));
     assert_eq!(
-        Ok(Or(vec![Byte(b'a'), Byte(b'b'), Byte(b'c')])),
+        Ok(Alt(vec![Byte(b'a'), Byte(b'b'), Byte(b'c')])),
         parse(br"a|b|c")
     );
     assert_eq!(
-        Ok(Or(vec![
+        Ok(Alt(vec![
             Seq(vec![Byte(b'a'), Byte(b'b')]),
             Seq(vec![Byte(b'c'), Byte(b'd'), Byte(b'e')]),
             Seq(vec![Byte(b'f'), Byte(b'g')])
@@ -432,7 +432,7 @@ fn precedence() {
     );
     // Postfix & Alternation
     assert_eq!(
-        Ok(Or(vec![
+        Ok(Alt(vec![
             Repeat(Box::new(Byte(b'a')), 0, None),
             Repeat(Box::new(Byte(b'b')), 0, None),
             Repeat(Box::new(Byte(b'c')), 0, None),
@@ -441,7 +441,7 @@ fn precedence() {
     );
     // Concatenation & Alternation
     assert_eq!(
-        Ok(Or(vec![
+        Ok(Alt(vec![
             Seq(vec![Byte(b'a'), Byte(b'b')]),
             Seq(vec![Byte(b'c'), Byte(b'd')]),
             Seq(vec![Byte(b'e'), Byte(b'f')]),

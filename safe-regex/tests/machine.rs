@@ -31,7 +31,7 @@ fn byte() {
                 match ib.byte() {
                     Some(b) if b == 97u8 => {
                         Self::accept(
-                            &ranges.clone(),
+                            ranges,
                             ib.consume(),
                             next_states, //
                         ) //
@@ -110,7 +110,7 @@ fn any_byte() {
                 match ib.byte() {
                     Some(_) => {
                         Self::accept(
-                            &ranges.clone(),
+                            ranges,
                             ib.consume(),
                             next_states, //
                         ) //
@@ -187,7 +187,7 @@ fn class_inclusive() {
                         if b == 97u8 || b == 98u8 || b == 99u8 || (50u8..=52u8).contains(&b) =>
                     {
                         Self::accept(
-                            &ranges.clone(),
+                            ranges,
                             ib.consume(),
                             next_states, //
                         ) //
@@ -276,7 +276,7 @@ fn class_exclusive() {
                         if b != 97u8 && b != 98u8 && b != 99u8 && !(50u8..=52u8).contains(&b) =>
                     {
                         Self::accept(
-                            &ranges.clone(),
+                            ranges,
                             ib.consume(),
                             next_states, //
                         ) //
@@ -363,7 +363,7 @@ fn seq() {
                 match ib.byte() {
                     Some(b) if b == 98u8 => {
                         Self::accept(
-                            &ranges.clone(),
+                            ranges,
                             ib.consume(),
                             next_states, //
                         ) //
@@ -379,7 +379,7 @@ fn seq() {
                 match ib.byte() {
                     Some(b) if b == 97u8 => {
                         Self::byte2(
-                            &ranges.clone(),
+                            ranges,
                             ib.consume(),
                             next_states, //
                         ) //
@@ -395,7 +395,7 @@ fn seq() {
                 match ib.byte() {
                     Some(b) if b == 97u8 => {
                         Self::byte1(
-                            &ranges.clone(),
+                            ranges,
                             ib.consume(),
                             next_states, //
                         ) //
@@ -461,7 +461,7 @@ fn seq() {
 }
 
 #[test]
-fn alternates() {
+fn alt() {
     let re = {
         use safe_regex::internal::InputByte;
         #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -484,17 +484,12 @@ fn alternates() {
             Accept(Ranges_),
         }
         impl CompiledRegex_ {
-            fn alt0(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                println!("{} {:?} {:?}", stringify!(alt0), ib, ranges);
-                Self::byte1(ranges, ib, next_states);
-                Self::byte2(ranges, ib, next_states);
-            }
             fn byte1(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 println!("{} {:?} {:?}", stringify!(byte1), ib, ranges);
                 match ib.byte() {
                     Some(b) if b == 97u8 => {
                         Self::accept(
-                            &ranges.clone(),
+                            ranges,
                             ib.consume(),
                             next_states, //
                         ) //
@@ -508,12 +503,23 @@ fn alternates() {
             fn byte2(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 println!("{} {:?} {:?}", stringify!(byte2), ib, ranges);
                 match ib.byte() {
-                    Some(98u8) => Self::accept(&ranges.clone(), ib.consume(), next_states),
+                    Some(b) if b == 98u8 => {
+                        Self::accept(
+                            ranges,
+                            ib.consume(),
+                            next_states, //
+                        ) //
+                    }
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte2(ranges.clone()));
                     }
                 }
+            }
+            fn alt0(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+                println!("{} {:?} {:?}", stringify!(alt0), ib, ranges);
+                Self::byte1(ranges, ib, next_states);
+                Self::byte2(ranges, ib, next_states);
             }
             fn accept(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 println!("accept {:?} {:?}", ib, ranges);
@@ -692,7 +698,7 @@ fn optional() {
             fn byte1(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 println!("{} {:?} {:?}", stringify!(byte1), ib, ranges);
                 match ib.byte() {
-                    Some(97u8) => Self::accept(&ranges.clone(), ib.consume(), next_states),
+                    Some(97u8) => Self::accept(ranges, ib.consume(), next_states),
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte1(ranges.clone()));
@@ -771,7 +777,7 @@ fn optional_at_start() {
             fn byte1(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 println!("{} {:?} {:?}", stringify!(byte1), ib, ranges);
                 match ib.byte() {
-                    Some(97u8) => Self::byte2(&ranges.clone(), ib.consume(), next_states),
+                    Some(97u8) => Self::byte2(ranges, ib.consume(), next_states),
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte1(ranges.clone()));
@@ -781,7 +787,7 @@ fn optional_at_start() {
             fn byte2(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 println!("{} {:?} {:?}", stringify!(byte2), ib, ranges);
                 match ib.byte() {
-                    Some(97u8) => Self::accept(&ranges.clone(), ib.consume(), next_states),
+                    Some(97u8) => Self::accept(ranges, ib.consume(), next_states),
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte2(ranges.clone()));
@@ -860,7 +866,7 @@ fn optional_at_end() {
             fn byte0(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 println!("{} {:?} {:?}", stringify!(byte0), ib, ranges);
                 match ib.byte() {
-                    Some(97u8) => Self::optional1(&ranges.clone(), ib.consume(), next_states),
+                    Some(97u8) => Self::optional1(ranges, ib.consume(), next_states),
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte0(ranges.clone()));
@@ -875,7 +881,7 @@ fn optional_at_end() {
             fn byte2(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 println!("{} {:?} {:?}", stringify!(byte2), ib, ranges);
                 match ib.byte() {
-                    Some(97u8) => Self::accept(&ranges.clone(), ib.consume(), next_states),
+                    Some(97u8) => Self::accept(ranges, ib.consume(), next_states),
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte2(ranges.clone()));
@@ -958,7 +964,7 @@ fn star() {
             fn byte1(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 println!("{} {:?} {:?}", stringify!(byte1), ib, ranges);
                 match ib.byte() {
-                    Some(97u8) => Self::star0(&ranges.clone(), ib.consume(), next_states),
+                    Some(97u8) => Self::star0(ranges, ib.consume(), next_states),
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte1(ranges.clone()));

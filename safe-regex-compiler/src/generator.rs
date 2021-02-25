@@ -52,12 +52,12 @@ impl core::fmt::Debug for Predicate {
 
 // TODO(mleonhard) Add more tree simplifications:
 // - Collapse nested Seq into one
-// - Collapse nested Or into one
-// - Merge peer Bytes in Or
+// - Collapse nested Alt into one
+// - Merge peer Bytes in Alt
 // - Remove Empty from Seq
-// - Deduplicate Empty in Or
+// - Deduplicate Empty in Alt
 // - Remove Optional(Empty) and Star(Empty)
-// - Collapse Or & Seq with one entry
+// - Collapse Seq/Alt with one entry
 // - Drop Optional(x) that comes right after Star(x)
 // - Reorder Optional(x),x so the optional comes later.
 #[derive(Clone, PartialOrd, PartialEq)]
@@ -65,7 +65,7 @@ enum OptimizedNode {
     Byte(Predicate),
     Empty,
     Seq(Vec<OptimizedNode>),
-    Or(Vec<OptimizedNode>),
+    Alt(Vec<OptimizedNode>),
     Optional(Box<OptimizedNode>),
     Star(Box<OptimizedNode>),
     Group(Box<OptimizedNode>),
@@ -87,11 +87,11 @@ impl OptimizedNode {
                     .map(|node| OptimizedNode::from_final_node(node))
                     .collect(),
             ),
-            FinalNode::Or(nodes) if nodes.is_empty() => OptimizedNode::Empty,
-            FinalNode::Or(nodes) if nodes.len() == 1 => {
+            FinalNode::Alt(nodes) if nodes.is_empty() => OptimizedNode::Empty,
+            FinalNode::Alt(nodes) if nodes.len() == 1 => {
                 OptimizedNode::from_final_node(nodes.first().unwrap())
             }
-            FinalNode::Or(nodes) => OptimizedNode::Or(
+            FinalNode::Alt(nodes) => OptimizedNode::Alt(
                 nodes
                     .iter()
                     .map(|node| OptimizedNode::from_final_node(node))
@@ -133,7 +133,7 @@ impl core::fmt::Debug for OptimizedNode {
             OptimizedNode::Byte(items) => write!(f, "OptimizedNode::Byte({:?})", items),
             OptimizedNode::Empty => write!(f, "OptimizedNode::Empty"),
             OptimizedNode::Seq(nodes) => write!(f, "OptimizedNode::Seq{:?}", nodes),
-            OptimizedNode::Or(nodes) => write!(f, "OptimizedNode::Or{:?}", nodes),
+            OptimizedNode::Alt(nodes) => write!(f, "OptimizedNode::Alt{:?}", nodes),
             OptimizedNode::Optional(node) => write!(f, "OptimizedNode::Optional({:?})", node),
             OptimizedNode::Star(node) => write!(f, "OptimizedNode::Star({:?})", node),
             OptimizedNode::Group(node) => write!(f, "OptimizedNode::Group({:?})", node),
@@ -175,7 +175,7 @@ enum TaggedNode {
     Byte(usize, Option<usize>, Predicate),
     Empty(usize),
     Seq(Vec<TaggedNode>),
-    Or(usize, Vec<TaggedNode>),
+    Alt(usize, Vec<TaggedNode>),
     Optional(usize, Box<TaggedNode>),
     Star(usize, Box<TaggedNode>),
     Group(usize, usize, Option<usize>, Box<TaggedNode>),
@@ -202,7 +202,7 @@ impl TaggedNode {
                     })
                     .collect(),
             ),
-            OptimizedNode::Or(nodes) => TaggedNode::Or(
+            OptimizedNode::Alt(nodes) => TaggedNode::Alt(
                 fn_counter.get_and_increment(),
                 nodes
                     .iter()
@@ -258,7 +258,7 @@ impl core::fmt::Debug for TaggedNode {
             ),
             TaggedNode::Empty(fn_num) => write!(f, "Empty({})", fn_num),
             TaggedNode::Seq(nodes) => write!(f, "Seq({:?})", nodes),
-            TaggedNode::Or(fn_num, nodes) => write!(f, "Or({},{:?})", fn_num, nodes),
+            TaggedNode::Alt(fn_num, nodes) => write!(f, "Alt({},{:?})", fn_num, nodes),
             TaggedNode::Optional(fn_num, node) => write!(f, "Optional({},{:?})", fn_num, node),
             TaggedNode::Star(fn_num, node) => write!(f, "Star({},{:?})", fn_num, node),
             TaggedNode::Group(fn_num, group_num, enclosing_group, node) => {
@@ -312,7 +312,7 @@ fn build(
             let clone_ranges_and_skip_past_n = if let Some(group_num) = enclosing_group {
                 quote! { &ranges.clone().skip_past(#group_num, n) }
             } else {
-                quote! { &ranges.clone() }
+                quote! { ranges }
             };
             functions.push(quote! {
                 fn #fn_name(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
@@ -343,9 +343,8 @@ fn build(
                 fn #fn_name(ranges: &Ranges_, opt_b: Option<u8>, n: u32, next_states: &mut States_) {
                     println!(#format_string, opt_b, n, ranges);
                     Self::#next_fn_name(
-                        &ranges.clone(),
-                        opt_b,
-                        n,
+                        ranges,
+                        ib,
                         next_states,
                     ),
                 }
@@ -360,7 +359,30 @@ fn build(
             }
             next
         }
-        //         TaggedNode::Or(_nodes) => {
+        TaggedNode::Alt(fn_num, nodes) => {
+            assert!(!nodes.is_empty());
+            let fn_name = format_ident!("alt{}", fn_num);
+            let arm_fn_names: Vec<Ident> = nodes
+                .iter()
+                .map(|node| build(variant_and_fn_names, functions, next_fn_name, node))
+                .collect();
+            let call_arm_fn_stmts: Vec<TokenStream> = arm_fn_names
+                .iter()
+                .map(|arm_fn_name| {
+                    quote! {
+                        Self::#arm_fn_name(ranges, ib, next_states);
+                    }
+                })
+                .collect();
+            functions.push(quote! {
+                fn #fn_name(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+                    println!("{} {:?} {:?}", stringify!(#fn_name), ib, ranges);
+                    #( #call_arm_fn_stmts )*
+                }
+            });
+            fn_name
+        }
+        //         TaggedNode::Alt(_nodes) => {
         //             panic!("unimplemented {:?}", node)
         //         }
         //         TaggedNode::Repeat(_node, _, _) => {

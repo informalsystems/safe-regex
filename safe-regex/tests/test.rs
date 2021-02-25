@@ -108,6 +108,25 @@ fn seq() {
     assert_eq!(None, re.match_all(b"abXab"));
 }
 
+#[test]
+fn alt() {
+    let re: Matcher<_> = regex!(br"a|b");
+    assert_eq!(None, re.match_all(b""));
+    assert_eq!(None, re.match_all(b"X"));
+    assert_eq!(None, re.match_all(b"Xa"));
+    assert_eq!(None, re.match_all(b"Xb"));
+    assert_eq!(None, re.match_all(b"aX"));
+    assert_eq!(None, re.match_all(b"bX"));
+    assert_eq!(None, re.match_all(b"XaY"));
+    assert_eq!(None, re.match_all(b"XbY"));
+    assert_eq!(None, re.match_all(b"aa"));
+    assert_eq!(None, re.match_all(b"ab"));
+    assert_eq!(None, re.match_all(b"ba"));
+    assert_eq!(None, re.match_all(b"bb"));
+    re.match_all(b"a").unwrap();
+    re.match_all(b"b").unwrap();
+}
+
 // #[test]
 // fn seq_nested() {
 //     let mut re = Seq::new(Byte::new(b'a'), Seq::new(Byte::new(b'b'), Byte::new(b'c')));
@@ -263,25 +282,6 @@ fn optional_at_start() {
 //     assert_eq!(None, matcher(b"aaaaaa"));
 // }
 
-// #[test]
-// fn either() {
-//     let mut re = Either::new(Byte::new(b'a'), Byte::new(b'b'));
-//     assert_eq!(None, re.match_all(b""));
-//     assert_eq!(None, re.match_all(b"X"));
-//     assert_eq!(None, re.match_all(b"Xa"));
-//     assert_eq!(None, re.match_all(b"Xb"));
-//     assert_eq!(None, re.match_all(b"aX"));
-//     assert_eq!(None, re.match_all(b"bX"));
-//     assert_eq!(None, re.match_all(b"XaY"));
-//     assert_eq!(None, re.match_all(b"XbY"));
-//     assert_eq!(None, re.match_all(b"aa"));
-//     assert_eq!(None, re.match_all(b"ab"));
-//     assert_eq!(None, re.match_all(b"ba"));
-//     assert_eq!(None, re.match_all(b"bb"));
-//     assert!(match_all(&mut re, b"a"));
-//     assert!(match_all(&mut re, b"b"));
-// }
-//
 // #[test]
 // fn either_group() {
 //     let mut group = CapturingGroup::new(Either::new(Byte::new(b'a'), Byte::new(b'b')));

@@ -68,8 +68,8 @@ fn non_final_node() {
     );
     assert_eq!("OpenGroup", format!("{:?}", NonFinalNode::OpenGroup));
     assert_eq!(
-        "OpenOr[AnyByte]",
-        format!("{:?}", NonFinalNode::OpenOr(vec![FinalNode::AnyByte]))
+        "OpenAlt[AnyByte]",
+        format!("{:?}", NonFinalNode::OpenAlt(vec![FinalNode::AnyByte]))
     );
     assert_eq!(
         "RepeatMin(123)",
@@ -96,7 +96,7 @@ fn non_final_node() {
     );
     assert_eq!(
         vec![FinalNode::AnyByte],
-        NonFinalNode::OpenOr(vec![FinalNode::AnyByte]).unwrap_open_or()
+        NonFinalNode::OpenAlt(vec![FinalNode::AnyByte]).unwrap_open_alt()
     );
     assert_eq!(
         "123".to_string(),
@@ -117,7 +117,7 @@ fn unwrap_open_class() {
 #[test]
 #[should_panic]
 fn unwrap_open_or() {
-    NonFinalNode::OpenGroup.unwrap_open_or();
+    NonFinalNode::OpenGroup.unwrap_open_alt();
 }
 
 #[test]
@@ -153,8 +153,8 @@ fn final_node() {
         format!("{:?}", FinalNode::Group(Box::new(FinalNode::AnyByte)))
     );
     assert_eq!(
-        "Or[AnyByte]",
-        format!("{:?}", FinalNode::Or(vec![FinalNode::AnyByte]))
+        "Alt[AnyByte]",
+        format!("{:?}", FinalNode::Alt(vec![FinalNode::AnyByte]))
     );
     assert_eq!(
         "Repeat(AnyByte,5-Some(7))",
@@ -166,12 +166,12 @@ fn final_node() {
 
     assert_eq!(
         vec![FinalNode::AnyByte],
-        FinalNode::Or(vec![FinalNode::AnyByte]).unwrap_or()
+        FinalNode::Alt(vec![FinalNode::AnyByte]).unwrap_alt()
     );
 }
 
 #[test]
 #[should_panic]
 fn unwrap_or() {
-    FinalNode::AnyByte.unwrap_or();
+    FinalNode::AnyByte.unwrap_alt();
 }

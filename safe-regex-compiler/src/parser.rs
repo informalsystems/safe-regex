@@ -89,7 +89,7 @@ pub enum NonFinalNode {
     OpenByteRange(u8),
     ByteRange(u8, u8),
     OpenGroup,
-    OpenOr(Vec<FinalNode>),
+    OpenAlt(Vec<FinalNode>),
     RepeatMin(String),
     RepeatMax(String, String),
     RepeatToken(String, usize, Option<usize>),
@@ -116,7 +116,7 @@ impl core::fmt::Debug for NonFinalNode {
                 escape_ascii([*b])
             ),
             NonFinalNode::OpenGroup => write!(f, "OpenGroup"),
-            NonFinalNode::OpenOr(nodes) => write!(f, "OpenOr{:?}", nodes),
+            NonFinalNode::OpenAlt(nodes) => write!(f, "OpenAlt{:?}", nodes),
             NonFinalNode::RepeatMin(min) => write!(f, "RepeatMin({})", min),
             NonFinalNode::RepeatMax(min, max) => write!(f, "RepeatMax({},{})", min, max),
             NonFinalNode::RepeatToken(printable, min, opt_max) => {
@@ -144,7 +144,7 @@ impl NonFinalNode {
                 format!("missing byte to close range: `{}-`", escape_ascii([*b]))
             }
             NonFinalNode::OpenGroup => "missing closing `)`".to_string(),
-            NonFinalNode::OpenOr(_) => "missing element after bar `|`".to_string(),
+            NonFinalNode::OpenAlt(_) => "missing element after bar `|`".to_string(),
             NonFinalNode::RepeatMin(min) => {
                 format!("missing closing `}}` symbol: `{{{}`", min)
             }
@@ -167,13 +167,13 @@ impl NonFinalNode {
         }
     }
 
-    /// Returns the contents of this `NonFinalNode::OpenOr(..)`.
+    /// Returns the contents of this `NonFinalNode::OpenAlt(..)`.
     /// Panics if this is a different enum variant.
     #[allow(clippy::must_use_candidate)]
-    pub fn unwrap_open_or(self) -> Vec<FinalNode> {
+    pub fn unwrap_open_alt(self) -> Vec<FinalNode> {
         match self {
-            NonFinalNode::OpenOr(nodes) => nodes,
-            other => panic!("unwrap_open_or() called on value: {:?}", other),
+            NonFinalNode::OpenAlt(nodes) => nodes,
+            other => panic!("unwrap_open_alt() called on value: {:?}", other),
         }
     }
 
@@ -214,7 +214,7 @@ impl NonFinalNode {
 /// - [`Seq`](#variant.Seq)
 /// - [`Class`](#variant.Class)
 /// - [`Group`](#variant.Group)
-/// - [`Or`](#variant.Or)
+/// - [`Alt`](#variant.Alt)
 /// - [`Repeat`](#variant.Repeat)
 #[derive(Clone, PartialOrd, PartialEq)]
 pub enum FinalNode {
@@ -328,7 +328,7 @@ pub enum FinalNode {
     ///    Ok(FinalNode::Seq(vec![
     ///       FinalNode::Byte(b'a'),
     ///       FinalNode::Group(Box::new(
-    ///          FinalNode::Or(vec![
+    ///          FinalNode::Alt(vec![
     ///             FinalNode::Byte(b'b'),
     ///             FinalNode::Byte(b'c'),
     ///          ])
@@ -352,7 +352,7 @@ pub enum FinalNode {
     /// ```
     Group(Box<FinalNode>),
 
-    /// `Or(Vec<FinalNode>)`
+    /// `Alt(Vec<FinalNode>)`
     ///
     /// A list of alternate nodes.  The input can match any of them.
     ///
@@ -361,14 +361,14 @@ pub enum FinalNode {
     /// use safe_regex_compiler::parser::parse;
     /// use safe_regex_compiler::parser::FinalNode;
     /// assert_eq!(
-    ///     Ok(FinalNode::Or(vec![
+    ///     Ok(FinalNode::Alt(vec![
     ///         FinalNode::Byte(b'a'),
     ///         FinalNode::Byte(b'b'),
     ///     ])),
     ///     parse(br"a|b"),
     /// );
     /// assert_eq!(
-    ///     Ok(FinalNode::Or(vec![
+    ///     Ok(FinalNode::Alt(vec![
     ///         FinalNode::Byte(b'a'),
     ///         FinalNode::Byte(b'b'),
     ///         FinalNode::Seq(vec![
@@ -379,7 +379,7 @@ pub enum FinalNode {
     ///     parse(br"a|b|.c"),
     /// );
     /// ```
-    Or(Vec<FinalNode>),
+    Alt(Vec<FinalNode>),
 
     /// `Repeat(Box<FinalNode>, min: usize, max: Option<usize>)`
     ///
@@ -458,13 +458,13 @@ pub enum FinalNode {
     Repeat(Box<FinalNode>, usize, Option<usize>),
 }
 impl FinalNode {
-    /// Assumes this is a `FinalNode::Or(_)` and returns its contents.
+    /// Assumes this is a `FinalNode::Alt(_)` and returns its contents.
     /// Panics if this is a different enum variant.
     #[allow(clippy::must_use_candidate)]
-    pub fn unwrap_or(self) -> Vec<FinalNode> {
+    pub fn unwrap_alt(self) -> Vec<FinalNode> {
         match self {
-            FinalNode::Or(nodes) => nodes,
-            other => panic!("unwrap_or() called on value: {:?}", other),
+            FinalNode::Alt(nodes) => nodes,
+            other => panic!("unwrap_alt() called on value: {:?}", other),
         }
     }
 }
@@ -477,7 +477,7 @@ impl core::fmt::Debug for FinalNode {
             FinalNode::Class(true, items) => write!(f, "Class{:?}", items),
             FinalNode::Class(false, items) => write!(f, "Class^{:?}", items),
             FinalNode::Group(nodes) => write!(f, "Group({:?})", nodes),
-            FinalNode::Or(nodes) => write!(f, "Or{:?}", nodes),
+            FinalNode::Alt(nodes) => write!(f, "Alt{:?}", nodes),
             FinalNode::Repeat(node, min, opt_max) => {
                 write!(f, "Repeat({:?},{}-{:?})", node, min, opt_max)
             }
@@ -510,11 +510,11 @@ fn apply_rule_once(
     mut last: &mut Option<Node>,
     byte: &mut Option<u8>,
 ) -> Result<Option<Node>, String> {
-    use FinalNode::{AnyByte, Byte, Class, Group, Or, Repeat, Seq};
+    use FinalNode::{Alt, AnyByte, Byte, Class, Group, Repeat, Seq};
     use Node::{Final, NonFinal};
     use NonFinalNode::{
-        ByteRange, Escape, HexEscape0, HexEscape1, OpenByteRange, OpenClass, OpenClass0,
-        OpenClassNeg, OpenGroup, OpenOr, RepeatMax, RepeatMin, RepeatToken,
+        ByteRange, Escape, HexEscape0, HexEscape1, OpenAlt, OpenByteRange, OpenClass, OpenClass0,
+        OpenClassNeg, OpenGroup, RepeatMax, RepeatMin, RepeatToken,
     };
     #[allow(clippy::match_same_arms)]
     match (&mut prev, &mut last, byte.map(|b| b)) {
@@ -574,15 +574,15 @@ fn apply_rule_once(
         }
 
         // Combine alternation/or nodes
-        (Some(NonFinal(OpenOr(_))), Some(Final(_)), b)
+        (Some(NonFinal(OpenAlt(_))), Some(Final(_)), b)
             if b != Some(b'?') && b != Some(b'+') && b != Some(b'*') && b != Some(b'{') =>
         {
             let node = last.take().unwrap().unwrap_final();
-            let mut nodes = prev.take().unwrap().unwrap_non_final().unwrap_open_or();
+            let mut nodes = prev.take().unwrap().unwrap_non_final().unwrap_open_alt();
             nodes.push(node);
-            Ok(Some(Final(Or(nodes))))
+            Ok(Some(Final(Alt(nodes))))
         }
-        (Some(Final(Or(nodes))), Some(Final(_)), b)
+        (Some(Final(Alt(nodes))), Some(Final(_)), b)
             if b != Some(b'?') && b != Some(b'+') && b != Some(b'*') && b != Some(b'{') =>
         {
             let node = last.take().unwrap().unwrap_final();
@@ -810,16 +810,16 @@ fn apply_rule_once(
             Ok(Some(Final(AnyByte)))
         }
 
-        // Alternate/Or `a|b|c`
-        (_, Some(Final(Or(_))), Some(b'|')) => {
+        // Alternate `a|b|c`
+        (_, Some(Final(Alt(_))), Some(b'|')) => {
             byte.take();
-            let nodes = last.take().unwrap().unwrap_final().unwrap_or();
-            Ok(Some(NonFinal(OpenOr(nodes))))
+            let nodes = last.take().unwrap().unwrap_final().unwrap_alt();
+            Ok(Some(NonFinal(OpenAlt(nodes))))
         }
         (_, Some(Final(_)), Some(b'|')) => {
             byte.take();
             let node = last.take().unwrap().unwrap_final();
-            Ok(Some(NonFinal(OpenOr(vec![node]))))
+            Ok(Some(NonFinal(OpenAlt(vec![node]))))
         }
         (_, None, Some(b'|')) => Err("missing element before bar `|`".to_string()),
 
@@ -863,7 +863,7 @@ fn apply_rule_once(
         (Some(NonFinal(OpenClass0)), Some(Final(_)), _) => unreachable!(),
         (Some(NonFinal(OpenClassNeg)), Some(Final(_)), _) => unreachable!(),
         (Some(NonFinal(OpenClass(..))), Some(Final(_)), _) => unreachable!(),
-        (Some(NonFinal(OpenOr(_))), Some(Final(_)), _) => unreachable!(),
+        (Some(NonFinal(OpenAlt(_))), Some(Final(_)), _) => unreachable!(),
         (Some(NonFinal(OpenByteRange(_))), Some(Final(_)), _) => unreachable!(),
         (Some(NonFinal(ByteRange(..))), Some(Final(_)), _) => unreachable!(),
         (Some(NonFinal(RepeatToken(..))), Some(Final(_)), _) => unreachable!(),
@@ -888,7 +888,7 @@ fn apply_rule_once(
 ///     Ok(FinalNode::Byte(b'a')), parse(br"a")
 /// );
 /// assert_eq!(
-///     Ok(FinalNode::Or(vec![
+///     Ok(FinalNode::Alt(vec![
 ///         FinalNode::Byte(b'a'),
 ///         FinalNode::Byte(b'b'),
 ///         FinalNode::Byte(b'c'),
