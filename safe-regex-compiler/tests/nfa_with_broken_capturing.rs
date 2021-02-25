@@ -163,11 +163,9 @@ pub fn match_all<T: Matcher<RangeType = MatchRange<()>> + Debug>(
         println!("{:?}", &matcher);
         println!("final_state = {:?}", final_state);
     }
-    if let Some(matching_range) = final_state {
+    final_state.map_or(false, |matching_range| {
         matching_range.range() == (0..data.len())
-    } else {
-        false
-    }
+    })
 }
 
 #[derive(Clone, PartialOrd, PartialEq)]
@@ -226,6 +224,7 @@ pub struct AnyByte<R: RangeTrait + Debug> {
 }
 impl<R: RangeTrait + Debug> AnyByte<R> {
     #[must_use]
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
             phantom: PhantomData,
@@ -574,15 +573,9 @@ where
 
     fn process_byte_impl(&mut self, prev_state: Option<R>, b: u8, n: usize) -> Option<R> {
         let prev_state_clone = prev_state.clone();
-        if let Some(match_range) = self.inner.process_byte(prev_state, b, n) {
-            Some(match_range)
-        } else {
-            prev_state_clone
-        }
-    }
-
-    fn matches_empty_impl(&mut self) -> bool {
-        true
+        self.inner
+            .process_byte(prev_state, b, n)
+            .or(prev_state_clone)
     }
 }
 impl<R, T> Matcher for Optional<R, T>
@@ -606,7 +599,7 @@ where
     }
 
     fn matches_empty(&mut self) -> bool {
-        self.matches_empty_impl()
+        true
     }
 }
 impl<R, T> Matcher for &mut Optional<R, T>
@@ -630,7 +623,7 @@ where
     }
 
     fn matches_empty(&mut self) -> bool {
-        self.matches_empty_impl()
+        true
     }
 }
 impl<R, T> Debug for Optional<R, T>

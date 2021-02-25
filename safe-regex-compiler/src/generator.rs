@@ -117,8 +117,7 @@ impl OptimizedNode {
                 let inner = OptimizedNode::from_final_node(node);
                 let required_instances = core::iter::repeat(inner.clone()).take(*min);
                 let optional_instances =
-                    core::iter::repeat(OptimizedNode::Optional(Box::new(inner.clone())))
-                        .take(max - min);
+                    core::iter::repeat(OptimizedNode::Optional(Box::new(inner))).take(max - min);
                 OptimizedNode::Seq(required_instances.chain(optional_instances).collect())
             }
             FinalNode::Group(node) => {
@@ -275,6 +274,7 @@ impl core::fmt::Debug for TaggedNode {
     }
 }
 
+#[allow(clippy::too_many_lines)]
 fn build(
     variant_and_fn_names: &mut Vec<(Ident, Ident)>,
     functions: &mut Vec<TokenStream>,
@@ -337,7 +337,7 @@ fn build(
         TaggedNode::Empty(fn_num) => {
             let fn_name = format_ident!("empty{}", fn_num);
             let variant_name = format_ident!("Empty{}", fn_num);
-            variant_and_fn_names.push((variant_name.clone(), fn_name.clone()));
+            variant_and_fn_names.push((variant_name, fn_name.clone()));
             functions.push(quote! {
                 fn #fn_name(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                     // println!("{} {:?} {:?}", stringify!(#fn_name), ib, ranges);
@@ -434,7 +434,9 @@ fn build(
 /// Generates an enum that implements `parsed_re` and implements the
 /// [`safe_regex::internal::Machine`](https://docs.rs/safe-regex/latest/safe_regex/internal/trait.Machine.html)
 /// trait.
-pub fn generate(literal_re: String, final_node: FinalNode) -> safe_proc_macro2::TokenStream {
+#[must_use]
+#[allow(clippy::too_many_lines)]
+pub fn generate(literal_re: &str, final_node: &FinalNode) -> safe_proc_macro2::TokenStream {
     let optimized_node = OptimizedNode::from_final_node(&final_node);
     let mut fn_counter = Counter::new();
     let mut group_counter = Counter::new();

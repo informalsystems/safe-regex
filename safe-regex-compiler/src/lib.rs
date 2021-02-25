@@ -44,6 +44,10 @@ pub fn escape_ascii(input: impl AsRef<[u8]>) -> String {
     result
 }
 
+/// Implements the `regex!` macro.
+///
+/// # Errors
+/// Returns `Err(String)` with a human-readable description of the problem.
 pub fn impl_regex(stream: TokenStream) -> Result<TokenStream, String> {
     // Ident { sym: regex }
     // Punct { char: '!', spacing: Alone }
@@ -56,7 +60,7 @@ pub fn impl_regex(stream: TokenStream) -> Result<TokenStream, String> {
     //     Literal { lit: br"a" }
     //   ]
     // }
-    const ERR: &'static str = "expected a raw byte string, like br\"abc\"";
+    const ERR: &str = "expected a raw byte string, like br\"abc\"";
     // println!(
     //     "impl_regex {:?}",
     //     stream
@@ -80,7 +84,7 @@ pub fn impl_regex(stream: TokenStream) -> Result<TokenStream, String> {
     let literal_string = literal.to_string();
     let raw_byte_string = literal_string
         .strip_prefix("br")
-        .ok_or(ERR.to_string())?
+        .ok_or_else(|| ERR.to_string())?
         // Compiler guarantees that strings are closed.
         .trim_start_matches('#')
         .trim_start_matches('"')
@@ -95,5 +99,5 @@ pub fn impl_regex(stream: TokenStream) -> Result<TokenStream, String> {
     // if let Some(tree) = attr.into_iter().next() {
     //     return quote_spanned!(tree.span()=>compile_error!("parameters not allowed"););
     // }
-    Ok(generate(literal_string, parsed_re))
+    Ok(generate(&literal_string, &parsed_re))
 }

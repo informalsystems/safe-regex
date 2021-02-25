@@ -5,6 +5,7 @@ use safe_regex_compiler::impl_regex;
 
 #[test]
 fn syntax_errors() {
+    #[allow(clippy::needless_pass_by_value)]
     fn to_s(s: TokenStream) -> String {
         format!("{}", s)
     }
@@ -334,6 +335,7 @@ fn class_exclusive() {
 }
 
 #[test]
+#[allow(clippy::too_many_lines)]
 fn seq() {
     let expected = quote! { {
         use safe_regex::internal::InputByte;
