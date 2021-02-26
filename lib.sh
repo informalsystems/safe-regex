@@ -48,8 +48,7 @@ cargo_check_build_test() {
   set -x
   time $CARGO_CMD check --verbose
   time $CARGO_CMD build --verbose
-  # Skip safe-quote/tests/ui/not-repeatable because it is broken on nightly.
-  time $CARGO_CMD test --verbose -- --skip not-repeatable
+  time $CARGO_CMD test --verbose
 }
 
 # Clippy's support for workspaces is a bit problematic.  Background info:
