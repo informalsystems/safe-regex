@@ -59,7 +59,8 @@ impl core::fmt::Debug for Predicate {
 // - Remove Optional(Empty) and Star(Empty)
 // - Collapse Seq/Alt with one entry
 // - Drop Optional(x) that comes right after Star(x)
-// - Reorder Optional(x),x so the optional comes later.
+// - Reorder Optional(x),x so the optional comes later
+// - Translate x{2,5} into "xx(x(x(x)?)?)?" rather than "xxx?x?x?"
 #[derive(Clone, PartialOrd, PartialEq)]
 enum OptimizedNode {
     Byte(Predicate),

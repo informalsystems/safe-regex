@@ -99,6 +99,9 @@ assert_eq!(None, groups2.group_range(0));
 - Add fuzzing tests
 - Add common character classes: whitespace, letters, punctuation, etc.
 - Match strings
+- Implement optimizations explained in <https://swtch.com/%7Ersc/regexp/regexp3.html> .
+  Some of the code already exists in `tests/dfa_single_pass.rs`
+  and `tests/nfa_without_capturing.rs`.
 
 ## TO DO
 - Add a memory-limited `match_all` fn, for use on untrusted data.
