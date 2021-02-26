@@ -1,5 +1,5 @@
-use std::marker::PhantomData;
-use std::ops::Range;
+use core::marker::PhantomData;
+use core::ops::Range;
 
 trait CounterTrait {
     fn add(&mut self, n: usize);

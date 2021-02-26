@@ -89,9 +89,9 @@
 #![forbid(unsafe_code)]
 use core::fmt::Debug;
 use core::hash::Hash;
+use core::marker::PhantomData;
 use core::ops::Range;
 pub use safe_regex_macro::regex;
-use std::marker::PhantomData;
 
 /// A compiled regular expression.
 ///
