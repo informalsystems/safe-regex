@@ -48,9 +48,12 @@ cargo_check_build_test() {
   set -x
   time $CARGO_CMD check --verbose
   time $CARGO_CMD build --verbose
-  time $CARGO_CMD test --verbose
+  # Skip safe-quote/tests/ui/not-repeatable because it is broken on nightly.
+  time $CARGO_CMD test --verbose -- --skip not-repeatable
 }
 
+# Clippy's support for workspaces is a bit problematic.  Background info:
+# https://github.com/rust-lang/rust-clippy/issues/2518#issuecomment-786443036
 cargo_fmt_clippy() {
   set -e
   set -x

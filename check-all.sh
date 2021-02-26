@@ -5,7 +5,7 @@
 
 check_crate() {
   cd "$TOP_LEVEL_DIR/$1"
-  if [ "$TOOLCHAIN" != '+nightly' ]; then
+  if [ "$TOOLCHAIN_ARG" != '+nightly' ]; then
     cargo_fmt_clippy
     # Once cargo-geiger builds on nightly,
     # change this to always check the readme.
