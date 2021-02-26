@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 use core::marker::PhantomData;
 use core::ops::Range;
 

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 use safe_regex::internal::escape_ascii;
 use safe_regex::{regex, Matcher};
 
