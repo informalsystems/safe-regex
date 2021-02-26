@@ -55,7 +55,7 @@ cargo_fmt_clippy() {
   set -e
   set -x
   time $CARGO fmt -- --check
-  time $CARGO clippy --all-features -- -D clippy::pedantic
+  time $CARGO clippy --all-features -- -D clippy::pedantic --no-deps
 }
 
 cargo_publish_dryrun() {
