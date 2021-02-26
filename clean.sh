@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/usr/bin/env bash
 set -e
 cd "$(dirname $0)"
 du_before=$(du -sh | cut -f 1)
