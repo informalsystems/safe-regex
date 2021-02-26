@@ -118,6 +118,8 @@ where
     /// put `.*` at the beginning and end of the regex.
     ///
     /// Returns `None` if the expression did not match `data`.
+    #[must_use]
+    #[allow(clippy::unused_self)]
     pub fn match_all<'d>(&self, data: &'d [u8]) -> Option<Groups<'d, T::GroupRanges>> {
         T::match_all(data)
     }
@@ -126,10 +128,20 @@ where
     ///
     /// We can make this function `const` when
     /// [trait bounds on \`const fn\` parameters are stable](https://github.com/rust-lang/rust/issues/57563).
+    #[must_use]
     pub fn new() -> Self {
         Self {
             phantom: PhantomData,
         }
+    }
+}
+impl<S, T> Default for Matcher<T>
+where
+    S: AsRef<[std::ops::Range<u32>]> + Debug,
+    T: internal::Machine<GroupRanges = S> + Eq + Hash + Debug + Sized,
+{
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -226,6 +238,7 @@ impl<'d, T: AsRef<[Range<u32>]>> Groups<'d, T> {
 }
 
 pub mod internal {
+    use core::convert::TryFrom;
     use core::fmt::Debug;
     use core::hash::Hash;
     use core::ops::Range;
@@ -249,18 +262,24 @@ pub mod internal {
         Consumed(u32),
     }
     impl InputByte {
+        #[must_use]
+        #[allow(clippy::trivially_copy_pass_by_ref)]
         pub fn byte(&self) -> Option<u8> {
             match self {
                 InputByte::Available(b, _n) => Some(*b),
                 InputByte::Consumed(_n) => None,
             }
         }
+        #[must_use]
+        #[allow(clippy::trivially_copy_pass_by_ref)]
         pub fn index(&self) -> u32 {
             match self {
                 InputByte::Available(_b, n) => *n,
                 InputByte::Consumed(n) => *n,
             }
         }
+        #[must_use]
+        #[allow(clippy::trivially_copy_pass_by_ref)]
         pub fn consume(self) -> Self {
             if let Self::Available(_b, n) = self {
                 Self::Consumed(n + 1)
@@ -290,6 +309,7 @@ pub mod internal {
         where
             Self: Sized;
 
+        #[must_use]
         fn match_all(data: &[u8]) -> Option<crate::Groups<Self::GroupRanges>>
         where
             Self: Eq + Hash + Debug + Sized,
@@ -309,7 +329,7 @@ pub mod internal {
                 // It might be faster to just use `iter()` and then call
                 // `HashSet::clear` after the loop.  Let's test before changing it.
                 for state in states.drain() {
-                    state.make_next_states(*b, n as u32, &mut next_states);
+                    state.make_next_states(*b, u32::try_from(n).unwrap(), &mut next_states);
                 }
                 core::mem::swap(&mut states, &mut next_states);
                 // println!("states = {:?}", states);
