@@ -33,6 +33,13 @@ fn test_re_fn() {
 }
 
 #[test]
+fn empty() {
+    let re: Matcher<_> = regex!(br"");
+    re.match_all(b"").unwrap();
+    assert_eq!(None, re.match_all(b"X"));
+}
+
+#[test]
 fn byte() {
     let re: Matcher<_> = regex!(br"a");
     assert_eq!(None, re.match_all(b""));
