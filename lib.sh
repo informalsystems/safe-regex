@@ -9,26 +9,26 @@ usage() {
   exit 1
 }
 
-TOOLCHAIN=
-ALLOW_DIRTY=
+TOOLCHAIN_ARG=
+ALLOW_DIRTY_ARG=
 
 while :; do
   case "$1" in
-  +*) TOOLCHAIN="$1" ;;
-  --allow-dirty) ALLOW_DIRTY=--allow-dirty ;;
+  +*) TOOLCHAIN_ARG="$1" ;;
+  --allow-dirty) ALLOW_DIRTY_ARG=--allow-dirty ;;
   '') break ;;
   *) usage "bad argument '$1'" ;;
   esac
   shift
 done
 
-CARGO="cargo $TOOLCHAIN"
+CARGO_CMD="cargo $TOOLCHAIN_ARG"
 
 generate_readme() {
   set -e
   set -x
-  $CARGO readme >"$1"
-  $CARGO geiger --update-readme --readme-path "$1" --output-format GitHubMarkdown
+  time $CARGO_CMD readme >"$1"
+  time $CARGO_CMD geiger --update-readme --readme-path "$1" --output-format GitHubMarkdown
 }
 
 check_readme() {
@@ -46,20 +46,22 @@ check_readme() {
 cargo_check_build_test() {
   set -e
   set -x
-  time $CARGO check --verbose
-  time $CARGO build --verbose
-  time $CARGO test --verbose
+  time $CARGO_CMD check --verbose
+  time $CARGO_CMD build --verbose
+  time $CARGO_CMD test --verbose
 }
 
 cargo_fmt_clippy() {
   set -e
   set -x
-  time $CARGO fmt -- --check
-  time $CARGO clippy --all-features -- -D clippy::pedantic --no-deps
+  time $CARGO_CMD fmt -- --check
+  PACKAGE_NAME=$(basename "$PWD")
+  time $CARGO_CMD clean --package "$PACKAGE_NAME"
+  time $CARGO_CMD clippy --all-features -- -D clippy::pedantic --no-deps
 }
 
 cargo_publish_dryrun() {
   set -e
   set -x
-  time $CARGO publish --dry-run $ALLOW_DIRTY
+  time $CARGO_CMD publish --dry-run $ALLOW_DIRTY_ARG
 }
