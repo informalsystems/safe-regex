@@ -275,6 +275,27 @@ fn question_mark() {
         ])),
         parse(br"...?")
     );
+    assert_eq!(
+        Ok(Alt(vec![
+            Byte(b'a'),
+            Repeat(Box::new(Byte(b'b')), 0, Some(1)),
+        ])),
+        parse(br"a|b?")
+    );
+    assert_eq!(
+        Ok(Alt(vec![
+            Byte(b'a'),
+            Seq(vec![Repeat(Box::new(Byte(b'b')), 0, Some(1)), Byte(b'c')]),
+        ])),
+        parse(br"a|b?c")
+    );
+    assert_eq!(
+        Ok(Alt(vec![
+            Byte(b'a'),
+            Seq(vec![Byte(b'b'), Repeat(Box::new(Byte(b'c')), 0, Some(1))]),
+        ])),
+        parse(br"a|bc?")
+    );
 }
 
 #[test]
