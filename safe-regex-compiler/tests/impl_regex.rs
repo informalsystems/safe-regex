@@ -74,6 +74,9 @@ fn byte() {
         }
         impl safe_regex::internal::Machine for CompiledRegex_ {
             type GroupRanges = [core::ops::Range<u32>; 0usize];
+            fn expression() -> &'static [u8] {
+                br"a"
+            }
             fn start(next_states: &mut States_) {
                 Self::byte0(&Ranges_::new(), InputByte::Consumed(0), next_states);
             }
@@ -150,6 +153,9 @@ fn any_byte() {
         }
         impl safe_regex::internal::Machine for CompiledRegex_ {
             type GroupRanges = [core::ops::Range<u32>; 0usize];
+            fn expression() -> &'static [u8] {
+                br"."
+            }
             fn start(next_states: &mut States_) {
                 Self::byte0(&Ranges_::new(), InputByte::Consumed(0), next_states);
             }
@@ -229,6 +235,9 @@ fn class_inclusive() {
         }
         impl safe_regex::internal::Machine for CompiledRegex_ {
             type GroupRanges = [core::ops::Range<u32>; 0usize];
+            fn expression() -> &'static [u8] {
+                br"[abc2-4]"
+            }
             fn start(next_states: &mut States_) {
                 Self::byte0(&Ranges_::new(), InputByte::Consumed(0), next_states);
             }
@@ -308,6 +317,9 @@ fn class_exclusive() {
         }
         impl safe_regex::internal::Machine for CompiledRegex_ {
             type GroupRanges = [core::ops::Range<u32>; 0usize];
+            fn expression() -> &'static [u8] {
+                br"[^abc2-4]"
+            }
             fn start(next_states: &mut States_) {
                 Self::byte0(&Ranges_::new(), InputByte::Consumed(0), next_states);
             }
@@ -420,6 +432,9 @@ fn seq() {
         }
         impl safe_regex::internal::Machine for CompiledRegex_ {
             type GroupRanges = [core::ops::Range<u32>; 0usize];
+            fn expression() -> &'static [u8] {
+                br"aab"
+            }
             fn start(next_states: &mut States_) {
                 Self::byte0(&Ranges_::new(), InputByte::Consumed(0), next_states);
             }
@@ -521,6 +536,9 @@ fn alt() {
         }
         impl safe_regex::internal::Machine for CompiledRegex_ {
             type GroupRanges = [core::ops::Range<u32>; 0usize];
+            fn expression() -> &'static [u8] {
+                br"a|b"
+            }
             fn start(next_states: &mut States_) {
                 Self::alt0(&Ranges_::new(), InputByte::Consumed(0), next_states);
             }
@@ -620,6 +638,9 @@ fn group() {
         }
         impl safe_regex::internal::Machine for CompiledRegex_ {
             type GroupRanges = [core::ops::Range<u32>; 1usize];
+            fn expression() -> &'static [u8] {
+                br"(a)"
+            }
             fn start(next_states: &mut States_) {
                 Self::group_start0(&Ranges_::new(), InputByte::Consumed(0), next_states);
             }
@@ -702,6 +723,9 @@ fn optional() {
         }
         impl safe_regex::internal::Machine for CompiledRegex_ {
             type GroupRanges = [core::ops::Range<u32>; 0usize];
+            fn expression() -> &'static [u8] {
+                br"a?"
+            }
             fn start(next_states: &mut States_) {
                 Self::optional0(&Ranges_::new(), InputByte::Consumed(0), next_states);
             }
@@ -784,6 +808,9 @@ fn star() {
         }
         impl safe_regex::internal::Machine for CompiledRegex_ {
             type GroupRanges = [core::ops::Range<u32>; 0usize];
+            fn expression() -> &'static [u8] {
+                br"a*"
+            }
             fn start(next_states: &mut States_) {
                 Self::star0(&Ranges_::new(), InputByte::Consumed(0), next_states);
             }
@@ -891,6 +918,9 @@ fn empty_group_in_seq() {
         }
         impl safe_regex::internal::Machine for CompiledRegex_ {
             type GroupRanges = [core::ops::Range<u32>; 1usize];
+            fn expression() -> &'static [u8] {
+                br"()a"
+            }
             fn start(next_states: &mut States_) {
                 Self::group_start0(&Ranges_::new(), InputByte::Consumed(0), next_states);
             }

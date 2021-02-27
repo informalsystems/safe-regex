@@ -104,5 +104,5 @@ pub fn impl_regex(stream: TokenStream) -> Result<TokenStream, String> {
     // if let Some(tree) = attr.into_iter().next() {
     //     return quote_spanned!(tree.span()=>compile_error!("parameters not allowed"););
     // }
-    Ok(generate(&literal_string, &parsed_re))
+    Ok(generate(&literal, &parsed_re))
 }

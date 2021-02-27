@@ -144,6 +144,19 @@ where
         Self::new()
     }
 }
+impl<S, T> Debug for Matcher<T>
+where
+    S: AsRef<[std::ops::Range<u32>]> + Debug,
+    T: internal::Machine<GroupRanges = S> + Eq + Hash + Debug + Sized,
+{
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+        write!(
+            f,
+            r#"Matcher(br"{}")"#,
+            internal::escape_ascii(T::expression())
+        )
+    }
+}
 
 // TODO(mleonhard) Replace this run-time checking with compile-time checking.
 #[derive(Clone, Debug, PartialEq)]
@@ -301,6 +314,7 @@ pub mod internal {
 
     pub trait Machine {
         type GroupRanges;
+        fn expression() -> &'static [u8];
         fn start(next_states: &mut HashSet<Self>)
         where
             Self: Sized;

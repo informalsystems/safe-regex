@@ -31,7 +31,7 @@
 
 #![forbid(unsafe_code)]
 use crate::parser::{ClassItem, FinalNode};
-use safe_proc_macro2::{Ident, TokenStream};
+use safe_proc_macro2::{Ident, Literal, TokenStream};
 use safe_quote::{format_ident, quote};
 
 #[derive(Clone, PartialOrd, PartialEq)]
@@ -437,7 +437,8 @@ fn build(
 /// trait.
 #[must_use]
 #[allow(clippy::too_many_lines)]
-pub fn generate(literal_re: &str, final_node: &FinalNode) -> safe_proc_macro2::TokenStream {
+pub fn generate(literal: &Literal, final_node: &FinalNode) -> safe_proc_macro2::TokenStream {
+    let literal_string = literal.to_string();
     let optimized_node = OptimizedNode::from_final_node(&final_node);
     let mut fn_counter = Counter::new();
     let mut group_counter = Counter::new();
@@ -512,7 +513,7 @@ pub fn generate(literal_re: &str, final_node: &FinalNode) -> safe_proc_macro2::T
         #ranges_struct
         type States_ =
             std::collections::HashSet<CompiledRegex_, std::collections::hash_map::RandomState>;
-        #[doc = #literal_re]
+        #[doc = #literal_string]
         #[derive(Clone, Debug, PartialEq, Eq, Hash)]
         enum CompiledRegex_ {
             #( #variant_names(Ranges_) ),* ,
@@ -532,6 +533,9 @@ pub fn generate(literal_re: &str, final_node: &FinalNode) -> safe_proc_macro2::T
         }
         impl safe_regex::internal::Machine for CompiledRegex_ {
             type GroupRanges = #ranges_inner;
+            fn expression() -> &'static [u8] {
+                #literal
+            }
             fn start(next_states: &mut States_) {
                 Self::#initial_fn_name(&Ranges_::new(), InputByte::Consumed(0), next_states);
             }
