@@ -557,6 +557,14 @@ fn apply_rule_once(
             "missing element before repeat element: `{}`",
             printable
         )),
+        (Some(Final(Seq(items))), Some(NonFinal(RepeatToken(_, min, opt_max))), _) => {
+            let min_copy = *min;
+            let opt_max_copy = *opt_max;
+            last.take();
+            let last_item = items.pop().unwrap();
+            items.push(Repeat(Box::new(last_item), min_copy, opt_max_copy));
+            Ok(None)
+        }
         (Some(Final(_)), Some(NonFinal(RepeatToken(_, min, opt_max))), _) => {
             let inner = prev.take().unwrap().unwrap_final();
             let node = Final(Repeat(Box::new(inner), *min, *opt_max));

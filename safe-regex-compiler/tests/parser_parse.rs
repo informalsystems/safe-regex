@@ -253,8 +253,7 @@ fn group() {
 }
 
 #[test]
-fn repeat() {
-    // ?
+fn question_mark() {
     assert_eq!(
         Err("missing element before repeat element: `?`".to_string()),
         parse(br"?")
@@ -268,8 +267,18 @@ fn repeat() {
         parse(br"(?)")
     );
     assert_eq!(Ok(Repeat(Box::new(AnyByte), 0, Some(1))), parse(br".?"));
+    assert_eq!(
+        Ok(Seq(vec![
+            AnyByte,
+            AnyByte,
+            Repeat(Box::new(AnyByte), 0, Some(1)),
+        ])),
+        parse(br"...?")
+    );
+}
 
-    // *
+#[test]
+fn star() {
     assert_eq!(
         Err("missing element before repeat element: `*`".to_string()),
         parse(br"*")
@@ -283,8 +292,18 @@ fn repeat() {
         Err("missing element before repeat element: `*`".to_string()),
         parse(br"(*)")
     );
+    assert_eq!(
+        Ok(Seq(vec![
+            AnyByte,
+            AnyByte,
+            Repeat(Box::new(AnyByte), 0, None),
+        ])),
+        parse(br"...*")
+    );
+}
 
-    // +
+#[test]
+fn plus() {
     assert_eq!(
         Err("missing element before repeat element: `+`".to_string()),
         parse(br"+")
@@ -298,8 +317,18 @@ fn repeat() {
         Err("missing element before repeat element: `+`".to_string()),
         parse(br"(+)")
     );
+    assert_eq!(
+        Ok(Seq(vec![
+            AnyByte,
+            AnyByte,
+            Repeat(Box::new(AnyByte), 1, None),
+        ])),
+        parse(br"...+")
+    );
+}
 
-    // {1}
+#[test]
+fn repeat_single_num() {
     assert_eq!(
         Err("missing element before repeat element: `{1}`".to_string()),
         parse(br"{1}")
@@ -330,8 +359,18 @@ fn repeat() {
         Ok(Repeat(Box::new(AnyByte), 99, Some(99))),
         parse(br".{99}")
     );
+    assert_eq!(
+        Ok(Seq(vec![
+            AnyByte,
+            AnyByte,
+            Repeat(Box::new(AnyByte), 1, Some(1)),
+        ])),
+        parse(br"...{1}")
+    );
+}
 
-    // {,}
+#[test]
+fn repeat() {
     assert_eq!(
         Err("missing element before repeat element: `{,}`".to_string()),
         parse(br"{,}")
@@ -341,8 +380,18 @@ fn repeat() {
         parse(br".{,")
     );
     assert_eq!(Ok(Repeat(Box::new(AnyByte), 0, None)), parse(br".{,}"));
+    assert_eq!(
+        Ok(Seq(vec![
+            AnyByte,
+            AnyByte,
+            Repeat(Box::new(AnyByte), 0, None),
+        ])),
+        parse(br"...{,}")
+    );
+}
 
-    // {1,}
+#[test]
+fn repeat_min() {
     assert_eq!(
         Err("missing element before repeat element: `{1,}`".to_string()),
         parse(br"{1,}")
@@ -358,8 +407,18 @@ fn repeat() {
     assert_eq!(Ok(Repeat(Box::new(AnyByte), 0, None)), parse(br".{0,}"));
     assert_eq!(Ok(Repeat(Box::new(AnyByte), 1, None)), parse(br".{1,}"));
     assert_eq!(Ok(Repeat(Box::new(AnyByte), 99, None)), parse(br".{99,}"));
+    assert_eq!(
+        Ok(Seq(vec![
+            AnyByte,
+            AnyByte,
+            Repeat(Box::new(AnyByte), 1, None),
+        ])),
+        parse(br"...{1,}")
+    );
+}
 
-    // {,1}
+#[test]
+fn repeat_max() {
     assert_eq!(
         Err("missing element before repeat element: `{,1}`".to_string()),
         parse(br"{,1}")
@@ -378,8 +437,18 @@ fn repeat() {
         Ok(Repeat(Box::new(AnyByte), 0, Some(99))),
         parse(br".{,99}")
     );
+    assert_eq!(
+        Ok(Seq(vec![
+            AnyByte,
+            AnyByte,
+            Repeat(Box::new(AnyByte), 0, Some(1)),
+        ])),
+        parse(br"...{,1}")
+    );
+}
 
-    // {1,2}
+#[test]
+fn repeat_min_and_max() {
     assert_eq!(
         Err("missing element before repeat element: `{1,2}`".to_string()),
         parse(br"{1,2}")
@@ -409,6 +478,14 @@ fn repeat() {
     assert_eq!(
         Ok(Repeat(Box::new(AnyByte), 10, Some(99))),
         parse(br".{10,99}")
+    );
+    assert_eq!(
+        Ok(Seq(vec![
+            AnyByte,
+            AnyByte,
+            Repeat(Box::new(AnyByte), 1, Some(2)),
+        ])),
+        parse(br"...{1,2}")
     );
 }
 
