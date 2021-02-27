@@ -5,8 +5,8 @@ publish = false
 version = "0.0.0"
 
 [dependencies]
-
-[dev-dependencies]
 rand = "^0.8"
 regex = "^1.4"
 safe-regex = { version = "^0.1", path = "../safe-regex/" }
+
+[dev-dependencies]

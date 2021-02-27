@@ -18,6 +18,9 @@ check_crate() {
 check_all() {
   cd "$TOP_LEVEL_DIR"
   cargo_check_build_test
+  if [ "$TOOLCHAIN_ARG" == '+nightly' ]; then
+    time check_crate bench
+  fi
   time check_crate safe-regex-compiler
   time check_crate safe-regex-macro
   time check_crate safe-regex
