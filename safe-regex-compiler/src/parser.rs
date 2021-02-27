@@ -908,7 +908,11 @@ pub fn parse(regex: &[u8]) -> Result<FinalNode, String> {
     let mut data_iter = regex.iter().copied().peekable();
     let mut stack: Vec<Node> = Vec::new();
     while data_iter.peek().is_some() || stack.len() > 1 {
-        // println!("process {:?} next={:?}", stack, iter.peek().map(|b| escape_ascii([*b])));
+        crate::dprintln!(
+            "process {:?} next={:?}",
+            stack,
+            data_iter.peek().map(|b| escape_ascii([*b]))
+        );
         let mut byte = data_iter.peek().copied();
         let byte_was_some = byte.is_some();
         // Pull the top two items from the stack, so we can work with them and
@@ -931,7 +935,7 @@ pub fn parse(regex: &[u8]) -> Result<FinalNode, String> {
             data_iter.next().unwrap();
         }
     }
-    // println!("stack {:?}", stack);
+    crate::dprintln!("stack {:?}", stack);
     // Check for incomplete elements.  Example: br"(ab"
     for node in stack.iter().rev() {
         if let Node::NonFinal(non_final) = node {

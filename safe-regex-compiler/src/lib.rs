@@ -32,6 +32,12 @@ use safe_proc_macro2::{TokenStream, TokenTree};
 pub mod generator;
 pub mod parser;
 
+#[macro_export]
+macro_rules! dprintln {
+    ($($args:tt)+) => { println!( $($args)+ ) };
+    // ($($args:tt)+) => {};
+}
+
 /// Converts the bytes into an ASCII string.
 pub fn escape_ascii(input: impl AsRef<[u8]>) -> String {
     let mut result = String::new();
@@ -60,14 +66,14 @@ pub fn impl_regex(stream: TokenStream) -> Result<TokenStream, String> {
     //   ]
     // }
     const ERR: &str = "expected a raw byte string, like br\"abc\"";
-    // println!(
-    //     "impl_regex {:?}",
-    //     stream
-    //         .clone()
-    //         .into_iter()
-    //         .map(|tree| format!("{:?} ", tree))
-    //         .collect::<String>()
-    // );
+    dprintln!(
+        "impl_regex {:?}",
+        stream
+            .clone()
+            .into_iter()
+            .map(|tree| format!("{:?} ", tree))
+            .collect::<String>()
+    );
     let mut stream_iter = stream.into_iter();
     let literal = match stream_iter.next() {
         Some(TokenTree::Literal(literal)) => literal,

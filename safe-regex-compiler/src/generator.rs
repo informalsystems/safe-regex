@@ -282,7 +282,7 @@ fn build(
     next_fn_name: &Ident,
     node: &TaggedNode,
 ) -> Ident {
-    // println!("build {:?}", node);
+    crate::dprintln!("build {:?}", node);
     let result = match node {
         TaggedNode::Byte(fn_num, enclosing_group, predicate) => {
             let fn_name = format_ident!("byte{}", fn_num);
@@ -428,7 +428,7 @@ fn build(
             fn_name
         }
     };
-    // println!("build returning {:?}", result);
+    crate::dprintln!("build returning {:?}", result);
     result
 }
 
@@ -552,6 +552,6 @@ pub fn generate(literal_re: &str, final_node: &FinalNode) -> safe_proc_macro2::T
         }
         <safe_regex::Matcher<CompiledRegex_>>::new()
     } };
-    // println!("result={}", result);
+    crate::dprintln!("result={}", result);
     result
 }
