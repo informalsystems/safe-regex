@@ -8,9 +8,9 @@ license = "Apache-2.0"
 name = "safe-regex"
 readme = "Readme.md"
 repository = "https://gitlab.com/leonhard-llc/safe-regex-rs"
-version = "0.1.0"
+version = "0.1.1"
 
 [dependencies]
-safe-regex-macro = { version = "^0.1.0", path = "../safe-regex-macro/" }
+safe-regex-macro = { version = "^0.1.1", path = "../safe-regex-macro/" }
 
 [dev-dependencies]

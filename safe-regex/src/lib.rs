@@ -7,13 +7,13 @@
 //!
 //! # Features
 //! - `forbid(unsafe_code)`
-//! - Good test coverage (??%) - TODO(mleonhard) Update.
+//! - Good test coverage (~80%)
 //! - Checks input in a single pass.
 //!   Runtime and memory usage are both `O(n * r * 2^g)` where
 //!   - `n` is the length of the data to check
 //!   - `r` is the length of the regex
 //!   - `g` is the number of capturing groups in the regex
-//!   TODO(mleonhard) Confirm this with a benchmark.
+//!   - TODO(mleonhard) Confirm this with a benchmark.
 //! - Rust compiler checks and optimizes the matcher
 //! - Supports basic regular expression syntax:
 //!   - Any byte: `.`
@@ -28,6 +28,11 @@
 //! - Allocates.  Uses
 //!   [`std::collections::HashSet`](https://doc.rust-lang.org/stable/std/collections/struct.HashSet.html)
 //!   during matching.
+//! - Not optimized.
+//!   For comparison, this crate takes 10 times more CPU time than the
+//!   [`regex`](https://crates.io/crates/regex) crate to match complex expressions.
+//!   And it takes 1,000 times more CPU time to match simple expressions.
+//!   See [`safe-regex-rs/bench`](https://gitlab.com/leonhard-llc/safe-regex-rs/-/tree/main/bench).
 //!
 //! # Alternatives
 //! - [`regex`](https://crates.io/crates/regex)
@@ -61,6 +66,7 @@
 //! ```
 //!
 //! # Changelog
+//! - v0.1.1 - Bug fixes and more tests.
 //! - v0.1.0 - First published version
 //!
 //! # TO DO
@@ -69,19 +75,17 @@
 //! - DONE - Design API
 //! - DONE - Implement
 //! - DONE - Add integration tests
-//! - DONE - Add macro, `regex!(r"[a-z][0-9]")`
+//! - Increase coverage
 //! - Add fuzzing tests
 //! - Add common character classes: whitespace, letters, punctuation, etc.
 //! - Match strings
 //! - Implement optimizations explained in <https://swtch.com/%7Ersc/regexp/regexp3.html> .
 //!   Some of the code already exists in `tests/dfa_single_pass.rs`
 //!   and `tests/nfa_without_capturing.rs`.
-//!
-//! # TO DO
 //! - Add a memory-limited `match_all` fn, for use on untrusted data.
 //!   Make it the default.
 //! - Once [const generics](https://github.com/rust-lang/rust/issues/44580)
-//!   are stable, use the feature to simplify `Repeat` and other types.
+//!   are stable, use the feature to simplify some types.
 //!
 //! # Release Process
 //! 1. Edit `Cargo.toml` and bump version number.

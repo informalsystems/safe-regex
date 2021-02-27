@@ -6,7 +6,7 @@ license = "Apache-2.0"
 name = "safe-regex-macro"
 readme = "Readme.md"
 repository = "https://gitlab.com/leonhard-llc/safe-regex-rs"
-version = "0.1.0"
+version = "0.1.1"
 
 [lib]
 path = "src/lib.rs"
@@ -14,7 +14,7 @@ proc-macro = true
 
 [dependencies]
 safe-proc-macro2 = { version = "1", path = "../safe-proc-macro2/" }
-safe-regex-compiler = { version = "^0.1.0", path = "../safe-regex-compiler/" }
+safe-regex-compiler = { version = "^0.1.1", path = "../safe-regex-compiler/" }
 
 [dev-dependencies]
-safe-regex = { version = "^0.1.0", path = "../safe-regex/" }
+safe-regex = { version = "^0.1.1", path = "../safe-regex/" }

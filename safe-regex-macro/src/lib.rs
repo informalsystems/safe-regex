@@ -13,6 +13,7 @@
 //! # Cargo Geiger Safety Report
 //!
 //! # Changelog
+//! - v0.1.1 - Bug fixes and more tests.
 //! - v0.1.0 - First published version
 //!
 //! # Release Process
