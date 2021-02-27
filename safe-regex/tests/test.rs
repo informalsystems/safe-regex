@@ -246,23 +246,17 @@ fn repeat_empty() {
 #[test]
 fn repeat_single_num() {
     check_permutations(&regex!(br"a{3}"), b"aX", 6, &[b"aaa"]).unwrap();
-    check_permutations(&regex!(br"a{3}a"), b"aX", 8, &[b"aaaa"]).unwrap();
-    check_permutations(&regex!(br"aa{3}"), b"aX", 8, &[b"aaaa"]).unwrap();
-    check_permutations(&regex!(br"aaa{3}"), b"aX", 10, &[b"aaaaa"]).unwrap();
+    check_permutations(&regex!(br"a{3}a"), b"aX", 7, &[b"aaaa"]).unwrap();
+    check_permutations(&regex!(br"aa{3}"), b"aX", 7, &[b"aaaa"]).unwrap();
+    check_permutations(&regex!(br"aaa{3}"), b"aX", 8, &[b"aaaaa"]).unwrap();
 }
 
 #[test]
 fn repeat_min() {
-    check_permutations(&regex!(br"a{2,}"), b"aX", 5, &[b"aaa", b"aaaa", b"aaaaa"]).unwrap();
+    check_permutations(&regex!(br"a{2,}"), b"aX", 4, &[b"aa", b"aaa", b"aaaa"]).unwrap();
     check_permutations(&regex!(br"a{2,}a"), b"aX", 5, &[b"aaa", b"aaaa", b"aaaaa"]).unwrap();
     check_permutations(&regex!(br"aa{2,}"), b"aX", 5, &[b"aaa", b"aaaa", b"aaaaa"]).unwrap();
-    check_permutations(
-        &regex!(br"aaa{2,}"),
-        b"aX",
-        8,
-        &[b"aaaaa", b"aaaaaa", b"aaaaaaa", b"aaaaaaaa"],
-    )
-    .unwrap();
+    check_permutations(&regex!(br"aaa{2,}"), b"aX", 5, &[b"aaaa", b"aaaaa"]).unwrap();
 }
 
 #[test]
@@ -270,13 +264,7 @@ fn repeat_max() {
     check_permutations(&regex!(br"a{,2}"), b"aX", 4, &[b"", b"a", b"aa"]).unwrap();
     check_permutations(&regex!(br"a{,2}a"), b"aX", 5, &[b"a", b"aa", b"aaa"]).unwrap();
     check_permutations(&regex!(br"aa{,2}"), b"aX", 5, &[b"a", b"aa", b"aaa"]).unwrap();
-    check_permutations(
-        &regex!(br"aaa{,2}"),
-        b"aX",
-        6,
-        &[b"aaaa", b"aaaaa", b"aaaaaa"],
-    )
-    .unwrap();
+    check_permutations(&regex!(br"aaa{,2}"), b"aX", 6, &[b"aa", b"aaa", b"aaaa"]).unwrap();
 }
 
 #[test]
@@ -287,8 +275,8 @@ fn repeat_min_and_max() {
     check_permutations(
         &regex!(br"aaa{2,4}"),
         b"aX",
-        8,
-        &[b"aaaaa", b"aaaaaa", b"aaaaaaa"],
+        7,
+        &[b"aaaa", b"aaaaa", b"aaaaaa"],
     )
     .unwrap();
 }
@@ -300,7 +288,7 @@ fn repeat_in_seq() {
         &regex!(br"aab*"),
         b"abX",
         6,
-        &[b"", b"aa", b"aab", b"aabb", b"aabbb", b"aabbbb"],
+        &[b"aa", b"aab", b"aabb", b"aabbb", b"aabbbb"],
     )
     .unwrap();
     check_permutations(
@@ -421,7 +409,7 @@ fn repeat_in_alt() {
         &regex!(br"a|b*cd"),
         b"abcX",
         5,
-        &[b"a", b"bd", b"bcd", b"bbcd", b"bbbcd"],
+        &[b"a", b"cd", b"bcd", b"bbcd", b"bbbcd"],
     )
     .unwrap();
     check_permutations(
@@ -450,7 +438,7 @@ fn repeat_in_alt() {
         &regex!(br"a|bb|c*d"),
         b"abcdX",
         5,
-        &[b"a", b"bb", b"c", b"cd", b"ccd", b"cccd", b"ccccd"],
+        &[b"a", b"bb", b"d", b"cd", b"ccd", b"cccd", b"ccccd"],
     )
     .unwrap();
     check_permutations(
@@ -479,9 +467,7 @@ fn repeat_in_alt() {
         &regex!(br"a|bb|cde*"),
         b"abcdeX",
         6,
-        &[
-            b"", b"a", b"bb", b"cd", b"cde", b"cdee", b"cdeee", b"cdeeee",
-        ],
+        &[b"a", b"bb", b"cd", b"cde", b"cdee", b"cdeee", b"cdeeee"],
     )
     .unwrap();
 }
