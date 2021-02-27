@@ -34,8 +34,8 @@ pub mod parser;
 
 #[macro_export]
 macro_rules! dprintln {
-    ($($args:tt)+) => { println!( $($args)+ ) };
-    // ($($args:tt)+) => {};
+    // ($($args:tt)+) => { println!( $($args)+ ) };
+    ($($args:tt)+) => {};
 }
 
 /// Converts the bytes into an ASCII string.
