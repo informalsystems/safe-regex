@@ -520,6 +520,12 @@ fn alt() {
                 }
             }
             fn alt0(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+                Self::alt0_b(ranges, ib, next_states)
+            }
+            fn alt0_b(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+                Self::alt0_final(ranges, ib, next_states)
+            }
+            fn alt0_final(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 // println!("{} {:?} {:?}", stringify!(alt0), ib, ranges);
                 Self::byte1(ranges, ib, next_states);
                 Self::byte2(ranges, ib, next_states);
@@ -707,6 +713,12 @@ fn optional() {
                 }
             }
             fn optional0(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+                Self::optional0_b(ranges, ib, next_states)
+            }
+            fn optional0_b(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+                Self::optional0_final(ranges, ib, next_states)
+            }
+            fn optional0_final(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 // println!("{} {:?} {:?}", stringify!(optional0), ib, ranges);
                 Self::byte1(ranges, ib, next_states);
                 Self::accept(ranges, ib, next_states);
@@ -792,6 +804,12 @@ fn star() {
                 }
             }
             fn star0(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+                Self::star0_b(ranges, ib, next_states)
+            }
+            fn star0_b(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+                Self::star0_final(ranges, ib, next_states)
+            }
+            fn star0_final(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 // println!("{} {:?} {:?}", stringify!(star0), ib, ranges);
                 Self::byte1(ranges, ib, next_states);
                 Self::accept(ranges, ib, next_states);

@@ -275,6 +275,29 @@ impl core::fmt::Debug for TaggedNode {
     }
 }
 
+/// This function works around a bug in rustc's optimizer
+/// that makes it take a long time (>40 min) to compile
+/// `regex!(br"a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")`.
+/// See `src/bin/uncompilable.rs`.
+///
+/// I believe rustc's optimizer tries to walk valid execution paths, up to a certain depth.
+/// So a set of functions that branch and call each other can create a large space to search.
+/// We reduce the search space by introducing two noop functions between each branching function.
+/// This reduces the effectiveness of the optimizer.  It's an ugly workaround.
+fn push_intermediate_fns(functions: &mut Vec<TokenStream>, fn_name: &Ident) -> Ident {
+    let b_fn_name = format_ident!("{}_b", fn_name);
+    let final_fn_name = format_ident!("{}_final", fn_name);
+    functions.push(quote! {
+        fn #fn_name(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+            Self::#b_fn_name(ranges, ib, next_states)
+        }
+        fn #b_fn_name(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+            Self::#final_fn_name(ranges, ib, next_states)
+        }
+    });
+    final_fn_name
+}
+
 #[allow(clippy::too_many_lines)]
 fn build(
     variant_and_fn_names: &mut Vec<(Ident, Ident)>,
@@ -374,8 +397,9 @@ fn build(
                     }
                 })
                 .collect();
+            let final_fn_name = push_intermediate_fns(functions, &fn_name);
             functions.push(quote! {
-                fn #fn_name(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+                fn #final_fn_name(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                     // println!("{} {:?} {:?}", stringify!(#fn_name), ib, ranges);
                     #( #call_arm_fn_stmts )*
                 }
@@ -406,8 +430,9 @@ fn build(
         TaggedNode::Optional(fn_num, node) => {
             let fn_name = format_ident!("optional{}", fn_num);
             let child_fn_name = build(variant_and_fn_names, functions, &next_fn_name, node);
+            let final_fn_name = push_intermediate_fns(functions, &fn_name);
             functions.push(quote! {
-                fn #fn_name(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+                fn #final_fn_name(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                     // println!("{} {:?} {:?}", stringify!(#fn_name), ib, ranges);
                     Self::#child_fn_name(ranges, ib, next_states);
                     Self::#next_fn_name(ranges, ib, next_states);
@@ -418,8 +443,9 @@ fn build(
         TaggedNode::Star(fn_num, node) => {
             let fn_name = format_ident!("star{}", fn_num);
             let child_fn_name = build(variant_and_fn_names, functions, &fn_name, node);
+            let final_fn_name = push_intermediate_fns(functions, &fn_name);
             functions.push(quote! {
-                fn #fn_name(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+                fn #final_fn_name(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                     // println!("{} {:?} {:?}", stringify!(#fn_name), ib, ranges);
                     Self::#child_fn_name(ranges, ib, next_states);
                     Self::#next_fn_name(ranges, ib, next_states);
