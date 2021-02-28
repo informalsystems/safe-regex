@@ -397,9 +397,8 @@ fn build(
                     }
                 })
                 .collect();
-            let final_fn_name = push_intermediate_fns(functions, &fn_name);
             functions.push(quote! {
-                fn #final_fn_name(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+                fn #fn_name(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                     // println!("{} {:?} {:?}", stringify!(#fn_name), ib, ranges);
                     #( #call_arm_fn_stmts )*
                 }

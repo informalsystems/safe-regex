@@ -532,12 +532,6 @@ fn alt() {
                 }
             }
             fn alt0(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                Self::alt0_b(ranges, ib, next_states)
-            }
-            fn alt0_b(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                Self::alt0_final(ranges, ib, next_states)
-            }
-            fn alt0_final(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 // println!("{} {:?} {:?}", stringify!(alt0), ib, ranges);
                 Self::byte1(ranges, ib, next_states);
                 Self::byte2(ranges, ib, next_states);
