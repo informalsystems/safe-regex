@@ -8,7 +8,7 @@ fn byte() {
     // regex!(br"a")
     let re: fn(&[u8]) -> Option<()> = |data: &[u8]| {
         let mut start = Some(());
-        let mut b0 = None;
+        let mut b0: Option<()> = None;
         for b in data.iter() {
             b0 = start.clone().filter(|_| *b == 97u8);
             start = None;
@@ -25,10 +25,11 @@ fn byte() {
 
 #[test]
 fn any_byte() {
+    #![allow(unused_variables)]
     // regex!(br".")
     let re: fn(&[u8]) -> Option<()> = |data: &[u8]| {
         let mut start = Some(());
-        let mut b0 = None;
+        let mut b0: Option<()> = None;
         for b in data.iter() {
             b0 = start.clone();
             start = None;
@@ -45,7 +46,7 @@ fn class_inclusive() {
     // regex!(br"[abc2-4]")
     let re: fn(&[u8]) -> Option<()> = |data: &[u8]| {
         let mut start = Some(());
-        let mut b0 = None;
+        let mut b0: Option<()> = None;
         for b in data.iter() {
             b0 = start
                 .clone()
@@ -75,7 +76,7 @@ fn class_exclusive() {
     // regex!(br"[^abc2-4]")
     let re: fn(&[u8]) -> Option<()> = |data: &[u8]| {
         let mut start = Some(());
-        let mut b0 = None;
+        let mut b0: Option<()> = None;
         for b in data.iter() {
             b0 = start
                 .clone()
@@ -103,9 +104,9 @@ fn seq() {
     // regex!(br"aab")
     let re: fn(&[u8]) -> Option<()> = |data: &[u8]| {
         let mut start = Some(());
-        let mut b0 = None;
-        let mut b1 = None;
-        let mut b2 = None;
+        let mut b0: Option<()> = None;
+        let mut b1: Option<()> = None;
+        let mut b2: Option<()> = None;
         for b in data.iter() {
             b2 = b1.clone().filter(|_| *b == 98u8);
             b1 = b0.clone().filter(|_| *b == 97u8);
@@ -138,8 +139,8 @@ fn alt() {
     // regex!(br"a|b")
     let re: fn(&[u8]) -> Option<()> = |data: &[u8]| {
         let mut start = Some(());
-        let mut b0 = None;
-        let mut b1 = None;
+        let mut b0: Option<()> = None;
+        let mut b1: Option<()> = None;
         for b in data.iter() {
             b1 = start.clone().filter(|_| *b == 98u8);
             b0 = start.clone().filter(|_| *b == 97u8);
@@ -169,7 +170,10 @@ fn group() {
         let mut start = Some((usize::MAX..usize::MAX,));
         let mut b0: Option<(core::ops::Range<usize>,)> = None;
         for (n, b) in data.iter().enumerate() {
-            b0 = start.clone().filter(|_| *b == 97u8).map(|_| (n..n + 1,));
+            b0 = start
+                .clone()
+                .filter(|_| *b == 97u8)
+                .map(|(r0,)| (n..n + 1,));
             start = None;
         }
         b0.map(|(r0,)| {
@@ -196,7 +200,7 @@ fn optional() {
     // regex!(br"a?")
     let re: fn(&[u8]) -> Option<()> = |data: &[u8]| {
         let mut start = Some(());
-        let mut b0 = None;
+        let mut b0: Option<()> = None;
         for b in data.iter() {
             b0 = start.clone().filter(|_| *b == 97u8);
             start = None;
@@ -211,13 +215,14 @@ fn optional() {
     assert_eq!(None, re(b"aa"));
 }
 
+// TODO(mleonhard) Add these and others to compiler test.
 #[test]
 fn optional_at_start() {
     // regex!(br"a?a")
     let re: fn(&[u8]) -> Option<()> = |data: &[u8]| {
         let mut start = Some(());
-        let mut b0 = None;
-        let mut b1 = None;
+        let mut b0: Option<()> = None;
+        let mut b1: Option<()> = None;
         for b in data.iter() {
             b1 = start.clone().or(b0.clone()).filter(|_| *b == 97u8);
             b0 = start.clone().filter(|_| *b == 97u8);
@@ -242,8 +247,8 @@ fn optional_at_end() {
     // regex!(br"aa?")
     let re: fn(&[u8]) -> Option<()> = |data: &[u8]| {
         let mut start = Some(());
-        let mut b0 = None;
-        let mut b1 = None;
+        let mut b0: Option<()> = None;
+        let mut b1: Option<()> = None;
         for b in data.iter() {
             b1 = b0.clone().filter(|_| *b == 97u8);
             b0 = start.clone().filter(|_| *b == 97u8);
@@ -273,7 +278,7 @@ fn optionals_in_groups() {
         let mut b1: Option<(core::ops::Range<usize>, core::ops::Range<usize>)> = None;
         let mut b2: Option<(core::ops::Range<usize>, core::ops::Range<usize>)> = None;
         let mut b3: Option<(core::ops::Range<usize>, core::ops::Range<usize>)> = None;
-        for (n, b) in data.iter().enumerate().map(|(n, b)| (n, b)) {
+        for (n, b) in data.iter().enumerate() {
             b3 = b2.clone().filter(|_| *b == 97u8);
             b2 = None
                 .or_else(|| {
@@ -362,7 +367,7 @@ fn star() {
     // regex!(br"a*")
     let re: fn(&[u8]) -> Option<()> = |data: &[u8]| {
         let mut start = Some(());
-        let mut b0 = None;
+        let mut b0: Option<()> = None;
         for b in data.iter() {
             b0 = start
                 .clone()
@@ -402,9 +407,9 @@ fn seq_in_star() {
     // regex!(br"(?abc)*")
     let re: fn(&[u8]) -> Option<()> = |data: &[u8]| {
         let mut start = Some(());
-        let mut b0 = None;
-        let mut b1 = None;
-        let mut b2 = None;
+        let mut b0: Option<()> = None;
+        let mut b1: Option<()> = None;
+        let mut b2: Option<()> = None;
         for b in data.iter() {
             let prev_b2 = b2.clone();
             b2 = b1.clone().filter(|_| *b == 99u8);
@@ -440,6 +445,7 @@ fn seq_in_star() {
 
 #[test]
 fn empty_group_at_start() {
+    #![allow(unused_variables)]
     // regex!(br"()a")
     let re: fn(&[u8]) -> Option<(Option<&[u8]>,)> = |data: &[u8]| {
         assert!(data.len() < usize::MAX - 2);

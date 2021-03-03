@@ -32,7 +32,7 @@
 #![forbid(unsafe_code)]
 use crate::parser::{ClassItem, FinalNode};
 use safe_proc_macro2::{Ident, Literal, TokenStream};
-use safe_quote::{format_ident, quote};
+use safe_quote::{format_ident, quote, ToTokens};
 
 #[derive(Clone, PartialOrd, PartialEq)]
 pub enum Predicate {
@@ -298,6 +298,7 @@ fn collect_var_names(var_names: &mut Vec<Ident>, node: &TaggedNode) {
 
 #[allow(clippy::too_many_lines)]
 fn build(
+    num_groups: usize,
     statements: &mut Vec<TokenStream>,
     prev_state_expr: &TokenStream,
     node: &TaggedNode,
@@ -323,8 +324,24 @@ fn build(
                     quote! { .filter(|_| #( #comparisons )&&* )  }
                 }
             };
+            let update_group = if let Some(group_num) = enclosing_group {
+                let range_names: Vec<Ident> =
+                    (0..num_groups).map(|r| format_ident!("r{}", r)).collect();
+                let mut range_values: Vec<TokenStream> =
+                    range_names.iter().map(|r| r.into_token_stream()).collect();
+                if let Some(group_num) = enclosing_group {
+                    *(range_values.get_mut(*group_num).unwrap()) = quote! {n..n + 1};
+                }
+                quote! {
+                    .map(
+                        |( #( #range_names , )* )| ( #( #range_values , )* )
+                    )
+                }
+            } else {
+                quote! {}
+            };
             statements.push(quote! {
-                #var_name = #prev_state_expr .clone() #filter;
+                #var_name = #prev_state_expr .clone() #filter #update_group ;
             });
             quote! { #var_name }
         }
@@ -333,7 +350,7 @@ fn build(
             assert!(!nodes.is_empty());
             let mut last_state_expr = prev_state_expr.clone();
             for node in nodes {
-                last_state_expr = build(statements, &last_state_expr, node);
+                last_state_expr = build(num_groups, statements, &last_state_expr, node);
             }
             last_state_expr
         }
@@ -341,44 +358,25 @@ fn build(
             assert!(!nodes.is_empty());
             let mut arm_state_exprs: Vec<TokenStream> = Vec::new();
             for node in nodes {
-                arm_state_exprs.push(build(statements, prev_state_expr, node));
+                arm_state_exprs.push(build(num_groups, statements, prev_state_expr, node));
             }
             quote! { None #( .or_else(|| #arm_state_exprs.clone()) )* }
         }
         TaggedNode::Optional(node) => {
-            let node_state_expr = build(statements, prev_state_expr, node);
+            let node_state_expr = build(num_groups, statements, prev_state_expr, node);
             quote! { #prev_state_expr .clone() .or_else(|| #node_state_expr .clone()) }
         }
         TaggedNode::Star(node) => {
-            let node_expr = build(&mut Vec::new(), prev_state_expr, node);
+            let node_expr = build(num_groups, &mut Vec::new(), prev_state_expr, node);
             let prev_or_node_expr =
                 quote! { #prev_state_expr .clone().or_else(|| #node_expr .clone()) };
-            let node_expr = build(statements, &prev_or_node_expr, node);
+            let node_expr = build(num_groups, statements, &prev_or_node_expr, node);
             quote! { #prev_state_expr .clone() .or_else(|| #node_expr .clone()) }
         }
         TaggedNode::Group(group_num, enclosing_group, node) => {
-            panic!("unimplemented OptimizedNode::Group({:?})", node)
-        } // TaggedNode::Group(fn_num, group_num, enclosing_group, node) => {
-          //     let start_fn_name = format_ident!("group_start{}", fn_num);
-          //     let end_fn_name = format_ident!("group_end{}", fn_num);
-          //     let child_fn_name = build(functions, &end_fn_name, node);
-          //     let exit_range_expr = if let Some(enclosing) = enclosing_group {
-          //         quote! { &ranges.clone().exit(#enclosing, ib.index()) }
-          //     } else {
-          //         quote! { ranges }
-          //     };
-          //     functions.push(quote! {
-          //         fn #start_fn_name(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-          //             // println!("{} {:?} {:?}", stringify!(#start_fn_name), ib, ranges);
-          //             Self::#child_fn_name(&ranges.clone().enter(#group_num, ib.index()), ib, next_states);
-          //         }
-          //         fn #end_fn_name(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-          //             // println!("{} {:?} {:?}", stringify!(#end_fn_name), ib, ranges);
-          //             Self::#next_fn_name(#exit_range_expr, ib, next_states);
-          //         }
-          //     });
-          //     start_fn_name
-          // }
+            let node_state_expr = build(num_groups, statements, prev_state_expr, node);
+            quote! { #node_state_expr }
+        }
     };
     crate::dprintln!("build returning {:?}", result);
     result
@@ -391,29 +389,58 @@ fn build(
 #[allow(clippy::too_many_lines)]
 pub fn generate(final_node: &FinalNode) -> safe_proc_macro2::TokenStream {
     let optimized_node = OptimizedNode::from_final_node(&final_node);
-    let mut fn_counter = Counter::new();
     let mut group_counter = Counter::new();
-    let tagged_node =
-        TaggedNode::from_optimized(&mut fn_counter, &mut group_counter, None, &optimized_node);
+    let tagged_node = TaggedNode::from_optimized(
+        &mut Counter::new(),
+        &mut group_counter,
+        None,
+        &optimized_node,
+    );
     let num_groups = group_counter.get();
-    if num_groups != 0 {
-        panic!("groups not implemented");
-    }
     let mut var_names: Vec<Ident> = Vec::new();
     collect_var_names(&mut var_names, &tagged_node);
     let mut statements: Vec<TokenStream> = Vec::new();
-    // Perform a depth-first walk of the AST and make trait names and clauses.
-    let accept_expr = build(&mut statements, &quote! { start }, &tagged_node);
+    let accept_expr = build(num_groups, &mut statements, &quote! { start }, &tagged_node);
     let statements_reversed = statements.iter().rev();
-    let result = quote! {
-        |data: &[u8]| {
-            let mut start = Some(());
-            #( let mut #var_names = None; )*
-            for b in data.iter() {
-                #( #statements_reversed )*
-                start = None;
+    let result = if num_groups == 0 {
+        quote! {
+            |data: &[u8]| {
+                let mut start = Some(());
+                #( let mut #var_names : Option<()> = None; )*
+                for b in data.iter() {
+                    #( #statements_reversed )*
+                    start = None;
+                }
+                #accept_expr
             }
-            #accept_expr
+        }
+    } else {
+        let default_ranges =
+            core::iter::repeat(quote! { usize::MAX..usize::MAX, }).take(num_groups);
+        let range_types = core::iter::repeat(quote! { core::ops::Range<usize>, }).take(num_groups);
+        let range_type = quote! { Option<( #( #range_types )* )> };
+        let range_names: Vec<Ident> = (0..num_groups).map(|r| format_ident!("r{}", r)).collect();
+        quote! {
+            |data: &[u8]| {
+                assert!(data.len() < usize::MAX - 2);
+                let mut start = Some(( #( #default_ranges )* ));
+                #( let mut #var_names : #range_type = None; )*
+                for (n, b) in data.iter().enumerate() {
+                    #( #statements_reversed )*
+                    start = None;
+                }
+                #accept_expr .map(|( #( #range_names , )* )| {
+                    (
+                        #(
+                            if #range_names.start != usize::MAX && #range_names.end != usize::MAX {
+                                Some(&data[#range_names])
+                            } else {
+                                None
+                            },
+                         )*
+                    )
+                })
+            }
         }
     };
     crate::dprintln!("result={}", result);

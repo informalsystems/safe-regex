@@ -27,7 +27,7 @@ fn syntax_errors() {
 fn byte() {
     let expected = quote! { |data: &[u8]| {
         let mut start = Some(());
-        let mut b0 = None;
+        let mut b0: Option<()> = None;
         for b in data.iter() {
             b0 = start.clone().filter(|_| *b == 97u8);
             start = None;
@@ -44,7 +44,7 @@ fn byte() {
 fn any_byte() {
     let expected = quote! { |data: &[u8]| {
         let mut start = Some(());
-        let mut b0 = None;
+        let mut b0: Option<()> = None;
         for b in data.iter() {
             b0 = start.clone();
             start = None;
@@ -61,7 +61,7 @@ fn any_byte() {
 fn class_inclusive() {
     let expected = quote! { |data: &[u8]| {
         let mut start = Some(());
-        let mut b0 = None;
+        let mut b0: Option<()> = None;
         for b in data.iter() {
             b0 = start
                 .clone()
@@ -80,7 +80,7 @@ fn class_inclusive() {
 fn class_exclusive() {
     let expected = quote! { |data: &[u8]| {
         let mut start = Some(());
-        let mut b0 = None;
+        let mut b0: Option<()> = None;
         for b in data.iter() {
             b0 = start
                 .clone()
@@ -100,9 +100,9 @@ fn class_exclusive() {
 fn seq() {
     let expected = quote! { |data: &[u8]| {
         let mut start = Some(());
-        let mut b0 = None;
-        let mut b1 = None;
-        let mut b2 = None;
+        let mut b0: Option<()> = None;
+        let mut b1: Option<()> = None;
+        let mut b2: Option<()> = None;
         for b in data.iter() {
             b2 = b1.clone().filter(|_| *b == 98u8);
             b1 = b0.clone().filter(|_| *b == 97u8);
@@ -121,8 +121,8 @@ fn seq() {
 fn alt() {
     let expected = quote! { |data: &[u8]| {
         let mut start = Some(());
-        let mut b0 = None;
-        let mut b1 = None;
+        let mut b0: Option<()> = None;
+        let mut b1: Option<()> = None;
         for b in data.iter() {
             b1 = start.clone().filter(|_| *b == 98u8);
             b0 = start.clone().filter(|_| *b == 97u8);
@@ -143,7 +143,10 @@ fn group() {
         let mut start = Some((usize::MAX..usize::MAX,));
         let mut b0: Option<(core::ops::Range<usize>,)> = None;
         for (n, b) in data.iter().enumerate() {
-            b0 = start.clone().filter(|_| *b == 97u8).map(|_| (n..n + 1,));
+            b0 = start
+                .clone()
+                .filter(|_| *b == 97u8)
+                .map(|(r0,)| (n..n + 1,));
             start = None;
         }
         b0.map(|(r0,)| {
@@ -167,7 +170,7 @@ fn group() {
 fn optional() {
     let expected = quote! { |data: &[u8]| {
         let mut start = Some(());
-        let mut b0 = None;
+        let mut b0: Option<()> = None;
         for b in data.iter() {
             b0 = start.clone().filter(|_| *b == 97u8);
             start = None;
@@ -184,9 +187,13 @@ fn optional() {
 fn star() {
     let expected = quote! { |data: &[u8]| {
         let mut start = Some(());
-        let mut b0 = None;
+        let mut b0: Option<()> = None;
         for b in data.iter() {
-            b0 = start.clone().or_else(|| b0.clone()).clone().filter(|_| *b == 97u8);
+            b0 = start
+                .clone()
+                .or_else(|| b0.clone())
+                .clone()
+                .filter(|_| *b == 97u8);
             start = None;
         }
         start.clone().or_else(|| b0.clone())
