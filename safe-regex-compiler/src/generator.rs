@@ -98,11 +98,6 @@ impl OptimizedNode {
                     .map(|node| OptimizedNode::from_final_node(node))
                     .collect(),
             ),
-            // TODO(mleonhard) Implement OptimizedNode::Repeat(node,min,max).
-            //   This will require adding count values to the state parameters (`Ranges_`).
-            //   When we expand a Repeat into duplicate instances, optionals, and star,
-            //   we reduce runtime memory and increase code size and compilation time.
-            //   Use a Repeat only when the number of duplicate instances & optionals is high.
             FinalNode::Repeat(node, 0, None) => {
                 OptimizedNode::Star(Box::new(OptimizedNode::from_final_node(node)))
             }
@@ -173,70 +168,69 @@ fn test_counter() {
 #[derive(Clone, PartialOrd, PartialEq)]
 enum TaggedNode {
     Byte(usize, Option<usize>, Predicate),
-    Empty(usize),
+    Empty,
     Seq(Vec<TaggedNode>),
-    Alt(usize, Vec<TaggedNode>),
-    Optional(usize, Box<TaggedNode>),
-    Star(usize, Box<TaggedNode>),
-    Group(usize, usize, Option<usize>, Box<TaggedNode>),
+    Alt(Vec<TaggedNode>),
+    Optional(Box<TaggedNode>),
+    Star(Box<TaggedNode>),
+    Group(usize, Option<usize>, Box<TaggedNode>),
 }
 impl TaggedNode {
     pub fn from_optimized(
-        fn_counter: &mut Counter,
+        var_counter: &mut Counter,
         group_counter: &mut Counter,
         enclosing_group: Option<usize>,
         source: &OptimizedNode,
     ) -> Self {
         match source {
             OptimizedNode::Byte(predicate) => TaggedNode::Byte(
-                fn_counter.get_and_increment(),
+                var_counter.get_and_increment(),
                 enclosing_group,
                 predicate.clone(),
             ),
-            OptimizedNode::Empty => TaggedNode::Empty(fn_counter.get_and_increment()),
+            OptimizedNode::Empty => TaggedNode::Empty,
             OptimizedNode::Seq(nodes) => TaggedNode::Seq(
                 nodes
                     .iter()
                     .map(|node| {
-                        TaggedNode::from_optimized(fn_counter, group_counter, enclosing_group, node)
+                        TaggedNode::from_optimized(
+                            var_counter,
+                            group_counter,
+                            enclosing_group,
+                            node,
+                        )
                     })
                     .collect(),
             ),
             OptimizedNode::Alt(nodes) => TaggedNode::Alt(
-                fn_counter.get_and_increment(),
                 nodes
                     .iter()
                     .map(|node| {
-                        TaggedNode::from_optimized(fn_counter, group_counter, enclosing_group, node)
+                        TaggedNode::from_optimized(
+                            var_counter,
+                            group_counter,
+                            enclosing_group,
+                            node,
+                        )
                     })
                     .collect(),
             ),
-            OptimizedNode::Optional(node) => TaggedNode::Optional(
-                fn_counter.get_and_increment(),
-                Box::new(TaggedNode::from_optimized(
-                    fn_counter,
-                    group_counter,
-                    enclosing_group,
-                    node,
-                )),
-            ),
-            OptimizedNode::Star(node) => TaggedNode::Star(
-                fn_counter.get_and_increment(),
-                Box::new(TaggedNode::from_optimized(
-                    fn_counter,
-                    group_counter,
-                    enclosing_group,
-                    node,
-                )),
-            ),
+            OptimizedNode::Optional(node) => TaggedNode::Optional(Box::new(
+                TaggedNode::from_optimized(var_counter, group_counter, enclosing_group, node),
+            )),
+            OptimizedNode::Star(node) => TaggedNode::Star(Box::new(TaggedNode::from_optimized(
+                var_counter,
+                group_counter,
+                enclosing_group,
+                node,
+            ))),
             OptimizedNode::Group(node) => {
                 let this_group = group_counter.get_and_increment();
                 TaggedNode::Group(
-                    fn_counter.get_and_increment(),
                     this_group,
                     enclosing_group,
                     Box::new(TaggedNode::from_optimized(
-                        fn_counter,
+                        var_counter,
                         group_counter,
                         Some(this_group),
                         node,
@@ -245,27 +239,39 @@ impl TaggedNode {
             }
         }
     }
+    pub fn var_name(&self) -> Ident {
+        match self {
+            TaggedNode::Byte(var_num, ..) => format_ident!("b{}", var_num),
+            TaggedNode::Empty
+            | TaggedNode::Seq(_)
+            | TaggedNode::Alt(_)
+            | TaggedNode::Optional(_)
+            | TaggedNode::Star(_)
+            | TaggedNode::Group(..) => {
+                panic!("name called on {:?}", self)
+            }
+        }
+    }
 }
 impl core::fmt::Debug for TaggedNode {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
         match self {
-            TaggedNode::Byte(fn_num, enclosing_group, predicate) => write!(
+            TaggedNode::Byte(var_num, enclosing_group, predicate) => write!(
                 f,
                 "Byte({},{},{:?})",
-                fn_num,
+                var_num,
                 enclosing_group.map_or("".to_string(), |g| g.to_string()),
                 predicate
             ),
-            TaggedNode::Empty(fn_num) => write!(f, "Empty({})", fn_num),
+            TaggedNode::Empty => write!(f, "Empty"),
             TaggedNode::Seq(nodes) => write!(f, "Seq({:?})", nodes),
-            TaggedNode::Alt(fn_num, nodes) => write!(f, "Alt({},{:?})", fn_num, nodes),
-            TaggedNode::Optional(fn_num, node) => write!(f, "Optional({},{:?})", fn_num, node),
-            TaggedNode::Star(fn_num, node) => write!(f, "Star({},{:?})", fn_num, node),
-            TaggedNode::Group(fn_num, group_num, enclosing_group, node) => {
+            TaggedNode::Alt(nodes) => write!(f, "Alt({:?})", nodes),
+            TaggedNode::Optional(node) => write!(f, "Optional({:?})", node),
+            TaggedNode::Star(node) => write!(f, "Star({:?})", node),
+            TaggedNode::Group(group_num, enclosing_group, node) => {
                 write!(
                     f,
-                    "Group({},{},{},{:?})",
-                    fn_num,
+                    "Group({},{},{:?})",
                     group_num,
                     enclosing_group.map_or("".to_string(), |g| g.to_string()),
                     node
@@ -275,183 +281,104 @@ impl core::fmt::Debug for TaggedNode {
     }
 }
 
-/// This function works around a bug in rustc's optimizer
-/// that makes it take a long time (>40 min) to compile
-/// `regex!(br"a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")`.
-/// See `src/bin/uncompilable.rs`.
-///
-/// I believe rustc's optimizer tries to walk valid execution paths, up to a certain depth.
-/// So a set of functions that branch and call each other can create a large space to search.
-/// We reduce the search space by introducing two noop functions between each branching function.
-/// This reduces the effectiveness of the optimizer.  It's an ugly workaround.
-fn push_intermediate_fns(functions: &mut Vec<TokenStream>, fn_name: &Ident) -> Ident {
-    let b_fn_name = format_ident!("{}_b", fn_name);
-    let final_fn_name = format_ident!("{}_final", fn_name);
-    functions.push(quote! {
-        fn #fn_name(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-            Self::#b_fn_name(ranges, ib, next_states)
+fn collect_var_names(var_names: &mut Vec<Ident>, node: &TaggedNode) {
+    match node {
+        TaggedNode::Byte(..) => var_names.push(node.var_name()),
+        TaggedNode::Empty => {}
+        TaggedNode::Seq(nodes) | TaggedNode::Alt(nodes) => {
+            for node in nodes {
+                collect_var_names(var_names, node);
+            }
         }
-        fn #b_fn_name(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-            Self::#final_fn_name(ranges, ib, next_states)
+        TaggedNode::Optional(node) | TaggedNode::Star(node) | TaggedNode::Group(_, _, node) => {
+            collect_var_names(var_names, node)
         }
-    });
-    final_fn_name
+    }
 }
 
 #[allow(clippy::too_many_lines)]
 fn build(
-    variant_and_fn_names: &mut Vec<(Ident, Ident)>,
-    functions: &mut Vec<TokenStream>,
-    next_fn_name: &Ident,
+    statements: &mut Vec<TokenStream>,
+    prev_state_expr: &TokenStream,
     node: &TaggedNode,
-) -> Ident {
+) -> TokenStream {
     crate::dprintln!("build {:?}", node);
     let result = match node {
-        TaggedNode::Byte(fn_num, enclosing_group, predicate) => {
-            let fn_name = format_ident!("byte{}", fn_num);
-            let variant_name = format_ident!("Byte{}", fn_num);
-            variant_and_fn_names.push((variant_name.clone(), fn_name.clone()));
-            let pattern = match predicate {
-                Predicate::Any => quote! { Some(_) },
+        TaggedNode::Byte(_var_num, enclosing_group, predicate) => {
+            let var_name = node.var_name();
+            let filter = match predicate {
+                Predicate::Any => quote! {},
                 Predicate::Incl(items) => {
                     let comparisons = items.iter().map(|p| match p {
-                        ClassItem::Byte(b) => quote! {b == #b},
-                        ClassItem::ByteRange(x, y) => quote! {(#x ..= #y).contains(&b)},
+                        ClassItem::Byte(b) => quote! {*b == #b},
+                        ClassItem::ByteRange(x, y) => quote! {(#x ..= #y).contains(b)},
                     });
-                    quote! { Some(b) if #( #comparisons )||* }
+                    quote! { .filter(|_| #( #comparisons )||* )  }
                 }
                 Predicate::Excl(items) => {
                     let comparisons = items.iter().map(|p| match p {
-                        ClassItem::Byte(b) => quote! {b != #b},
-                        ClassItem::ByteRange(x, y) => quote! {!(#x ..= #y).contains(&b)},
+                        ClassItem::Byte(b) => quote! {*b != #b},
+                        ClassItem::ByteRange(x, y) => quote! {!(#x ..= #y).contains(b)},
                     });
-                    quote! { Some(b) if #( #comparisons )&&* }
+                    quote! { .filter(|_| #( #comparisons )&&* )  }
                 }
             };
-            let maybe_some_underscore = if predicate == &Predicate::Any {
-                quote! {}
-            } else {
-                quote! { Some(_) => {} }
-            };
-            let clone_ranges_and_skip_past_n = if let Some(group_num) = enclosing_group {
-                quote! { &ranges.clone().skip_past(#group_num, ib.index()) }
-            } else {
-                quote! { ranges }
-            };
-            functions.push(quote! {
-                fn #fn_name(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                    // println!("{} {:?} {:?}", stringify!(#fn_name), ib, ranges);
-                    match ib.byte() {
-                        #pattern => {
-                            Self::#next_fn_name(
-                                #clone_ranges_and_skip_past_n,
-                                ib.consume(),
-                                next_states,
-                            )
-                        }
-                        #maybe_some_underscore
-                        None => {
-                            next_states.insert(Self::#variant_name(ranges.clone()));
-                        }
-                    }
-                }
+            statements.push(quote! {
+                #var_name = #prev_state_expr .clone() #filter;
             });
-            fn_name
+            quote! { #var_name }
         }
-        TaggedNode::Empty(fn_num) => {
-            let fn_name = format_ident!("empty{}", fn_num);
-            let variant_name = format_ident!("Empty{}", fn_num);
-            variant_and_fn_names.push((variant_name, fn_name.clone()));
-            functions.push(quote! {
-                fn #fn_name(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                    // println!("{} {:?} {:?}", stringify!(#fn_name), ib, ranges);
-                    Self::#next_fn_name(
-                        ranges,
-                        ib,
-                        next_states,
-                    );
-                }
-            });
-            fn_name
-        }
+        TaggedNode::Empty => prev_state_expr.clone(),
         TaggedNode::Seq(nodes) => {
             assert!(!nodes.is_empty());
-            let mut next = next_fn_name.clone();
-            for node in nodes.iter().rev() {
-                next = build(variant_and_fn_names, functions, &next, node);
+            let mut last_state_expr = prev_state_expr.clone();
+            for node in nodes {
+                last_state_expr = build(statements, &last_state_expr, node);
             }
-            next
+            last_state_expr
         }
-        TaggedNode::Alt(fn_num, nodes) => {
+        TaggedNode::Alt(nodes) => {
             assert!(!nodes.is_empty());
-            let fn_name = format_ident!("alt{}", fn_num);
-            let arm_fn_names: Vec<Ident> = nodes
-                .iter()
-                .map(|node| build(variant_and_fn_names, functions, next_fn_name, node))
-                .collect();
-            let call_arm_fn_stmts: Vec<TokenStream> = arm_fn_names
-                .iter()
-                .map(|arm_fn_name| {
-                    quote! {
-                        Self::#arm_fn_name(ranges, ib, next_states);
-                    }
-                })
-                .collect();
-            functions.push(quote! {
-                fn #fn_name(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                    // println!("{} {:?} {:?}", stringify!(#fn_name), ib, ranges);
-                    #( #call_arm_fn_stmts )*
-                }
-            });
-            fn_name
+            let mut arm_state_exprs: Vec<TokenStream> = Vec::new();
+            for node in nodes {
+                arm_state_exprs.push(build(statements, prev_state_expr, node));
+            }
+            quote! { None #( .or_else(|| #arm_state_exprs.clone()) )* }
         }
-        TaggedNode::Group(fn_num, group_num, enclosing_group, node) => {
-            let start_fn_name = format_ident!("group_start{}", fn_num);
-            let end_fn_name = format_ident!("group_end{}", fn_num);
-            let child_fn_name = build(variant_and_fn_names, functions, &end_fn_name, node);
-            let exit_range_expr = if let Some(enclosing) = enclosing_group {
-                quote! { &ranges.clone().exit(#enclosing, ib.index()) }
-            } else {
-                quote! { ranges }
-            };
-            functions.push(quote! {
-                fn #start_fn_name(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                    // println!("{} {:?} {:?}", stringify!(#start_fn_name), ib, ranges);
-                    Self::#child_fn_name(&ranges.clone().enter(#group_num, ib.index()), ib, next_states);
-                }
-                fn #end_fn_name(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                    // println!("{} {:?} {:?}", stringify!(#end_fn_name), ib, ranges);
-                    Self::#next_fn_name(#exit_range_expr, ib, next_states);
-                }
-            });
-            start_fn_name
+        TaggedNode::Optional(node) => {
+            let node_state_expr = build(statements, prev_state_expr, node);
+            quote! { #prev_state_expr .clone() .or_else(|| #node_state_expr .clone()) }
         }
-        TaggedNode::Optional(fn_num, node) => {
-            let fn_name = format_ident!("optional{}", fn_num);
-            let child_fn_name = build(variant_and_fn_names, functions, &next_fn_name, node);
-            let final_fn_name = push_intermediate_fns(functions, &fn_name);
-            functions.push(quote! {
-                fn #final_fn_name(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                    // println!("{} {:?} {:?}", stringify!(#fn_name), ib, ranges);
-                    Self::#child_fn_name(ranges, ib, next_states);
-                    Self::#next_fn_name(ranges, ib, next_states);
-                }
-            });
-            fn_name
+        TaggedNode::Star(node) => {
+            let node_expr = build(&mut Vec::new(), prev_state_expr, node);
+            let prev_or_node_expr =
+                quote! { #prev_state_expr .clone().or_else(|| #node_expr .clone()) };
+            let node_expr = build(statements, &prev_or_node_expr, node);
+            quote! { #prev_state_expr .clone() .or_else(|| #node_expr .clone()) }
         }
-        TaggedNode::Star(fn_num, node) => {
-            let fn_name = format_ident!("star{}", fn_num);
-            let child_fn_name = build(variant_and_fn_names, functions, &fn_name, node);
-            let final_fn_name = push_intermediate_fns(functions, &fn_name);
-            functions.push(quote! {
-                fn #final_fn_name(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                    // println!("{} {:?} {:?}", stringify!(#fn_name), ib, ranges);
-                    Self::#child_fn_name(ranges, ib, next_states);
-                    Self::#next_fn_name(ranges, ib, next_states);
-                }
-            });
-            fn_name
-        }
+        TaggedNode::Group(group_num, enclosing_group, node) => {
+            panic!("unimplemented OptimizedNode::Group({:?})", node)
+        } // TaggedNode::Group(fn_num, group_num, enclosing_group, node) => {
+          //     let start_fn_name = format_ident!("group_start{}", fn_num);
+          //     let end_fn_name = format_ident!("group_end{}", fn_num);
+          //     let child_fn_name = build(functions, &end_fn_name, node);
+          //     let exit_range_expr = if let Some(enclosing) = enclosing_group {
+          //         quote! { &ranges.clone().exit(#enclosing, ib.index()) }
+          //     } else {
+          //         quote! { ranges }
+          //     };
+          //     functions.push(quote! {
+          //         fn #start_fn_name(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+          //             // println!("{} {:?} {:?}", stringify!(#start_fn_name), ib, ranges);
+          //             Self::#child_fn_name(&ranges.clone().enter(#group_num, ib.index()), ib, next_states);
+          //         }
+          //         fn #end_fn_name(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+          //             // println!("{} {:?} {:?}", stringify!(#end_fn_name), ib, ranges);
+          //             Self::#next_fn_name(#exit_range_expr, ib, next_states);
+          //         }
+          //     });
+          //     start_fn_name
+          // }
     };
     crate::dprintln!("build returning {:?}", result);
     result
@@ -462,125 +389,33 @@ fn build(
 /// trait.
 #[must_use]
 #[allow(clippy::too_many_lines)]
-pub fn generate(literal: &Literal, final_node: &FinalNode) -> safe_proc_macro2::TokenStream {
-    let literal_string = literal.to_string();
+pub fn generate(final_node: &FinalNode) -> safe_proc_macro2::TokenStream {
     let optimized_node = OptimizedNode::from_final_node(&final_node);
     let mut fn_counter = Counter::new();
     let mut group_counter = Counter::new();
     let tagged_node =
         TaggedNode::from_optimized(&mut fn_counter, &mut group_counter, None, &optimized_node);
     let num_groups = group_counter.get();
-    let ranges_inner = quote!([core::ops::Range<u32>; #num_groups]);
-    let ranges_struct = if num_groups == 0 {
-        quote! {
-            #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-            struct Ranges_;
-            impl Ranges_ {
-                pub fn new() -> Self {
-                    Self
-                }
-                pub fn inner(&self) -> &[core::ops::Range<u32>; 0usize] {
-                    &[]
-                }
+    if num_groups != 0 {
+        panic!("groups not implemented");
+    }
+    let mut var_names: Vec<Ident> = Vec::new();
+    collect_var_names(&mut var_names, &tagged_node);
+    let mut statements: Vec<TokenStream> = Vec::new();
+    // Perform a depth-first walk of the AST and make trait names and clauses.
+    let accept_expr = build(&mut statements, &quote! { start }, &tagged_node);
+    let statements_reversed = statements.iter().rev();
+    let result = quote! {
+        |data: &[u8]| {
+            let mut start = Some(());
+            #( let mut #var_names = None; )*
+            for b in data.iter() {
+                #( #statements_reversed )*
+                start = None;
             }
-        }
-    } else {
-        let default_ranges = core::iter::repeat(quote!(u32::MAX..u32::MAX)).take(num_groups);
-        quote! {
-            #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-            struct Ranges_(#ranges_inner);
-            impl Ranges_ {
-                pub fn new() -> Self {
-                    Self([ #( #default_ranges ),* ])
-                }
-                pub fn enter(mut self, group: usize, n: u32) -> Self {
-                    self.0[group].start = n;
-                    self.0[group].end = n;
-                    self
-                }
-                pub fn exit(mut self, group: usize, n: u32) -> Self {
-                    self.0[group].end = n;
-                    self
-                }
-                pub fn skip_past(mut self, group: usize, n: u32) -> Self {
-                    self.0[group].end = n + 1;
-                    self
-                }
-                pub fn inner(&self) -> &#ranges_inner {
-                    &self.0
-                }
-            }
+            #accept_expr
         }
     };
-    let mut variant_and_fn_names: Vec<(Ident, Ident)> = Vec::new();
-    let mut functions: Vec<TokenStream> = Vec::new();
-    // Perform a depth-first walk of the AST and make trait names and clauses.
-    let initial_fn_name = build(
-        &mut variant_and_fn_names,
-        &mut functions,
-        &format_ident!("accept"),
-        &tagged_node,
-    );
-    let variant_names: Vec<Ident> = variant_and_fn_names
-        .iter()
-        .map(|(variant_name, _fn_name)| variant_name.clone())
-        .collect();
-    let clauses: Vec<TokenStream> = variant_and_fn_names
-        .iter()
-        .map(|(variant_name, fn_name)| {
-            quote! {
-                Self::#variant_name(ranges) => Self::#fn_name(ranges, ib, next_states)
-            }
-        })
-        .collect();
-    let result = quote! { {
-        use safe_regex::internal::InputByte;
-        #ranges_struct
-        type States_ =
-            std::collections::HashSet<CompiledRegex_, std::collections::hash_map::RandomState>;
-        #[doc = #literal_string]
-        #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-        enum CompiledRegex_ {
-            #( #variant_names(Ranges_) ),* ,
-            Accept(Ranges_),
-        }
-        impl CompiledRegex_ {
-            #( #functions )*
-            fn accept(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                // println!("accept {:?} {:?}", ib, ranges);
-                match ib.byte() {
-                    Some(_) => {}
-                    None => {
-                        next_states.insert(Self::Accept(ranges.clone()));
-                    }
-                }
-            }
-        }
-        impl safe_regex::internal::Machine for CompiledRegex_ {
-            type GroupRanges = #ranges_inner;
-            fn expression() -> &'static [u8] {
-                #literal
-            }
-            fn start(next_states: &mut States_) {
-                Self::#initial_fn_name(&Ranges_::new(), InputByte::Consumed(0), next_states);
-            }
-            fn try_accept(&self) -> Option<Self::GroupRanges> {
-                match self {
-                    Self::Accept(ranges) => Some(ranges.inner().clone()),
-                    _ => None,
-                }
-            }
-            fn make_next_states(&self, b: u8, n: u32, next_states: &mut States_) {
-                let ib = InputByte::Available(b, n);
-                // println!("make_next_states {:?} {:?}", ib, self);
-                match self {
-                    #( #clauses ),* ,
-                    Self::Accept(ranges) => Self::accept(ranges, ib, next_states),
-                }
-            }
-        }
-        <safe_regex::Matcher<CompiledRegex_>>::new()
-    } };
     crate::dprintln!("result={}", result);
     result
 }

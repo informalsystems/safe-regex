@@ -10,7 +10,7 @@ fn byte() {
         let mut start = Some(());
         let mut b0 = None;
         for b in data.iter() {
-            b0 = start.clone().filter(|_| *b == b'a');
+            b0 = start.clone().filter(|_| *b == 97u8);
             start = None;
         }
         b0
@@ -49,7 +49,7 @@ fn class_inclusive() {
         for b in data.iter() {
             b0 = start
                 .clone()
-                .filter(|_| (*b == 97u8 || *b == 98u8 || *b == 99u8 || (50u8..=52u8).contains(b)));
+                .filter(|_| *b == 97u8 || *b == 98u8 || *b == 99u8 || (50u8..=52u8).contains(b));
             start = None;
         }
         b0
@@ -79,7 +79,7 @@ fn class_exclusive() {
         for b in data.iter() {
             b0 = start
                 .clone()
-                .filter(|_| (*b != 97u8 && *b != 98u8 && *b != 99u8 && !(50u8..=52u8).contains(b)));
+                .filter(|_| *b != 97u8 && *b != 98u8 && *b != 99u8 && !(50u8..=52u8).contains(b));
             start = None;
         }
         b0
@@ -107,9 +107,9 @@ fn seq() {
         let mut b1 = None;
         let mut b2 = None;
         for b in data.iter() {
-            b2 = b1.clone().filter(|_| *b == b'b');
-            b1 = b0.clone().filter(|_| *b == b'a');
-            b0 = start.clone().filter(|_| *b == b'a');
+            b2 = b1.clone().filter(|_| *b == 98u8);
+            b1 = b0.clone().filter(|_| *b == 97u8);
+            b0 = start.clone().filter(|_| *b == 97u8);
             start = None;
         }
         b2
@@ -141,11 +141,11 @@ fn alt() {
         let mut b0 = None;
         let mut b1 = None;
         for b in data.iter() {
-            b1 = start.clone().filter(|_| *b == b'b');
-            b0 = start.clone().filter(|_| *b == b'a');
+            b1 = start.clone().filter(|_| *b == 98u8);
+            b0 = start.clone().filter(|_| *b == 97u8);
             start = None;
         }
-        b0.or(b1)
+        None.or_else(|| b0.clone()).or_else(|| b1.clone())
     };
     assert_eq!(None, re(b""));
     assert_eq!(None, re(b"X"));
@@ -169,7 +169,7 @@ fn group() {
         let mut start = Some((usize::MAX..usize::MAX,));
         let mut b0: Option<(core::ops::Range<usize>,)> = None;
         for (n, b) in data.iter().enumerate() {
-            b0 = start.clone().filter(|_| *b == b'a').map(|_| (n..n + 1,));
+            b0 = start.clone().filter(|_| *b == 97u8).map(|_| (n..n + 1,));
             start = None;
         }
         b0.map(|(r0,)| {
@@ -198,10 +198,10 @@ fn optional() {
         let mut start = Some(());
         let mut b0 = None;
         for b in data.iter() {
-            b0 = start.clone().filter(|_| *b == b'a');
+            b0 = start.clone().filter(|_| *b == 97u8);
             start = None;
         }
-        start.or(b0)
+        start.clone().or_else(|| b0.clone())
     };
     re(b"").unwrap();
     re(b"a").unwrap();
@@ -219,8 +219,8 @@ fn optional_at_start() {
         let mut b0 = None;
         let mut b1 = None;
         for b in data.iter() {
-            b1 = start.clone().or(b0.clone()).filter(|_| *b == b'a');
-            b0 = start.clone().filter(|_| *b == b'a');
+            b1 = start.clone().or(b0.clone()).filter(|_| *b == 97u8);
+            b0 = start.clone().filter(|_| *b == 97u8);
             start = None;
         }
         b1
@@ -245,8 +245,8 @@ fn optional_at_end() {
         let mut b0 = None;
         let mut b1 = None;
         for b in data.iter() {
-            b1 = b0.clone().filter(|_| *b == b'a');
-            b0 = start.clone().filter(|_| *b == b'a');
+            b1 = b0.clone().filter(|_| *b == 97u8);
+            b0 = start.clone().filter(|_| *b == 97u8);
             start = None;
         }
         b0.or(b1)
@@ -274,7 +274,7 @@ fn optionals_in_groups() {
         let mut b2: Option<(core::ops::Range<usize>, core::ops::Range<usize>)> = None;
         let mut b3: Option<(core::ops::Range<usize>, core::ops::Range<usize>)> = None;
         for (n, b) in data.iter().enumerate().map(|(n, b)| (n, b)) {
-            b3 = b2.clone().filter(|_| *b == b'a');
+            b3 = b2.clone().filter(|_| *b == 97u8);
             b2 = None
                 .or_else(|| {
                     start
@@ -290,7 +290,7 @@ fn optionals_in_groups() {
                         .map(|(r0, r1)| (r0, r1.start..n))
                 })
                 .or_else(|| b1.clone())
-                .filter(|_| *b == b'a');
+                .filter(|_| *b == 97u8);
             b1 = None
                 .or_else(|| {
                     start
@@ -299,13 +299,13 @@ fn optionals_in_groups() {
                         .map(|(r0, r1)| (r0.start..n, r1))
                 })
                 .or_else(|| b0.clone())
-                .filter(|_| *b == b'a')
+                .filter(|_| *b == 97u8)
                 .map(|(r0, r1)| (r0, n..n))
                 .map(|(r0, r1)| (r0, r1.start..n + 1));
             b0 = start
                 .clone()
                 .map(|(r0, r1)| (n..n, r1))
-                .filter(|_| *b == b'a')
+                .filter(|_| *b == 97u8)
                 .map(|(r0, r1)| (r0.start..n + 1, r1));
             start = None;
         }
@@ -364,10 +364,14 @@ fn star() {
         let mut start = Some(());
         let mut b0 = None;
         for b in data.iter() {
-            b0 = start.clone().or(b0.clone()).filter(|_| *b == b'a');
+            b0 = start
+                .clone()
+                .or_else(|| b0.clone())
+                .clone()
+                .filter(|_| *b == 97u8);
             start = None;
         }
-        start.or(b0)
+        start.clone().or_else(|| b0.clone())
     };
     re(b"").unwrap();
     assert_eq!(None, re(b"X"));
@@ -394,6 +398,47 @@ fn star() {
 }
 
 #[test]
+fn seq_in_star() {
+    // regex!(br"(?abc)*")
+    let re: fn(&[u8]) -> Option<()> = |data: &[u8]| {
+        let mut start = Some(());
+        let mut b0 = None;
+        let mut b1 = None;
+        let mut b2 = None;
+        for b in data.iter() {
+            let prev_b2 = b2.clone();
+            b2 = b1.clone().filter(|_| *b == 99u8);
+            b1 = b0.clone().filter(|_| *b == 98u8);
+            b0 = start
+                .clone()
+                .or_else(|| prev_b2.clone())
+                .filter(|_| *b == 97u8);
+            start = None;
+        }
+        start.clone().or_else(|| b2.clone())
+    };
+    re(b"").unwrap();
+    assert_eq!(None, re(b"X"));
+    assert_eq!(None, re(b"a"));
+    assert_eq!(None, re(b"ab"));
+    assert_eq!(None, re(b"Xabc"));
+    assert_eq!(None, re(b"aXbc"));
+    assert_eq!(None, re(b"abXc"));
+    assert_eq!(None, re(b"abcX"));
+    assert_eq!(None, re(b"abca"));
+    assert_eq!(None, re(b"abcab"));
+    assert_eq!(None, re(b"abcXabc"));
+    re(b"abc").unwrap();
+    re(b"abcabc").unwrap();
+    re(b"abcabcabc").unwrap();
+    re(b"abcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabc").unwrap();
+    assert_eq!(
+        None,
+        re(b"abcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcX")
+    );
+}
+
+#[test]
 fn empty_group_at_start() {
     // regex!(br"()a")
     let re: fn(&[u8]) -> Option<(Option<&[u8]>,)> = |data: &[u8]| {
@@ -401,7 +446,7 @@ fn empty_group_at_start() {
         let mut start = Some((0..0,));
         let mut b0: Option<(core::ops::Range<usize>,)> = None;
         for (n, b) in data.iter().enumerate() {
-            b0 = start.clone().filter(|_| *b == b'a');
+            b0 = start.clone().filter(|_| *b == 97u8);
             start = None;
         }
         b0.map(|(r0,)| {
@@ -431,7 +476,7 @@ fn empty_group_at_end() {
         let mut start = Some((usize::MAX..usize::MAX,));
         let mut b0: Option<(core::ops::Range<usize>,)> = None;
         for (n, b) in data.iter().enumerate() {
-            b0 = start.clone().filter(|_| *b == b'a').map(|_| (n..n,));
+            b0 = start.clone().filter(|_| *b == 97u8).map(|_| (n..n,));
             start = None;
         }
         b0.map(|(r0,)| {
@@ -462,8 +507,8 @@ fn empty_group_in_middle() {
         let mut b0: Option<(core::ops::Range<usize>,)> = None;
         let mut b1: Option<(core::ops::Range<usize>,)> = None;
         for (n, b) in data.iter().enumerate() {
-            b1 = b0.clone().filter(|_| *b == b'b');
-            b0 = start.clone().filter(|_| *b == b'a').map(|_| (n..n,));
+            b1 = b0.clone().filter(|_| *b == 98u8);
+            b0 = start.clone().filter(|_| *b == 97u8).map(|_| (n..n,));
             start = None;
         }
         b1.map(|(r0,)| {
@@ -510,9 +555,9 @@ fn seq_in_group() {
                 .map(|(r0,)| (r0.start..n + 1,));
             b1 = b0
                 .clone()
-                .filter(|_| *b == b'b')
+                .filter(|_| *b == 98u8)
                 .map(|(r0,)| (r0.start..n + 1,));
-            b0 = start.clone().filter(|_| *b == b'a').map(|_| (n..n + 1,));
+            b0 = start.clone().filter(|_| *b == 97u8).map(|_| (n..n + 1,));
             start = None;
         }
         b3.map(|(r0,)| {
@@ -553,8 +598,8 @@ fn alt_in_group() {
         let mut b0: Option<(core::ops::Range<usize>,)> = None;
         let mut b1: Option<(core::ops::Range<usize>,)> = None;
         for (n, b) in data.iter().enumerate() {
-            b1 = start.clone().filter(|_| *b == b'b').map(|_| (n..n + 1,));
-            b0 = start.clone().filter(|_| *b == b'a').map(|_| (n..n + 1,));
+            b1 = start.clone().filter(|_| *b == 98u8).map(|_| (n..n + 1,));
+            b0 = start.clone().filter(|_| *b == 97u8).map(|_| (n..n + 1,));
             start = None;
         }
         b0.or(b1).map(|(r0,)| {

@@ -25,77 +25,14 @@ fn syntax_errors() {
 
 #[test]
 fn byte() {
-    let expected = quote! { {
-        use safe_regex::internal::InputByte;
-        #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-        struct Ranges_;
-        impl Ranges_ {
-            pub fn new() -> Self {
-                Self
-            }
-            pub fn inner(&self) -> &[core::ops::Range<u32>; 0usize] {
-                &[]
-            }
+    let expected = quote! { |data: &[u8]| {
+        let mut start = Some(());
+        let mut b0 = None;
+        for b in data.iter() {
+            b0 = start.clone().filter(|_| *b == 97u8);
+            start = None;
         }
-        type States_ =
-            std::collections::HashSet<CompiledRegex_, std::collections::hash_map::RandomState>;
-        #[doc = "br\"a\""]
-        #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-        enum CompiledRegex_ {
-            Byte0(Ranges_),
-            Accept(Ranges_),
-        }
-        impl CompiledRegex_ {
-            fn byte0(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                // println!("{} {:?} {:?}", stringify!(byte0), ib, ranges);
-                match ib.byte() {
-                    Some(b) if b == 97u8 => {
-                        Self::accept(
-                            ranges,
-                            ib.consume(),
-                            next_states, //
-                        ) //
-                    }
-                    Some(_) => {}
-                    None => {
-                        next_states.insert(Self::Byte0(ranges.clone()));
-                    }
-                }
-            }
-            fn accept(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                // println!("accept {:?} {:?}", ib, ranges);
-                match ib.byte() {
-                    Some(_) => {}
-                    None => {
-                        next_states.insert(Self::Accept(ranges.clone()));
-                    }
-                }
-            }
-        }
-        impl safe_regex::internal::Machine for CompiledRegex_ {
-            type GroupRanges = [core::ops::Range<u32>; 0usize];
-            fn expression() -> &'static [u8] {
-                br"a"
-            }
-            fn start(next_states: &mut States_) {
-                Self::byte0(&Ranges_::new(), InputByte::Consumed(0), next_states);
-            }
-            fn try_accept(&self) -> Option<Self::GroupRanges> {
-                match self {
-                    Self::Accept(ranges) => Some(ranges.inner().clone()),
-                    _ => None,
-                }
-            }
-            fn make_next_states(&self, b: u8, n: u32, next_states: &mut States_) {
-                let ib = InputByte::Available(b, n);
-                // println!("make_next_states {:?} {:?}", ib, self);
-                match self {
-                    Self::Byte0(ranges) => Self::byte0(ranges, ib, next_states),
-                    Self::Accept(ranges) => Self::accept(ranges, ib, next_states),
-                }
-            }
-        }
-        <safe_regex::Matcher<CompiledRegex_>>::new()
+        b0
     } };
     assert_eq!(
         format!("{}", expected),
@@ -105,76 +42,14 @@ fn byte() {
 
 #[test]
 fn any_byte() {
-    let expected = quote! { {
-        use safe_regex::internal::InputByte;
-        #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-        struct Ranges_;
-        impl Ranges_ {
-            pub fn new() -> Self {
-                Self
-            }
-            pub fn inner(&self) -> &[core::ops::Range<u32>; 0usize] {
-                &[]
-            }
+    let expected = quote! { |data: &[u8]| {
+        let mut start = Some(());
+        let mut b0 = None;
+        for b in data.iter() {
+            b0 = start.clone();
+            start = None;
         }
-        type States_ =
-            std::collections::HashSet<CompiledRegex_, std::collections::hash_map::RandomState>;
-        #[doc = "br\".\""]
-        #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-        enum CompiledRegex_ {
-            Byte0(Ranges_),
-            Accept(Ranges_),
-        }
-        impl CompiledRegex_ {
-            fn byte0(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                // println!("{} {:?} {:?}", stringify!(byte0), ib, ranges);
-                match ib.byte() {
-                    Some(_) => {
-                        Self::accept(
-                            ranges,
-                            ib.consume(),
-                            next_states, //
-                        ) //
-                    }
-                    None => {
-                        next_states.insert(Self::Byte0(ranges.clone()));
-                    }
-                }
-            }
-            fn accept(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                // println!("accept {:?} {:?}", ib, ranges);
-                match ib.byte() {
-                    Some(_) => {}
-                    None => {
-                        next_states.insert(Self::Accept(ranges.clone()));
-                    }
-                }
-            }
-        }
-        impl safe_regex::internal::Machine for CompiledRegex_ {
-            type GroupRanges = [core::ops::Range<u32>; 0usize];
-            fn expression() -> &'static [u8] {
-                br"."
-            }
-            fn start(next_states: &mut States_) {
-                Self::byte0(&Ranges_::new(), InputByte::Consumed(0), next_states);
-            }
-            fn try_accept(&self) -> Option<Self::GroupRanges> {
-                match self {
-                    Self::Accept(ranges) => Some(ranges.inner().clone()),
-                    _ => None,
-                }
-            }
-            fn make_next_states(&self, b: u8, n: u32, next_states: &mut States_) {
-                let ib = InputByte::Available(b, n);
-                // println!("make_next_states {:?} {:?}", ib, self);
-                match self {
-                    Self::Byte0(ranges) => Self::byte0(ranges, ib, next_states),
-                    Self::Accept(ranges) => Self::accept(ranges, ib, next_states),
-                }
-            }
-        }
-        <safe_regex::Matcher<CompiledRegex_>>::new()
+        b0
     } };
     assert_eq!(
         format!("{}", expected),
@@ -184,79 +59,16 @@ fn any_byte() {
 
 #[test]
 fn class_inclusive() {
-    let expected = quote! { {
-        use safe_regex::internal::InputByte;
-        #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-        struct Ranges_;
-        impl Ranges_ {
-            pub fn new() -> Self {
-                Self
-            }
-            pub fn inner(&self) -> &[core::ops::Range<u32>; 0usize] {
-                &[]
-            }
+    let expected = quote! { |data: &[u8]| {
+        let mut start = Some(());
+        let mut b0 = None;
+        for b in data.iter() {
+            b0 = start
+                .clone()
+                .filter(|_| *b == 97u8 || *b == 98u8 || *b == 99u8 || (50u8..=52u8).contains(b));
+            start = None;
         }
-        type States_ =
-            std::collections::HashSet<CompiledRegex_, std::collections::hash_map::RandomState>;
-        #[doc = "br\"[abc2-4]\""]
-        #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-        enum CompiledRegex_ {
-            Byte0(Ranges_),
-            Accept(Ranges_),
-        }
-        impl CompiledRegex_ {
-            fn byte0(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                // println!("{} {:?} {:?}", stringify!(byte0), ib, ranges);
-                match ib.byte() {
-                    Some(b)
-                        if b == 97u8 || b == 98u8 || b == 99u8 || (50u8..=52u8).contains(&b) =>
-                    {
-                        Self::accept(
-                            ranges,
-                            ib.consume(),
-                            next_states, //
-                        ) //
-                    }
-                    Some(_) => {}
-                    None => {
-                        next_states.insert(Self::Byte0(ranges.clone()));
-                    }
-                }
-            }
-            fn accept(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                // println!("accept {:?} {:?}", ib, ranges);
-                match ib.byte() {
-                    Some(_) => {}
-                    None => {
-                        next_states.insert(Self::Accept(ranges.clone()));
-                    }
-                }
-            }
-        }
-        impl safe_regex::internal::Machine for CompiledRegex_ {
-            type GroupRanges = [core::ops::Range<u32>; 0usize];
-            fn expression() -> &'static [u8] {
-                br"[abc2-4]"
-            }
-            fn start(next_states: &mut States_) {
-                Self::byte0(&Ranges_::new(), InputByte::Consumed(0), next_states);
-            }
-            fn try_accept(&self) -> Option<Self::GroupRanges> {
-                match self {
-                    Self::Accept(ranges) => Some(ranges.inner().clone()),
-                    _ => None,
-                }
-            }
-            fn make_next_states(&self, b: u8, n: u32, next_states: &mut States_) {
-                let ib = InputByte::Available(b, n);
-                // println!("make_next_states {:?} {:?}", ib, self);
-                match self {
-                    Self::Byte0(ranges) => Self::byte0(ranges, ib, next_states),
-                    Self::Accept(ranges) => Self::accept(ranges, ib, next_states),
-                }
-            }
-        }
-        <safe_regex::Matcher<CompiledRegex_>>::new()
+        b0
     } };
     assert_eq!(
         format!("{}", expected),
@@ -266,79 +78,16 @@ fn class_inclusive() {
 
 #[test]
 fn class_exclusive() {
-    let expected = quote! { {
-        use safe_regex::internal::InputByte;
-        #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-        struct Ranges_;
-        impl Ranges_ {
-            pub fn new() -> Self {
-                Self
-            }
-            pub fn inner(&self) -> &[core::ops::Range<u32>; 0usize] {
-                &[]
-            }
+    let expected = quote! { |data: &[u8]| {
+        let mut start = Some(());
+        let mut b0 = None;
+        for b in data.iter() {
+            b0 = start
+                .clone()
+                .filter(|_| *b != 97u8 && *b != 98u8 && *b != 99u8 && !(50u8..=52u8).contains(b));
+            start = None;
         }
-        type States_ =
-            std::collections::HashSet<CompiledRegex_, std::collections::hash_map::RandomState>;
-        #[doc = "br\"[^abc2-4]\""]
-        #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-        enum CompiledRegex_ {
-            Byte0(Ranges_),
-            Accept(Ranges_),
-        }
-        impl CompiledRegex_ {
-            fn byte0(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                // println!("{} {:?} {:?}", stringify!(byte0), ib, ranges);
-                match ib.byte() {
-                    Some(b)
-                        if b != 97u8 && b != 98u8 && b != 99u8 && !(50u8..=52u8).contains(&b) =>
-                    {
-                        Self::accept(
-                            ranges,
-                            ib.consume(),
-                            next_states, //
-                        ) //
-                    }
-                    Some(_) => {}
-                    None => {
-                        next_states.insert(Self::Byte0(ranges.clone()));
-                    }
-                }
-            }
-            fn accept(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                // println!("accept {:?} {:?}", ib, ranges);
-                match ib.byte() {
-                    Some(_) => {}
-                    None => {
-                        next_states.insert(Self::Accept(ranges.clone()));
-                    }
-                }
-            }
-        }
-        impl safe_regex::internal::Machine for CompiledRegex_ {
-            type GroupRanges = [core::ops::Range<u32>; 0usize];
-            fn expression() -> &'static [u8] {
-                br"[^abc2-4]"
-            }
-            fn start(next_states: &mut States_) {
-                Self::byte0(&Ranges_::new(), InputByte::Consumed(0), next_states);
-            }
-            fn try_accept(&self) -> Option<Self::GroupRanges> {
-                match self {
-                    Self::Accept(ranges) => Some(ranges.inner().clone()),
-                    _ => None,
-                }
-            }
-            fn make_next_states(&self, b: u8, n: u32, next_states: &mut States_) {
-                let ib = InputByte::Available(b, n);
-                // println!("make_next_states {:?} {:?}", ib, self);
-                match self {
-                    Self::Byte0(ranges) => Self::byte0(ranges, ib, next_states),
-                    Self::Accept(ranges) => Self::accept(ranges, ib, next_states),
-                }
-            }
-        }
-        <safe_regex::Matcher<CompiledRegex_>>::new()
+        b0
     } };
     assert_eq!(
         format!("{}", expected),
@@ -349,113 +98,18 @@ fn class_exclusive() {
 #[test]
 #[allow(clippy::too_many_lines)]
 fn seq() {
-    let expected = quote! { {
-        use safe_regex::internal::InputByte;
-        #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-        struct Ranges_;
-        impl Ranges_ {
-            pub fn new() -> Self {
-                Self
-            }
-            pub fn inner(&self) -> &[core::ops::Range<u32>; 0usize] {
-                &[]
-            }
+    let expected = quote! { |data: &[u8]| {
+        let mut start = Some(());
+        let mut b0 = None;
+        let mut b1 = None;
+        let mut b2 = None;
+        for b in data.iter() {
+            b2 = b1.clone().filter(|_| *b == 98u8);
+            b1 = b0.clone().filter(|_| *b == 97u8);
+            b0 = start.clone().filter(|_| *b == 97u8);
+            start = None;
         }
-        type States_ =
-            std::collections::HashSet<CompiledRegex_, std::collections::hash_map::RandomState>;
-        #[doc = "br\"aab\""]
-        #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-        enum CompiledRegex_ {
-            Byte2(Ranges_),
-            Byte1(Ranges_),
-            Byte0(Ranges_),
-            Accept(Ranges_),
-        }
-        impl CompiledRegex_ {
-            fn byte2(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                // println!("{} {:?} {:?}", stringify!(byte2), ib, ranges);
-                match ib.byte() {
-                    Some(b) if b == 98u8 => {
-                        Self::accept(
-                            ranges,
-                            ib.consume(),
-                            next_states, //
-                        ) //
-                    }
-                    Some(_) => {}
-                    None => {
-                        next_states.insert(Self::Byte2(ranges.clone()));
-                    }
-                }
-            }
-            fn byte1(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                // println!("{} {:?} {:?}", stringify!(byte1), ib, ranges);
-                match ib.byte() {
-                    Some(b) if b == 97u8 => {
-                        Self::byte2(
-                            ranges,
-                            ib.consume(),
-                            next_states, //
-                        ) //
-                    }
-                    Some(_) => {}
-                    None => {
-                        next_states.insert(Self::Byte1(ranges.clone()));
-                    }
-                }
-            }
-            fn byte0(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                // println!("{} {:?} {:?}", stringify!(byte0), ib, ranges);
-                match ib.byte() {
-                    Some(b) if b == 97u8 => {
-                        Self::byte1(
-                            ranges,
-                            ib.consume(),
-                            next_states, //
-                        ) //
-                    }
-                    Some(_) => {}
-                    None => {
-                        next_states.insert(Self::Byte0(ranges.clone()));
-                    }
-                }
-            }
-            fn accept(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                // println!("accept {:?} {:?}", ib, ranges);
-                match ib.byte() {
-                    Some(_) => {}
-                    None => {
-                        next_states.insert(Self::Accept(ranges.clone()));
-                    }
-                }
-            }
-        }
-        impl safe_regex::internal::Machine for CompiledRegex_ {
-            type GroupRanges = [core::ops::Range<u32>; 0usize];
-            fn expression() -> &'static [u8] {
-                br"aab"
-            }
-            fn start(next_states: &mut States_) {
-                Self::byte0(&Ranges_::new(), InputByte::Consumed(0), next_states);
-            }
-            fn try_accept(&self) -> Option<Self::GroupRanges> {
-                match self {
-                    Self::Accept(ranges) => Some(ranges.inner().clone()),
-                    _ => None,
-                }
-            }
-            fn make_next_states(&self, b: u8, n: u32, next_states: &mut States_) {
-                let ib = InputByte::Available(b, n);
-                // println!("make_next_states {:?} {:?}", ib, self);
-                match self {
-                    Self::Byte2(ranges) => Self::byte2(ranges, ib, next_states),
-                    Self::Byte1(ranges) => Self::byte1(ranges, ib, next_states),
-                    Self::Byte0(ranges) => Self::byte0(ranges, ib, next_states),
-                    Self::Accept(ranges) => Self::accept(ranges, ib, next_states),
-                }
-            }
-        }
-        <safe_regex::Matcher<CompiledRegex_>>::new()
+        b2
     } };
     assert_eq!(
         format!("{}", expected),
@@ -465,100 +119,16 @@ fn seq() {
 
 #[test]
 fn alt() {
-    let expected = quote! { {
-        use safe_regex::internal::InputByte;
-        #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-        struct Ranges_;
-        impl Ranges_ {
-            pub fn new() -> Self {
-                Self
-            }
-            pub fn inner(&self) -> &[core::ops::Range<u32>; 0usize] {
-                &[]
-            }
+    let expected = quote! { |data: &[u8]| {
+        let mut start = Some(());
+        let mut b0 = None;
+        let mut b1 = None;
+        for b in data.iter() {
+            b1 = start.clone().filter(|_| *b == 98u8);
+            b0 = start.clone().filter(|_| *b == 97u8);
+            start = None;
         }
-        type States_ =
-            std::collections::HashSet<CompiledRegex_, std::collections::hash_map::RandomState>;
-        #[doc = "br\"a|b\""]
-        #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-        enum CompiledRegex_ {
-            Byte1(Ranges_),
-            Byte2(Ranges_),
-            Accept(Ranges_),
-        }
-        impl CompiledRegex_ {
-            fn byte1(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                // println!("{} {:?} {:?}", stringify!(byte1), ib, ranges);
-                match ib.byte() {
-                    Some(b) if b == 97u8 => {
-                        Self::accept(
-                            ranges,
-                            ib.consume(),
-                            next_states, //
-                        ) //
-                    }
-                    Some(_) => {}
-                    None => {
-                        next_states.insert(Self::Byte1(ranges.clone()));
-                    }
-                }
-            }
-            fn byte2(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                // println!("{} {:?} {:?}", stringify!(byte2), ib, ranges);
-                match ib.byte() {
-                    Some(b) if b == 98u8 => {
-                        Self::accept(
-                            ranges,
-                            ib.consume(),
-                            next_states, //
-                        ) //
-                    }
-                    Some(_) => {}
-                    None => {
-                        next_states.insert(Self::Byte2(ranges.clone()));
-                    }
-                }
-            }
-            fn alt0(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                // println!("{} {:?} {:?}", stringify!(alt0), ib, ranges);
-                Self::byte1(ranges, ib, next_states);
-                Self::byte2(ranges, ib, next_states);
-            }
-            fn accept(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                // println!("accept {:?} {:?}", ib, ranges);
-                match ib.byte() {
-                    Some(_) => {}
-                    None => {
-                        next_states.insert(Self::Accept(ranges.clone()));
-                    }
-                }
-            }
-        }
-        impl safe_regex::internal::Machine for CompiledRegex_ {
-            type GroupRanges = [core::ops::Range<u32>; 0usize];
-            fn expression() -> &'static [u8] {
-                br"a|b"
-            }
-            fn start(next_states: &mut States_) {
-                Self::alt0(&Ranges_::new(), InputByte::Consumed(0), next_states);
-            }
-            fn try_accept(&self) -> Option<Self::GroupRanges> {
-                match self {
-                    Self::Accept(ranges) => Some(ranges.inner().clone()),
-                    _ => None,
-                }
-            }
-            fn make_next_states(&self, b: u8, n: u32, next_states: &mut States_) {
-                let ib = InputByte::Available(b, n);
-                // println!("make_next_states {:?} {:?}", ib, self);
-                match self {
-                    Self::Byte1(ranges) => Self::byte1(ranges, ib, next_states),
-                    Self::Byte2(ranges) => Self::byte2(ranges, ib, next_states),
-                    Self::Accept(ranges) => Self::accept(ranges, ib, next_states),
-                }
-            }
-        }
-        <safe_regex::Matcher<CompiledRegex_>>::new()
+        None.or_else(|| b0.clone()).or_else(|| b1.clone())
     } };
     assert_eq!(
         format!("{}", expected),
@@ -568,98 +138,24 @@ fn alt() {
 
 #[test]
 fn group() {
-    let expected = quote! { {
-        use safe_regex::internal::InputByte;
-        #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-        struct Ranges_([core::ops::Range<u32>; 1usize]);
-        impl Ranges_ {
-            pub fn new() -> Self {
-                Self([u32::MAX..u32::MAX])
-            }
-            pub fn enter(mut self, group: usize, n: u32) -> Self {
-                self.0[group].start = n;
-                self.0[group].end = n;
-                self
-            }
-            pub fn exit(mut self, group: usize, n: u32) -> Self {
-                self.0[group].end = n;
-                self
-            }
-            pub fn skip_past(mut self, group: usize, n: u32) -> Self {
-                self.0[group].end = n + 1;
-                self
-            }
-            pub fn inner(&self) -> &[core::ops::Range<u32>; 1usize] {
-                &self.0
-            }
+    let expected = quote! { |data: &[u8]| {
+        assert!(data.len() < usize::MAX - 2);
+        let mut start = Some((usize::MAX..usize::MAX,));
+        let mut b0: Option<(core::ops::Range<usize>,)> = None;
+        for (n, b) in data.iter().enumerate() {
+            b0 = start.clone().filter(|_| *b == 97u8).map(|_| (n..n + 1,));
+            start = None;
         }
-        type States_ =
-            std::collections::HashSet<CompiledRegex_, std::collections::hash_map::RandomState>;
-        #[doc = "br\"(a)\""]
-        #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-        enum CompiledRegex_ {
-            Byte1(Ranges_),
-            Accept(Ranges_),
-        }
-        impl CompiledRegex_ {
-            fn byte1(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                // println!("{} {:?} {:?}", stringify!(byte1), ib, ranges);
-                match ib.byte() {
-                    Some(b) if b == 97u8 => {
-                        Self::group_end0(
-                            &ranges.clone().skip_past(0usize, ib.index()),
-                            ib.consume(),
-                            next_states, //
-                        ) //
-                    }
-                    Some(_) => {}
-                    None => {
-                        next_states.insert(Self::Byte1(ranges.clone()));
-                    }
-                }
-            }
-            fn group_start0(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                // println!("{} {:?} {:?}", stringify!(group_start0), ib, ranges);
-                Self::byte1(&ranges.clone().enter(0usize, ib.index()), ib, next_states);
-            }
-            fn group_end0(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                // println!("{} {:?} {:?}", stringify!(group_end0), ib, ranges);
-                Self::accept(ranges, ib, next_states);
-            }
-            fn accept(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                // println!("accept {:?} {:?}", ib, ranges);
-                match ib.byte() {
-                    Some(_) => {}
-                    None => {
-                        next_states.insert(Self::Accept(ranges.clone()));
-                    }
-                }
-            }
-        }
-        impl safe_regex::internal::Machine for CompiledRegex_ {
-            type GroupRanges = [core::ops::Range<u32>; 1usize];
-            fn expression() -> &'static [u8] {
-                br"(a)"
-            }
-            fn start(next_states: &mut States_) {
-                Self::group_start0(&Ranges_::new(), InputByte::Consumed(0), next_states);
-            }
-            fn try_accept(&self) -> Option<Self::GroupRanges> {
-                match self {
-                    Self::Accept(ranges) => Some(ranges.inner().clone()),
-                    _ => None,
-                }
-            }
-            fn make_next_states(&self, b: u8, n: u32, next_states: &mut States_) {
-                let ib = InputByte::Available(b, n);
-                // println!("make_next_states {:?} {:?}", ib, self);
-                match self {
-                    Self::Byte1(ranges) => Self::byte1(ranges, ib, next_states),
-                    Self::Accept(ranges) => Self::accept(ranges, ib, next_states),
-                }
-            }
-        }
-        <safe_regex::Matcher<CompiledRegex_>>::new()
+        b0.map(|(r0,)| {
+            (
+                //
+                if r0.start != usize::MAX && r0.end != usize::MAX {
+                    Some(&data[r0])
+                } else {
+                    None
+                },
+            )
+        })
     } };
     assert_eq!(
         format!("{}", expected),
@@ -669,88 +165,14 @@ fn group() {
 
 #[test]
 fn optional() {
-    let expected = quote! { {
-        use safe_regex::internal::InputByte;
-        #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-        struct Ranges_;
-        impl Ranges_ {
-            pub fn new() -> Self {
-                Self
-            }
-            pub fn inner(&self) -> &[core::ops::Range<u32>; 0usize] {
-                &[]
-            }
+    let expected = quote! { |data: &[u8]| {
+        let mut start = Some(());
+        let mut b0 = None;
+        for b in data.iter() {
+            b0 = start.clone().filter(|_| *b == 97u8);
+            start = None;
         }
-        type States_ =
-            std::collections::HashSet<CompiledRegex_, std::collections::hash_map::RandomState>;
-        #[doc = "br\"a?\""]
-        #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-        enum CompiledRegex_ {
-            Byte1(Ranges_),
-            Accept(Ranges_),
-        }
-        impl CompiledRegex_ {
-            fn byte1(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                // println!("{} {:?} {:?}", stringify!(byte1), ib, ranges);
-                match ib.byte() {
-                    Some(b) if b == 97u8 => {
-                        Self::accept(
-                            ranges,
-                            ib.consume(),
-                            next_states, //
-                        ) //
-                    }
-                    Some(_) => {}
-                    None => {
-                        next_states.insert(Self::Byte1(ranges.clone()));
-                    }
-                }
-            }
-            fn optional0(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                Self::optional0_b(ranges, ib, next_states)
-            }
-            fn optional0_b(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                Self::optional0_final(ranges, ib, next_states)
-            }
-            fn optional0_final(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                // println!("{} {:?} {:?}", stringify!(optional0), ib, ranges);
-                Self::byte1(ranges, ib, next_states);
-                Self::accept(ranges, ib, next_states);
-            }
-            fn accept(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                // println!("accept {:?} {:?}", ib, ranges);
-                match ib.byte() {
-                    Some(_) => {}
-                    None => {
-                        next_states.insert(Self::Accept(ranges.clone()));
-                    }
-                }
-            }
-        }
-        impl safe_regex::internal::Machine for CompiledRegex_ {
-            type GroupRanges = [core::ops::Range<u32>; 0usize];
-            fn expression() -> &'static [u8] {
-                br"a?"
-            }
-            fn start(next_states: &mut States_) {
-                Self::optional0(&Ranges_::new(), InputByte::Consumed(0), next_states);
-            }
-            fn try_accept(&self) -> Option<Self::GroupRanges> {
-                match self {
-                    Self::Accept(ranges) => Some(ranges.inner().clone()),
-                    _ => None,
-                }
-            }
-            fn make_next_states(&self, b: u8, n: u32, next_states: &mut States_) {
-                let ib = InputByte::Available(b, n);
-                // println!("make_next_states {:?} {:?}", ib, self);
-                match self {
-                    Self::Byte1(ranges) => Self::byte1(ranges, ib, next_states),
-                    Self::Accept(ranges) => Self::accept(ranges, ib, next_states),
-                }
-            }
-        }
-        <safe_regex::Matcher<CompiledRegex_>>::new()
+        start.clone().or_else(|| b0.clone())
     } };
     assert_eq!(
         format!("{}", expected),
@@ -760,88 +182,14 @@ fn optional() {
 
 #[test]
 fn star() {
-    let expected = quote! { {
-        use safe_regex::internal::InputByte;
-        #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-        struct Ranges_;
-        impl Ranges_ {
-            pub fn new() -> Self {
-                Self
-            }
-            pub fn inner(&self) -> &[core::ops::Range<u32>; 0usize] {
-                &[]
-            }
+    let expected = quote! { |data: &[u8]| {
+        let mut start = Some(());
+        let mut b0 = None;
+        for b in data.iter() {
+            b0 = start.clone().or_else(|| b0.clone()).clone().filter(|_| *b == 97u8);
+            start = None;
         }
-        type States_ =
-            std::collections::HashSet<CompiledRegex_, std::collections::hash_map::RandomState>;
-        #[doc = "br\"a*\""]
-        #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-        enum CompiledRegex_ {
-            Byte1(Ranges_),
-            Accept(Ranges_),
-        }
-        impl CompiledRegex_ {
-            fn byte1(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                // println!("{} {:?} {:?}", stringify!(byte1), ib, ranges);
-                match ib.byte() {
-                    Some(b) if b == 97u8 => {
-                        Self::star0(
-                            ranges,
-                            ib.consume(),
-                            next_states, //
-                        ) //
-                    }
-                    Some(_) => {}
-                    None => {
-                        next_states.insert(Self::Byte1(ranges.clone()));
-                    }
-                }
-            }
-            fn star0(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                Self::star0_b(ranges, ib, next_states)
-            }
-            fn star0_b(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                Self::star0_final(ranges, ib, next_states)
-            }
-            fn star0_final(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                // println!("{} {:?} {:?}", stringify!(star0), ib, ranges);
-                Self::byte1(ranges, ib, next_states);
-                Self::accept(ranges, ib, next_states);
-            }
-            fn accept(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                // println!("accept {:?} {:?}", ib, ranges);
-                match ib.byte() {
-                    Some(_) => {}
-                    None => {
-                        next_states.insert(Self::Accept(ranges.clone()));
-                    }
-                }
-            }
-        }
-        impl safe_regex::internal::Machine for CompiledRegex_ {
-            type GroupRanges = [core::ops::Range<u32>; 0usize];
-            fn expression() -> &'static [u8] {
-                br"a*"
-            }
-            fn start(next_states: &mut States_) {
-                Self::star0(&Ranges_::new(), InputByte::Consumed(0), next_states);
-            }
-            fn try_accept(&self) -> Option<Self::GroupRanges> {
-                match self {
-                    Self::Accept(ranges) => Some(ranges.inner().clone()),
-                    _ => None,
-                }
-            }
-            fn make_next_states(&self, b: u8, n: u32, next_states: &mut States_) {
-                let ib = InputByte::Available(b, n);
-                // println!("make_next_states {:?} {:?}", ib, self);
-                match self {
-                    Self::Byte1(ranges) => Self::byte1(ranges, ib, next_states),
-                    Self::Accept(ranges) => Self::accept(ranges, ib, next_states),
-                }
-            }
-        }
-        <safe_regex::Matcher<CompiledRegex_>>::new()
+        start.clone().or_else(|| b0.clone())
     } };
     assert_eq!(
         format!("{}", expected),
@@ -850,109 +198,25 @@ fn star() {
 }
 
 #[test]
-fn empty_group_in_seq() {
-    let expected = quote! { {
-        use safe_regex::internal::InputByte;
-        #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-        struct Ranges_([core::ops::Range<u32>; 1usize]);
-        impl Ranges_ {
-            pub fn new() -> Self {
-                Self([u32::MAX..u32::MAX])
-            }
-            pub fn enter(mut self, group: usize, n: u32) -> Self {
-                self.0[group].start = n;
-                self.0[group].end = n;
-                self
-            }
-            pub fn exit(mut self, group: usize, n: u32) -> Self {
-                self.0[group].end = n;
-                self
-            }
-            pub fn skip_past(mut self, group: usize, n: u32) -> Self {
-                self.0[group].end = n + 1;
-                self
-            }
-            pub fn inner(&self) -> &[core::ops::Range<u32>; 1usize] {
-                &self.0
-            }
+fn empty_group_at_start() {
+    let expected = quote! { |data: &[u8]| {
+        assert!(data.len() < usize::MAX - 2);
+        let mut start = Some((0..0,));
+        let mut b0: Option<(core::ops::Range<usize>,)> = None;
+        for (n, b) in data.iter().enumerate() {
+            b0 = start.clone().filter(|_| *b == 97u8);
+            start = None;
         }
-        type States_ =
-            std::collections::HashSet<CompiledRegex_, std::collections::hash_map::RandomState>;
-        #[doc = "br\"()a\""]
-        #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-        enum CompiledRegex_ {
-            Byte2(Ranges_),
-            Empty1(Ranges_),
-            Accept(Ranges_),
-        }
-        impl CompiledRegex_ {
-            fn byte2(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                // println!("{} {:?} {:?}", stringify!(byte2), ib, ranges);
-                match ib.byte() {
-                    Some(b) if b == 97u8 => {
-                        Self::accept(
-                            ranges,
-                            ib.consume(),
-                            next_states, //
-                        ) //
-                    }
-                    Some(_) => {}
-                    None => {
-                        next_states.insert(Self::Byte2(ranges.clone()));
-                    }
-                }
-            }
-            fn empty1(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                // println!("{} {:?} {:?}", stringify!(empty1), ib, ranges);
-                Self::group_end0(
-                    ranges,
-                    ib,
-                    next_states, //
-                );
-            }
-            fn group_start0(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                // println!("{} {:?} {:?}", stringify!(group_start0), ib, ranges);
-                Self::empty1(&ranges.clone().enter(0usize, ib.index()), ib, next_states);
-            }
-            fn group_end0(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                // println!("{} {:?} {:?}", stringify!(group_end0), ib, ranges);
-                Self::byte2(ranges, ib, next_states);
-            }
-            fn accept(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                // println!("accept {:?} {:?}", ib, ranges);
-                match ib.byte() {
-                    Some(_) => {}
-                    None => {
-                        next_states.insert(Self::Accept(ranges.clone()));
-                    }
-                }
-            }
-        }
-        impl safe_regex::internal::Machine for CompiledRegex_ {
-            type GroupRanges = [core::ops::Range<u32>; 1usize];
-            fn expression() -> &'static [u8] {
-                br"()a"
-            }
-            fn start(next_states: &mut States_) {
-                Self::group_start0(&Ranges_::new(), InputByte::Consumed(0), next_states);
-            }
-            fn try_accept(&self) -> Option<Self::GroupRanges> {
-                match self {
-                    Self::Accept(ranges) => Some(ranges.inner().clone()),
-                    _ => None,
-                }
-            }
-            fn make_next_states(&self, b: u8, n: u32, next_states: &mut States_) {
-                let ib = InputByte::Available(b, n);
-                // println!("make_next_states {:?} {:?}", ib, self);
-                match self {
-                    Self::Byte2(ranges) => Self::byte2(ranges, ib, next_states),
-                    Self::Empty1(ranges) => Self::empty1(ranges, ib, next_states),
-                    Self::Accept(ranges) => Self::accept(ranges, ib, next_states),
-                }
-            }
-        }
-        <safe_regex::Matcher<CompiledRegex_>>::new()
+        b0.map(|(r0,)| {
+            (
+                //
+                if r0.start != usize::MAX && r0.end != usize::MAX {
+                    Some(&data[r0])
+                } else {
+                    None
+                },
+            )
+        })
     } };
     assert_eq!(
         format!("{}", expected),
