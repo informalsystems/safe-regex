@@ -1,27 +1,40 @@
-use safe_regex::internal::escape_ascii;
+#![forbid(unsafe_code)]
+mod matcher;
 
-/// This compiles in a few seconds.
-///
+/// Non-release build completes in a few seconds:
 /// ```
 /// $ cargo clean
-/// $ time cargo run --package safe-regex --bin compilable --release
+/// $ time cargo run --package safe-regex --bin uncompilable
 ///    Compiling safe-proc-macro2 v1.0.24 (safe-regex-rs/safe-proc-macro2)
 ///    Compiling unicode-xid v0.2.1
 ///    Compiling safe-quote v1.0.9 (safe-regex-rs/safe-quote)
 ///    Compiling safe-regex-compiler v0.1.1 (safe-regex-rs/safe-regex-compiler)
-///    Compiling safe-regex-macro v0.1.1 (safe-regex-rs/safe-regex-macro)
-///    Compiling safe-regex v0.1.1 (safe-regex-rs/safe-regex)
-///     Finished release [optimized] target(s) in 5.56s
-///      Running `safe-regex-rs/target/release/compilable`
+///     Finished dev [unoptimized + debuginfo] target(s) in 6.73s
+///      Running `safe-regex-rs/target/debug/uncompilable`
 /// Matcher(br"a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?aaaaaaaaaaaaaaaaaaaa").match_all("aaaaaaaaaaaaaaaaaaaa") -> Some(Groups { ranges: [], data: [97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97] })
 ///
-/// real	0m5.856s
-/// user	0m7.660s
-/// sys	0m0.772s
+/// real	0m7.099s
+/// user	0m8.850s
+/// sys	0m1.192s
 /// ```
+///
+/// Non-release build hangs.
+/// It didn't complete in 30 minutes on a 2.3 GHz 4-core i5 with 16 GB RAM.
+/// ```
+/// $ cargo clean
+/// $ time cargo run --package safe-regex --bin uncompilable --release
+///    Compiling safe-proc-macro2 v1.0.24 (safe-regex-rs/safe-proc-macro2)
+///    Compiling unicode-xid v0.2.1
+///    Compiling safe-quote v1.0.9 (safe-regex-rs/safe-quote)
+///    Compiling safe-regex-compiler v0.1.1 (safe-regex-rs/safe-regex-compiler)
+///     Building [========================>    ] 8/9: uncompilable(bin)
+/// ```
+///
+/// Strangely, the release build completes quickly when the contents of the
+/// `matcher` crate is moved to this crate.
 fn main() {
     let re = {
-        use safe_regex::internal::InputByte;
+        use matcher::{InputByte, Machine, Matcher};
         #[derive(Clone, Debug, PartialEq, Eq, Hash)]
         struct Ranges_;
         impl Ranges_ {
@@ -270,12 +283,6 @@ fn main() {
                 }
             }
             fn optional38(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                Self::optional38b(ranges, ib, next_states)
-            }
-            fn optional38b(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                Self::optional38c(ranges, ib, next_states)
-            }
-            fn optional38c(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 Self::byte39(ranges, ib, next_states);
                 Self::byte40(ranges, ib, next_states);
             }
@@ -289,120 +296,6 @@ fn main() {
                 }
             }
             fn optional36(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                Self::optional36b(ranges, ib, next_states)
-            }
-            fn optional36b(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                Self::optional36c(ranges, ib, next_states)
-            }
-            fn optional34(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                Self::optional34b(ranges, ib, next_states)
-            }
-            fn optional34b(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                Self::optional34c(ranges, ib, next_states)
-            }
-            fn optional32(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                Self::optional32b(ranges, ib, next_states)
-            }
-            fn optional32b(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                Self::optional32c(ranges, ib, next_states)
-            }
-            fn optional30(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                Self::optional30b(ranges, ib, next_states)
-            }
-            fn optional30b(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                Self::optional30c(ranges, ib, next_states)
-            }
-            fn optional28(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                Self::optional28b(ranges, ib, next_states)
-            }
-            fn optional28b(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                Self::optional28c(ranges, ib, next_states)
-            }
-            fn optional26(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                Self::optional26b(ranges, ib, next_states)
-            }
-            fn optional26b(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                Self::optional26c(ranges, ib, next_states)
-            }
-            fn optional24(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                Self::optional24b(ranges, ib, next_states)
-            }
-            fn optional24b(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                Self::optional24c(ranges, ib, next_states)
-            }
-            fn optional22(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                Self::optional22b(ranges, ib, next_states)
-            }
-            fn optional22b(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                Self::optional22c(ranges, ib, next_states)
-            }
-            fn optional20(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                Self::optional20b(ranges, ib, next_states)
-            }
-            fn optional20b(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                Self::optional20c(ranges, ib, next_states)
-            }
-            fn optional18(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                Self::optional18b(ranges, ib, next_states)
-            }
-            fn optional18b(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                Self::optional18c(ranges, ib, next_states)
-            }
-            fn optional16(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                Self::optional16b(ranges, ib, next_states)
-            }
-            fn optional16b(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                Self::optional16c(ranges, ib, next_states)
-            }
-            fn optional14(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                Self::optional14b(ranges, ib, next_states)
-            }
-            fn optional14b(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                Self::optional14c(ranges, ib, next_states)
-            }
-            fn optional12(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                Self::optional12b(ranges, ib, next_states)
-            }
-            fn optional12b(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                Self::optional12c(ranges, ib, next_states)
-            }
-            fn optional10(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                Self::optional10b(ranges, ib, next_states)
-            }
-            fn optional10b(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                Self::optional10c(ranges, ib, next_states)
-            }
-            fn optional8(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                Self::optional8b(ranges, ib, next_states)
-            }
-            fn optional8b(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                Self::optional8c(ranges, ib, next_states)
-            }
-            fn optional6(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                Self::optional6b(ranges, ib, next_states)
-            }
-            fn optional6b(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                Self::optional6c(ranges, ib, next_states)
-            }
-            fn optional4(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                Self::optional4b(ranges, ib, next_states)
-            }
-            fn optional4b(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                Self::optional4c(ranges, ib, next_states)
-            }
-            fn optional2(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                Self::optional2b(ranges, ib, next_states)
-            }
-            fn optional2b(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                Self::optional2c(ranges, ib, next_states)
-            }
-            fn optional0(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                Self::optional0b(ranges, ib, next_states)
-            }
-            fn optional0b(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
-                Self::optional0c(ranges, ib, next_states)
-            }
-            fn optional36c(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 Self::byte37(ranges, ib, next_states);
                 Self::optional38(ranges, ib, next_states);
             }
@@ -415,7 +308,7 @@ fn main() {
                     }
                 }
             }
-            fn optional34c(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+            fn optional34(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 Self::byte35(ranges, ib, next_states);
                 Self::optional36(ranges, ib, next_states);
             }
@@ -428,7 +321,7 @@ fn main() {
                     }
                 }
             }
-            fn optional32c(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+            fn optional32(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 Self::byte33(ranges, ib, next_states);
                 Self::optional34(ranges, ib, next_states);
             }
@@ -441,7 +334,7 @@ fn main() {
                     }
                 }
             }
-            fn optional30c(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+            fn optional30(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 Self::byte31(ranges, ib, next_states);
                 Self::optional32(ranges, ib, next_states);
             }
@@ -454,7 +347,7 @@ fn main() {
                     }
                 }
             }
-            fn optional28c(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+            fn optional28(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 Self::byte29(ranges, ib, next_states);
                 Self::optional30(ranges, ib, next_states);
             }
@@ -467,7 +360,7 @@ fn main() {
                     }
                 }
             }
-            fn optional26c(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+            fn optional26(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 Self::byte27(ranges, ib, next_states);
                 Self::optional28(ranges, ib, next_states);
             }
@@ -480,7 +373,7 @@ fn main() {
                     }
                 }
             }
-            fn optional24c(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+            fn optional24(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 Self::byte25(ranges, ib, next_states);
                 Self::optional26(ranges, ib, next_states);
             }
@@ -493,7 +386,7 @@ fn main() {
                     }
                 }
             }
-            fn optional22c(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+            fn optional22(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 Self::byte23(ranges, ib, next_states);
                 Self::optional24(ranges, ib, next_states);
             }
@@ -506,7 +399,7 @@ fn main() {
                     }
                 }
             }
-            fn optional20c(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+            fn optional20(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 Self::byte21(ranges, ib, next_states);
                 Self::optional22(ranges, ib, next_states);
             }
@@ -519,7 +412,7 @@ fn main() {
                     }
                 }
             }
-            fn optional18c(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+            fn optional18(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 Self::byte19(ranges, ib, next_states);
                 Self::optional20(ranges, ib, next_states);
             }
@@ -532,7 +425,7 @@ fn main() {
                     }
                 }
             }
-            fn optional16c(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+            fn optional16(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 Self::byte17(ranges, ib, next_states);
                 Self::optional18(ranges, ib, next_states);
             }
@@ -545,7 +438,7 @@ fn main() {
                     }
                 }
             }
-            fn optional14c(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+            fn optional14(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 Self::byte15(ranges, ib, next_states);
                 Self::optional16(ranges, ib, next_states);
             }
@@ -558,7 +451,7 @@ fn main() {
                     }
                 }
             }
-            fn optional12c(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+            fn optional12(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 Self::byte13(ranges, ib, next_states);
                 Self::optional14(ranges, ib, next_states);
             }
@@ -571,7 +464,7 @@ fn main() {
                     }
                 }
             }
-            fn optional10c(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+            fn optional10(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 Self::byte11(ranges, ib, next_states);
                 Self::optional12(ranges, ib, next_states);
             }
@@ -584,7 +477,7 @@ fn main() {
                     }
                 }
             }
-            fn optional8c(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+            fn optional8(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 Self::byte9(ranges, ib, next_states);
                 Self::optional10(ranges, ib, next_states);
             }
@@ -597,7 +490,7 @@ fn main() {
                     }
                 }
             }
-            fn optional6c(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+            fn optional6(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 Self::byte7(ranges, ib, next_states);
                 Self::optional8(ranges, ib, next_states);
             }
@@ -610,7 +503,7 @@ fn main() {
                     }
                 }
             }
-            fn optional4c(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+            fn optional4(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 Self::byte5(ranges, ib, next_states);
                 Self::optional6(ranges, ib, next_states);
             }
@@ -623,7 +516,7 @@ fn main() {
                     }
                 }
             }
-            fn optional2c(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+            fn optional2(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 Self::byte3(ranges, ib, next_states);
                 Self::optional4(ranges, ib, next_states);
             }
@@ -636,7 +529,7 @@ fn main() {
                     }
                 }
             }
-            fn optional0c(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
+            fn optional0(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 Self::byte1(ranges, ib, next_states);
                 Self::optional2(ranges, ib, next_states);
             }
@@ -649,7 +542,7 @@ fn main() {
                 }
             }
         }
-        impl safe_regex::internal::Machine for CompiledRegex_ {
+        impl Machine for CompiledRegex_ {
             type GroupRanges = [core::ops::Range<u32>; 0usize];
             fn expression() -> &'static [u8] {
                 br"a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?aaaaaaaaaaaaaaaaaaaa"
@@ -710,13 +603,13 @@ fn main() {
                 }
             }
         }
-        <safe_regex::Matcher<CompiledRegex_>>::new()
+        <Matcher<CompiledRegex_>>::new()
     };
     let data = b"aaaaaaaaaaaaaaaaaaaa";
     println!(
         "{:?}.match_all({:?}) -> {:?}",
         re,
-        escape_ascii(data),
+        matcher::escape_ascii(data),
         re.match_all(data)
     );
 }
