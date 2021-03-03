@@ -105,7 +105,6 @@ pub trait Machine {
 /// This is a zero-length type.
 /// The `regex!` macro generates a Rust type that implements the regular expression.
 /// This `Matcher` is just a holder for that type.
-// TODO(mleonhard) Remove this and update docs.
 pub struct Matcher<T> {
     phantom: PhantomData<T>,
 }
@@ -159,7 +158,6 @@ where
     }
 }
 
-// TODO(mleonhard) Replace this run-time checking with compile-time checking.
 #[derive(Clone, Debug, PartialEq)]
 /// Groups captured by a regular expression.
 pub struct Groups<'d, T: AsRef<[Range<u32>]>> {
