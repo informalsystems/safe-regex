@@ -75,6 +75,7 @@
 //! - DONE - Design API
 //! - DONE - Implement
 //! - DONE - Add integration tests
+//! - Support more than 10 matching groups
 //! - Increase coverage
 //! - Add fuzzing tests
 //! - Add common character classes: whitespace, letters, punctuation, etc.
@@ -94,175 +95,618 @@
 // https://swtch.com/~rsc/regexp/regexp1.html
 
 #![forbid(unsafe_code)]
-use core::fmt::Debug;
-use core::hash::Hash;
-use core::marker::PhantomData;
-use core::ops::Range;
 pub use safe_regex_macro::regex;
 
-/// A compiled regular expression.
-///
-/// This is a zero-length type.
-/// The `regex!` macro generates a Rust type that implements the regular expression.
-/// This `Matcher` is just a holder for that type.
-// TODO(mleonhard) Remove this and update docs.
-pub struct Matcher<T> {
-    phantom: PhantomData<T>,
+pub trait IsMatch {
+    fn is_match(&self, data: &[u8]) -> bool;
 }
-impl<S, T> Matcher<T>
+
+pub struct Matcher0<F>
 where
-    S: AsRef<[std::ops::Range<u32>]> + Debug,
-    T: internal::Machine<GroupRanges = S> + Eq + Hash + Debug + Sized,
+    F: Fn(&[u8]) -> Option<()>,
 {
-    /// Executes the regular expression against the byte string `data`.
-    ///
-    /// Returns `Some` if the expresison matched all of the bytes in `data`.
-    ///
-    /// This is not a sub-string search.
-    /// If you need a sub-string search,
-    /// put `.*` at the beginning and end of the regex.
-    ///
-    /// Returns `None` if the expression did not match `data`.
+    f: F,
+}
+impl<F> Matcher0<F>
+where
+    F: Fn(&[u8]) -> Option<()>,
+{
     #[must_use]
-    #[allow(clippy::unused_self)]
-    pub fn match_all<'d>(&self, data: &'d [u8]) -> Option<Groups<'d, T::GroupRanges>> {
-        T::match_all(data)
+    pub fn match_all(&self, data: &[u8]) -> Option<()> {
+        (self.f)(data)
     }
-
-    /// This is used internally by the `regex!` macro.
-    ///
-    /// We can make this function `const` when
-    /// [trait bounds on \`const fn\` parameters are stable](https://github.com/rust-lang/rust/issues/57563).
     #[must_use]
-    pub fn new() -> Self {
-        Self {
-            phantom: PhantomData,
-        }
+    pub fn new(f: F) -> Self {
+        Self { f }
     }
 }
-impl<S, T> Default for Matcher<T>
+impl<F> IsMatch for Matcher0<F>
 where
-    S: AsRef<[std::ops::Range<u32>]> + Debug,
-    T: internal::Machine<GroupRanges = S> + Eq + Hash + Debug + Sized,
+    F: Fn(&[u8]) -> Option<()>,
 {
-    fn default() -> Self {
-        Self::new()
+    #[must_use]
+    fn is_match(&self, data: &[u8]) -> bool {
+        (self.f)(data).is_some()
     }
 }
-impl<S, T> Debug for Matcher<T>
+
+pub struct Matcher1<F>
 where
-    S: AsRef<[std::ops::Range<u32>]> + Debug,
-    T: internal::Machine<GroupRanges = S> + Eq + Hash + Debug + Sized,
+    F: for<'d> Fn(&'d [u8]) -> Option<(Option<&'d [u8]>,)>,
 {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
-        write!(
-            f,
-            r#"Matcher(br"{}")"#,
-            internal::escape_ascii(T::expression())
-        )
+    f: F,
+}
+impl<F> Matcher1<F>
+where
+    F: for<'d> Fn(&'d [u8]) -> Option<(Option<&'d [u8]>,)>,
+{
+    pub fn match_all<'d>(&self, data: &'d [u8]) -> Option<(Option<&'d [u8]>,)> {
+        (self.f)(data)
+    }
+    #[must_use]
+    pub fn new(f: F) -> Self {
+        Self { f }
+    }
+}
+impl<F> IsMatch for Matcher1<F>
+where
+    F: for<'d> Fn(&'d [u8]) -> Option<(Option<&'d [u8]>,)>,
+{
+    fn is_match(&self, data: &[u8]) -> bool {
+        (self.f)(data).is_some()
     }
 }
 
-// TODO(mleonhard) Replace this run-time checking with compile-time checking.
-#[derive(Clone, Debug, PartialEq)]
-/// Groups captured by a regular expression.
-pub struct Groups<'d, T: AsRef<[Range<u32>]>> {
-    ranges: T,
-    data: &'d [u8],
+pub struct Matcher2<F>
+where
+    F: for<'d> Fn(&'d [u8]) -> Option<(Option<&'d [u8]>, Option<&'d [u8]>)>,
+{
+    f: F,
 }
-impl<'d, T: AsRef<[Range<u32>]>> Groups<'d, T> {
-    /// Creates a new struct.
-    ///
-    /// `data` is the byte string the regular expression matched against.
-    ///
-    /// `ranges` is an array of ranges which are the regions inside `data`
-    /// that matched capturing groups.
-    pub fn new(ranges: T, data: &'d [u8]) -> Self {
-        Self { ranges, data }
+impl<F> Matcher2<F>
+where
+    F: for<'d> Fn(&'d [u8]) -> Option<(Option<&'d [u8]>, Option<&'d [u8]>)>,
+{
+    pub fn match_all<'d>(&self, data: &'d [u8]) -> Option<(Option<&'d [u8]>, Option<&'d [u8]>)> {
+        (self.f)(data)
     }
-
-    /// Get the range of capturing group number `n`.
-    /// To find the `n` value for a particular group in a regex, count the
-    /// number of open parenthesis `(` symbols that appear before the group.
-    ///
-    /// Note: Group 0 is the first group.
-    /// It is NOT the matching portion of the string.
-    ///
-    /// Returns None if the group did not match any portion of the string.
-    ///
-    /// Panics if the regular expression does not have a capturing group `n`.
-    ///
-    /// # Examples
-    /// ```rust
-    /// use safe_regex::{regex, Matcher};
-    /// let re: Matcher<_> = regex!(br"(a)(b)");
-    /// let groups = re.match_all(b"ab").unwrap();
-    /// assert_eq!(0..1, groups.group_range(0).unwrap());
-    /// assert_eq!(1..2, groups.group_range(1).unwrap());
-    /// // groups.group_range(2); // panics
-    /// ```
-    ///
-    /// ```rust
-    /// use safe_regex::{regex, Matcher};
-    /// let re: Matcher<_> = regex!(br"(a)|(b)");
-    /// let groups = re.match_all(b"b").unwrap();
-    /// assert_eq!(None, groups.group_range(0));
-    /// assert_eq!(Some(0..1), groups.group_range(1));
-    /// ```
-    pub fn group_range(&self, n: usize) -> Option<Range<usize>> {
-        if let Some(r) = self.ranges.as_ref().get(n) {
-            if *r == (u32::MAX..u32::MAX) {
-                None
-            } else {
-                Some((r.start as usize)..(r.end as usize))
-            }
-        } else {
-            panic!("group {} not found in Match struct", n)
-        }
+    #[must_use]
+    pub fn new(f: F) -> Self {
+        Self { f }
     }
+}
+impl<F> IsMatch for Matcher2<F>
+where
+    F: for<'d> Fn(&'d [u8]) -> Option<(Option<&'d [u8]>, Option<&'d [u8]>)>,
+{
+    fn is_match(&self, data: &[u8]) -> bool {
+        (self.f)(data).is_some()
+    }
+}
 
-    /// Gets the slice matched by capturing group number `n`.
-    ///
-    /// To find the `n` value for a particular group in a regex, count the
-    /// number of open parenthesis `(` symbols that appear before the group.
-    ///
-    /// Note: Group 0 is the first group.
-    /// It is NOT the matching portion of the string.
-    ///
-    /// Returns None if the group did not match any portion of the string.
-    ///
-    /// Panics if the regular expression does not have a capturing group `n`.
-    ///
-    /// # Examples
-    /// ```rust
-    /// use safe_regex::{regex, Matcher};
-    /// let re: Matcher<_> = regex!(br"(a)(b)");
-    /// let groups = re.match_all(b"ab").unwrap();
-    /// assert_eq!(b"a", groups.group(0).unwrap());
-    /// assert_eq!(b"b", groups.group(1).unwrap());
-    /// // groups.group(2); // panics
-    /// ```
-    ///
-    /// ```rust
-    /// use safe_regex::{regex, Matcher};
-    /// let re: Matcher<_> = regex!(br"(a)|(b)");
-    /// let groups = re.match_all(b"b").unwrap();
-    /// assert_eq!(None, groups.group(0));
-    /// assert_eq!(b"b", groups.group(1).unwrap());
-    /// ```
-    pub fn group(&self, n: usize) -> Option<&[u8]> {
-        Some(&self.data[self.group_range(n)?])
+pub struct Matcher3<F>
+where
+    F: for<'d> Fn(&'d [u8]) -> Option<(Option<&'d [u8]>, Option<&'d [u8]>, Option<&'d [u8]>)>,
+{
+    f: F,
+}
+impl<F> Matcher3<F>
+where
+    F: for<'d> Fn(&'d [u8]) -> Option<(Option<&'d [u8]>, Option<&'d [u8]>, Option<&'d [u8]>)>,
+{
+    #[must_use]
+    pub fn match_all<'d>(
+        &self,
+        data: &'d [u8],
+    ) -> Option<(Option<&'d [u8]>, Option<&'d [u8]>, Option<&'d [u8]>)> {
+        (self.f)(data)
+    }
+    #[must_use]
+    pub fn new(f: F) -> Self {
+        Self { f }
+    }
+}
+impl<F> IsMatch for Matcher3<F>
+where
+    F: for<'d> Fn(&'d [u8]) -> Option<(Option<&'d [u8]>, Option<&'d [u8]>, Option<&'d [u8]>)>,
+{
+    #[must_use]
+    fn is_match(&self, data: &[u8]) -> bool {
+        (self.f)(data).is_some()
+    }
+}
+
+pub struct Matcher4<F>
+where
+    F: for<'d> Fn(
+        &'d [u8],
+    ) -> Option<(
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+    )>,
+{
+    f: F,
+}
+impl<F> Matcher4<F>
+where
+    F: for<'d> Fn(
+        &'d [u8],
+    ) -> Option<(
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+    )>,
+{
+    #[must_use]
+    pub fn match_all<'d>(
+        &self,
+        data: &'d [u8],
+    ) -> Option<(
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+    )> {
+        (self.f)(data)
+    }
+    #[must_use]
+    pub fn new(f: F) -> Self {
+        Self { f }
+    }
+}
+impl<F> IsMatch for Matcher4<F>
+where
+    F: for<'d> Fn(
+        &'d [u8],
+    ) -> Option<(
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+    )>,
+{
+    #[must_use]
+    fn is_match(&self, data: &[u8]) -> bool {
+        (self.f)(data).is_some()
+    }
+}
+
+pub struct Matcher5<F>
+where
+    F: for<'d> Fn(
+        &'d [u8],
+    ) -> Option<(
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+    )>,
+{
+    f: F,
+}
+impl<F> Matcher5<F>
+where
+    F: for<'d> Fn(
+        &'d [u8],
+    ) -> Option<(
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+    )>,
+{
+    #[must_use]
+    pub fn match_all<'d>(
+        &self,
+        data: &'d [u8],
+    ) -> Option<(
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+    )> {
+        (self.f)(data)
+    }
+    #[must_use]
+    pub fn new(f: F) -> Self {
+        Self { f }
+    }
+}
+impl<F> IsMatch for Matcher5<F>
+where
+    F: for<'d> Fn(
+        &'d [u8],
+    ) -> Option<(
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+    )>,
+{
+    #[must_use]
+    fn is_match(&self, data: &[u8]) -> bool {
+        (self.f)(data).is_some()
+    }
+}
+
+pub struct Matcher6<F>
+where
+    F: for<'d> Fn(
+        &'d [u8],
+    ) -> Option<(
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+    )>,
+{
+    f: F,
+}
+impl<F> Matcher6<F>
+where
+    F: for<'d> Fn(
+        &'d [u8],
+    ) -> Option<(
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+    )>,
+{
+    #[must_use]
+    pub fn match_all<'d>(
+        &self,
+        data: &'d [u8],
+    ) -> Option<(
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+    )> {
+        (self.f)(data)
+    }
+    #[must_use]
+    pub fn new(f: F) -> Self {
+        Self { f }
+    }
+}
+impl<F> IsMatch for Matcher6<F>
+where
+    F: for<'d> Fn(
+        &'d [u8],
+    ) -> Option<(
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+    )>,
+{
+    #[must_use]
+    fn is_match(&self, data: &[u8]) -> bool {
+        (self.f)(data).is_some()
+    }
+}
+
+pub struct Matcher7<F>
+where
+    F: for<'d> Fn(
+        &'d [u8],
+    ) -> Option<(
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+    )>,
+{
+    f: F,
+}
+impl<F> Matcher7<F>
+where
+    F: for<'d> Fn(
+        &'d [u8],
+    ) -> Option<(
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+    )>,
+{
+    #[must_use]
+    pub fn match_all<'d>(
+        &self,
+        data: &'d [u8],
+    ) -> Option<(
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+    )> {
+        (self.f)(data)
+    }
+    #[must_use]
+    pub fn new(f: F) -> Self {
+        Self { f }
+    }
+}
+impl<F> IsMatch for Matcher7<F>
+where
+    F: for<'d> Fn(
+        &'d [u8],
+    ) -> Option<(
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+    )>,
+{
+    #[must_use]
+    fn is_match(&self, data: &[u8]) -> bool {
+        (self.f)(data).is_some()
+    }
+}
+
+pub struct Matcher8<F>
+where
+    F: for<'d> Fn(
+        &'d [u8],
+    ) -> Option<(
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+    )>,
+{
+    f: F,
+}
+impl<F> Matcher8<F>
+where
+    F: for<'d> Fn(
+        &'d [u8],
+    ) -> Option<(
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+    )>,
+{
+    #[must_use]
+    pub fn match_all<'d>(
+        &self,
+        data: &'d [u8],
+    ) -> Option<(
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+    )> {
+        (self.f)(data)
+    }
+    #[must_use]
+    pub fn new(f: F) -> Self {
+        Self { f }
+    }
+}
+impl<F> IsMatch for Matcher8<F>
+where
+    F: for<'d> Fn(
+        &'d [u8],
+    ) -> Option<(
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+    )>,
+{
+    #[must_use]
+    fn is_match(&self, data: &[u8]) -> bool {
+        (self.f)(data).is_some()
+    }
+}
+
+pub struct Matcher9<F>
+where
+    F: for<'d> Fn(
+        &'d [u8],
+    ) -> Option<(
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+    )>,
+{
+    f: F,
+}
+impl<F> Matcher9<F>
+where
+    F: for<'d> Fn(
+        &'d [u8],
+    ) -> Option<(
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+    )>,
+{
+    #[must_use]
+    pub fn match_all<'d>(
+        &self,
+        data: &'d [u8],
+    ) -> Option<(
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+    )> {
+        (self.f)(data)
+    }
+    #[must_use]
+    pub fn new(f: F) -> Self {
+        Self { f }
+    }
+}
+impl<F> IsMatch for Matcher9<F>
+where
+    F: for<'d> Fn(
+        &'d [u8],
+    ) -> Option<(
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+    )>,
+{
+    #[must_use]
+    fn is_match(&self, data: &[u8]) -> bool {
+        (self.f)(data).is_some()
+    }
+}
+
+pub struct Matcher10<F>
+where
+    F: for<'d> Fn(
+        &'d [u8],
+    ) -> Option<(
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+    )>,
+{
+    f: F,
+}
+impl<F> Matcher10<F>
+where
+    F: for<'d> Fn(
+        &'d [u8],
+    ) -> Option<(
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+    )>,
+{
+    #[must_use]
+    pub fn match_all<'d>(
+        &self,
+        data: &'d [u8],
+    ) -> Option<(
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+    )> {
+        (self.f)(data)
+    }
+    #[must_use]
+    pub fn new(f: F) -> Self {
+        Self { f }
+    }
+}
+impl<F> IsMatch for Matcher10<F>
+where
+    F: for<'d> Fn(
+        &'d [u8],
+    ) -> Option<(
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+        Option<&'d [u8]>,
+    )>,
+{
+    #[must_use]
+    fn is_match(&self, data: &[u8]) -> bool {
+        (self.f)(data).is_some()
     }
 }
 
 pub mod internal {
-    use core::convert::TryFrom;
-    use core::fmt::Debug;
-    use core::hash::Hash;
-    use core::ops::Range;
-    pub use safe_regex_macro::regex;
-    use std::collections::HashSet;
-
     /// Converts the bytes into an ASCII string.
     pub fn escape_ascii(input: impl AsRef<[u8]>) -> String {
         let mut result = String::new();
@@ -272,97 +716,5 @@ pub mod internal {
             }
         }
         result
-    }
-
-    #[derive(Copy, Clone, PartialEq, Eq)]
-    pub enum InputByte {
-        Available(u8, u32),
-        Consumed(u32),
-    }
-    impl InputByte {
-        #[must_use]
-        #[allow(clippy::trivially_copy_pass_by_ref)]
-        pub fn byte(&self) -> Option<u8> {
-            match self {
-                InputByte::Available(b, _n) => Some(*b),
-                InputByte::Consumed(_n) => None,
-            }
-        }
-        #[must_use]
-        #[allow(clippy::trivially_copy_pass_by_ref)]
-        pub fn index(&self) -> u32 {
-            match self {
-                InputByte::Available(_b, n) => *n,
-                InputByte::Consumed(n) => *n,
-            }
-        }
-        #[must_use]
-        #[allow(clippy::trivially_copy_pass_by_ref)]
-        pub fn consume(self) -> Self {
-            if let Self::Available(_b, n) = self {
-                Self::Consumed(n + 1)
-            } else {
-                panic!("`consume()` called on {:?}", self)
-            }
-        }
-    }
-    impl core::fmt::Debug for InputByte {
-        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
-            match self {
-                InputByte::Available(b, n) => {
-                    write!(f, "InputByte::Available(b'{}',{})", escape_ascii([*b]), n)
-                }
-                InputByte::Consumed(n) => write!(f, "InputByte::Consumed({})", n),
-            }
-        }
-    }
-
-    pub trait Machine {
-        type GroupRanges;
-        fn expression() -> &'static [u8];
-        fn start(next_states: &mut HashSet<Self>)
-        where
-            Self: Sized;
-        fn try_accept(&self) -> Option<Self::GroupRanges>;
-        fn make_next_states(&self, b: u8, n: u32, next_states: &mut HashSet<Self>)
-        where
-            Self: Sized;
-
-        #[must_use]
-        fn match_all(data: &[u8]) -> Option<crate::Groups<Self::GroupRanges>>
-        where
-            Self: Eq + Hash + Debug + Sized,
-            Self::GroupRanges: AsRef<[Range<u32>]> + Debug,
-        {
-            assert!(data.len() < u32::MAX as usize);
-            // println!("match_all b\"{}\"", escape_ascii(data));
-            // We store states in a set to eliminate duplicate states.
-            // This is necessary for the algorithm to work in useful time and memory.
-            let mut states: HashSet<Self> = HashSet::new();
-            Self::start(&mut states);
-            // println!("states = {:?}", states);
-            let mut next_states: HashSet<Self> = HashSet::new();
-            for (n, b) in data.iter().enumerate() {
-                // println!("process_byte {}", escape_ascii([*b]));
-                // We call `HashSet::drain` to use less memory.
-                // It might be faster to just use `iter()` and then call
-                // `HashSet::clear` after the loop.  Let's test before changing it.
-                for state in states.drain() {
-                    state.make_next_states(*b, u32::try_from(n).unwrap(), &mut next_states);
-                }
-                core::mem::swap(&mut states, &mut next_states);
-                // println!("states = {:?}", states);
-                if states.is_empty() {
-                    return None;
-                }
-            }
-            for state in states {
-                if let Some(group_ranges) = state.try_accept() {
-                    // println!("group_ranges = {:?}", group_ranges);
-                    return Some(crate::Groups::new(group_ranges, data));
-                }
-            }
-            None
-        }
     }
 }

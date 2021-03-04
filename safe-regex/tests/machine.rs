@@ -2,11 +2,12 @@
 // #![allow(unused_variables)]
 // #![allow(unused_assignments)]
 use safe_regex::internal::escape_ascii;
+use safe_regex::{IsMatch, Matcher0, Matcher1, Matcher10, Matcher2};
 
 #[test]
 fn byte() {
     // regex!(br"a")
-    let re: fn(&[u8]) -> Option<()> = |data: &[u8]| {
+    let re: Matcher0<_> = safe_regex::Matcher0::new(|data: &[u8]| {
         let mut start = Some(());
         let mut b0: Option<()> = None;
         for b in data.iter() {
@@ -14,20 +15,20 @@ fn byte() {
             start = None;
         }
         b0
-    };
-    assert_eq!(None, re(b""));
-    assert_eq!(None, re(b"X"));
-    re(b"a").unwrap();
-    assert_eq!(None, re(b"aX"));
-    assert_eq!(None, re(b"Xa"));
-    assert_eq!(None, re(b"aa"));
+    });
+    assert!(!re.is_match(b""));
+    assert!(!re.is_match(b"X"));
+    assert!(re.is_match(b"a"));
+    assert!(!re.is_match(b"aX"));
+    assert!(!re.is_match(b"Xa"));
+    assert!(!re.is_match(b"aa"));
 }
 
 #[test]
 fn any_byte() {
     #![allow(unused_variables)]
     // regex!(br".")
-    let re: fn(&[u8]) -> Option<()> = |data: &[u8]| {
+    let re: Matcher0<_> = safe_regex::Matcher0::new(|data: &[u8]| {
         let mut start = Some(());
         let mut b0: Option<()> = None;
         for b in data.iter() {
@@ -35,16 +36,16 @@ fn any_byte() {
             start = None;
         }
         b0
-    };
-    assert_eq!(None, re(b""));
-    re(b"X").unwrap();
-    assert_eq!(None, re(b"XY"));
+    });
+    assert!(!re.is_match(b""));
+    assert!(re.is_match(b"X"));
+    assert!(!re.is_match(b"XY"));
 }
 
 #[test]
 fn class_inclusive() {
     // regex!(br"[abc2-4]")
-    let re: fn(&[u8]) -> Option<()> = |data: &[u8]| {
+    let re: Matcher0<_> = safe_regex::Matcher0::new(|data: &[u8]| {
         let mut start = Some(());
         let mut b0: Option<()> = None;
         for b in data.iter() {
@@ -54,27 +55,27 @@ fn class_inclusive() {
             start = None;
         }
         b0
-    };
-    assert_eq!(None, re(b""));
-    assert_eq!(None, re(b"X"));
-    re(b"a").unwrap();
-    re(b"b").unwrap();
-    re(b"c").unwrap();
-    assert_eq!(None, re(b"1"));
-    re(b"2").unwrap();
-    re(b"3").unwrap();
-    re(b"4").unwrap();
-    assert_eq!(None, re(b"5"));
-    assert_eq!(None, re(b"Xa"));
-    assert_eq!(None, re(b"aX"));
-    assert_eq!(None, re(b"aa"));
-    assert_eq!(None, re(b"abc"));
+    });
+    assert!(!re.is_match(b""));
+    assert!(!re.is_match(b"X"));
+    assert!(re.is_match(b"a"));
+    assert!(re.is_match(b"b"));
+    assert!(re.is_match(b"c"));
+    assert!(!re.is_match(b"1"));
+    assert!(re.is_match(b"2"));
+    assert!(re.is_match(b"3"));
+    assert!(re.is_match(b"4"));
+    assert!(!re.is_match(b"5"));
+    assert!(!re.is_match(b"Xa"));
+    assert!(!re.is_match(b"aX"));
+    assert!(!re.is_match(b"aa"));
+    assert!(!re.is_match(b"abc"));
 }
 
 #[test]
 fn class_exclusive() {
     // regex!(br"[^abc2-4]")
-    let re: fn(&[u8]) -> Option<()> = |data: &[u8]| {
+    let re: Matcher0<_> = safe_regex::Matcher0::new(|data: &[u8]| {
         let mut start = Some(());
         let mut b0: Option<()> = None;
         for b in data.iter() {
@@ -84,25 +85,25 @@ fn class_exclusive() {
             start = None;
         }
         b0
-    };
-    assert_eq!(None, re(b""));
-    re(b"X").unwrap();
-    re(b"Y").unwrap();
-    assert_eq!(None, re(b"XY"));
-    assert_eq!(None, re(b"a"));
-    assert_eq!(None, re(b"b"));
-    assert_eq!(None, re(b"c"));
-    re(b"1").unwrap();
-    assert_eq!(None, re(b"2"));
-    assert_eq!(None, re(b"3"));
-    assert_eq!(None, re(b"4"));
-    re(b"5").unwrap();
+    });
+    assert!(!re.is_match(b""));
+    assert!(re.is_match(b"X"));
+    assert!(re.is_match(b"Y"));
+    assert!(!re.is_match(b"XY"));
+    assert!(!re.is_match(b"a"));
+    assert!(!re.is_match(b"b"));
+    assert!(!re.is_match(b"c"));
+    assert!(re.is_match(b"1"));
+    assert!(!re.is_match(b"2"));
+    assert!(!re.is_match(b"3"));
+    assert!(!re.is_match(b"4"));
+    assert!(re.is_match(b"5"));
 }
 
 #[test]
 fn seq() {
     // regex!(br"aab")
-    let re: fn(&[u8]) -> Option<()> = |data: &[u8]| {
+    let re: Matcher0<_> = safe_regex::Matcher0::new(|data: &[u8]| {
         let mut start = Some(());
         let mut b0: Option<()> = None;
         let mut b1: Option<()> = None;
@@ -114,30 +115,30 @@ fn seq() {
             start = None;
         }
         b2
-    };
-    assert_eq!(None, re(b""));
-    assert_eq!(None, re(b"X"));
-    assert_eq!(None, re(b"aX"));
-    assert_eq!(None, re(b"Xa"));
-    assert_eq!(None, re(b"aa"));
-    assert_eq!(None, re(b"Xaa"));
-    assert_eq!(None, re(b"aXa"));
-    assert_eq!(None, re(b"aaX"));
-    assert_eq!(None, re(b"aaa"));
-    re(b"aab").unwrap();
-    assert_eq!(None, re(b"Xaab"));
-    assert_eq!(None, re(b"aXab"));
-    assert_eq!(None, re(b"aaXb"));
-    assert_eq!(None, re(b"aabX"));
-    assert_eq!(None, re(b"aaba"));
-    assert_eq!(None, re(b"aabaa"));
-    assert_eq!(None, re(b"aabaab"));
+    });
+    assert!(!re.is_match(b""));
+    assert!(!re.is_match(b"X"));
+    assert!(!re.is_match(b"aX"));
+    assert!(!re.is_match(b"Xa"));
+    assert!(!re.is_match(b"aa"));
+    assert!(!re.is_match(b"Xaa"));
+    assert!(!re.is_match(b"aXa"));
+    assert!(!re.is_match(b"aaX"));
+    assert!(!re.is_match(b"aaa"));
+    assert!(re.is_match(b"aab"));
+    assert!(!re.is_match(b"Xaab"));
+    assert!(!re.is_match(b"aXab"));
+    assert!(!re.is_match(b"aaXb"));
+    assert!(!re.is_match(b"aabX"));
+    assert!(!re.is_match(b"aaba"));
+    assert!(!re.is_match(b"aabaa"));
+    assert!(!re.is_match(b"aabaab"));
 }
 
 #[test]
 fn alt() {
     // regex!(br"a|b")
-    let re: fn(&[u8]) -> Option<()> = |data: &[u8]| {
+    let re: Matcher0<_> = safe_regex::Matcher0::new(|data: &[u8]| {
         let mut start = Some(());
         let mut b0: Option<()> = None;
         let mut b1: Option<()> = None;
@@ -147,58 +148,113 @@ fn alt() {
             start = None;
         }
         None.or_else(|| b0.clone()).or_else(|| b1.clone())
-    };
-    assert_eq!(None, re(b""));
-    assert_eq!(None, re(b"X"));
-    re(b"a").unwrap();
-    re(b"b").unwrap();
-    assert_eq!(None, re(b"aX"));
-    assert_eq!(None, re(b"Xa"));
-    assert_eq!(None, re(b"bX"));
-    assert_eq!(None, re(b"Xb"));
-    assert_eq!(None, re(b"aa"));
-    assert_eq!(None, re(b"ab"));
-    assert_eq!(None, re(b"ba"));
-    assert_eq!(None, re(b"bb"));
+    });
+    assert!(!re.is_match(b""));
+    assert!(!re.is_match(b"X"));
+    assert!(re.is_match(b"a"));
+    assert!(re.is_match(b"b"));
+    assert!(!re.is_match(b"aX"));
+    assert!(!re.is_match(b"Xa"));
+    assert!(!re.is_match(b"bX"));
+    assert!(!re.is_match(b"Xb"));
+    assert!(!re.is_match(b"aa"));
+    assert!(!re.is_match(b"ab"));
+    assert!(!re.is_match(b"ba"));
+    assert!(!re.is_match(b"bb"));
 }
 
 #[test]
 fn group() {
     // regex!(br"(a)")
-    let re: fn(&[u8]) -> Option<(Option<&[u8]>,)> = |data: &[u8]| {
+    let re: safe_regex::Matcher1<_> = safe_regex::Matcher1::new(|data: &[u8]| {
         assert!(data.len() < usize::MAX - 2);
         let mut start = Some((usize::MAX..usize::MAX,));
         let mut b0: Option<(core::ops::Range<usize>,)> = None;
         for (n, b) in data.iter().enumerate() {
             b0 = start
                 .clone()
+                .map(|(r0,)| (n..n,))
+                .clone()
                 .filter(|_| *b == 97u8)
-                .map(|(r0,)| (n..n + 1,));
+                .map(|(r0,)| (r0.start..n + 1,));
             start = None;
         }
         b0.map(|(r0,)| {
+            (if r0.start != usize::MAX && r0.end != usize::MAX {
+                Some(&data[r0])
+            } else {
+                None
+            },)
+        })
+    });
+    assert_eq!(None, re.match_all(b""));
+    assert_eq!(None, re.match_all(b"X"));
+    assert_eq!(None, re.match_all(b"aX"));
+    assert_eq!(None, re.match_all(b"Xa"));
+    assert_eq!(None, re.match_all(b"aa"));
+    assert_eq!("a", escape_ascii(re.match_all(b"a").unwrap().0.unwrap()));
+}
+
+#[test]
+fn groups_nested() {
+    // regex!(br"(a(b))")
+    let re: safe_regex::Matcher2<_> = safe_regex::Matcher2::new(|data: &[u8]| {
+        assert!(data.len() < usize::MAX - 2);
+        let mut start = Some((usize::MAX..usize::MAX, usize::MAX..usize::MAX));
+        let mut b0: Option<(core::ops::Range<usize>, core::ops::Range<usize>)> = None;
+        let mut b1: Option<(core::ops::Range<usize>, core::ops::Range<usize>)> = None;
+        for (n, b) in data.iter().enumerate() {
+            b1 = b0
+                .clone()
+                .map(|(r0, r1)| (r0, n..n))
+                .clone()
+                .filter(|_| *b == 98u8)
+                .map(|(r0, r1)| (r0.start..n + 1, r1.start..n + 1));
+            b0 = start
+                .clone()
+                .map(|(r0, r1)| (n..n, r1))
+                .clone()
+                .filter(|_| *b == 97u8)
+                .map(|(r0, r1)| (r0.start..n + 1, r1));
+            start = None;
+        }
+        b1.map(|(r0, r1)| {
             (
-                //
                 if r0.start != usize::MAX && r0.end != usize::MAX {
                     Some(&data[r0])
                 } else {
                     None
                 },
+                if r1.start != usize::MAX && r1.end != usize::MAX {
+                    Some(&data[r1])
+                } else {
+                    None
+                },
             )
         })
-    };
-    assert_eq!(None, re(b""));
-    assert_eq!(None, re(b"X"));
-    assert_eq!(None, re(b"aX"));
-    assert_eq!(None, re(b"Xa"));
-    assert_eq!(None, re(b"aa"));
-    assert_eq!("a", escape_ascii(re(b"a").unwrap().0.unwrap()));
+    });
+    assert_eq!(None, re.match_all(b""));
+    assert_eq!(None, re.match_all(b"X"));
+    assert_eq!(None, re.match_all(b"aX"));
+    assert_eq!(None, re.match_all(b"Xa"));
+    assert_eq!(None, re.match_all(b"aa"));
+    let groups = re.match_all(b"ab").unwrap();
+    assert_eq!("ab", escape_ascii(groups.0.unwrap()));
+    assert_eq!("b", escape_ascii(groups.1.unwrap()));
+    assert_eq!(None, re.match_all(b"ba"));
+    assert_eq!(None, re.match_all(b"bb"));
+    assert_eq!(None, re.match_all(b"Xab"));
+    assert_eq!(None, re.match_all(b"aXb"));
+    assert_eq!(None, re.match_all(b"abX"));
+    assert_eq!(None, re.match_all(b"aba"));
+    assert_eq!(None, re.match_all(b"abab"));
+    assert_eq!(None, re.match_all(b"abXab"));
 }
 
 #[test]
 fn optional() {
     // regex!(br"a?")
-    let re: fn(&[u8]) -> Option<()> = |data: &[u8]| {
+    let re: Matcher0<_> = safe_regex::Matcher0::new(|data: &[u8]| {
         let mut start = Some(());
         let mut b0: Option<()> = None;
         for b in data.iter() {
@@ -206,20 +262,20 @@ fn optional() {
             start = None;
         }
         start.clone().or_else(|| b0.clone())
-    };
-    re(b"").unwrap();
-    re(b"a").unwrap();
-    assert_eq!(None, re(b"X"));
-    assert_eq!(None, re(b"aX"));
-    assert_eq!(None, re(b"Xa"));
-    assert_eq!(None, re(b"aa"));
+    });
+    assert!(re.is_match(b""));
+    assert!(re.is_match(b"a"));
+    assert!(!re.is_match(b"X"));
+    assert!(!re.is_match(b"aX"));
+    assert!(!re.is_match(b"Xa"));
+    assert!(!re.is_match(b"aa"));
 }
 
 // TODO(mleonhard) Add these and others to compiler test.
 #[test]
 fn optional_at_start() {
     // regex!(br"a?a")
-    let re: fn(&[u8]) -> Option<()> = |data: &[u8]| {
+    let re: Matcher0<_> = safe_regex::Matcher0::new(|data: &[u8]| {
         let mut start = Some(());
         let mut b0: Option<()> = None;
         let mut b1: Option<()> = None;
@@ -229,23 +285,23 @@ fn optional_at_start() {
             start = None;
         }
         b1
-    };
-    assert_eq!(None, re(b""));
-    assert_eq!(None, re(b"X"));
-    re(b"a").unwrap();
-    assert_eq!(None, re(b"aX"));
-    assert_eq!(None, re(b"Xa"));
-    re(b"aa").unwrap();
-    assert_eq!(None, re(b"aaX"));
-    assert_eq!(None, re(b"Xaa"));
-    assert_eq!(None, re(b"aXa"));
-    assert_eq!(None, re(b"aaa"));
+    });
+    assert!(!re.is_match(b""));
+    assert!(!re.is_match(b"X"));
+    assert!(re.is_match(b"a"));
+    assert!(!re.is_match(b"aX"));
+    assert!(!re.is_match(b"Xa"));
+    assert!(re.is_match(b"aa"));
+    assert!(!re.is_match(b"aaX"));
+    assert!(!re.is_match(b"Xaa"));
+    assert!(!re.is_match(b"aXa"));
+    assert!(!re.is_match(b"aaa"));
 }
 
 #[test]
 fn optional_at_end() {
     // regex!(br"aa?")
-    let re: fn(&[u8]) -> Option<()> = |data: &[u8]| {
+    let re: Matcher0<_> = safe_regex::Matcher0::new(|data: &[u8]| {
         let mut start = Some(());
         let mut b0: Option<()> = None;
         let mut b1: Option<()> = None;
@@ -255,23 +311,23 @@ fn optional_at_end() {
             start = None;
         }
         b0.or(b1)
-    };
-    assert_eq!(None, re(b""));
-    assert_eq!(None, re(b"X"));
-    re(b"a").unwrap();
-    assert_eq!(None, re(b"aX"));
-    assert_eq!(None, re(b"Xa"));
-    re(b"aa").unwrap();
-    assert_eq!(None, re(b"aaX"));
-    assert_eq!(None, re(b"Xaa"));
-    assert_eq!(None, re(b"aXa"));
-    assert_eq!(None, re(b"aaa"));
+    });
+    assert!(!re.is_match(b""));
+    assert!(!re.is_match(b"X"));
+    assert!(re.is_match(b"a"));
+    assert!(!re.is_match(b"aX"));
+    assert!(!re.is_match(b"Xa"));
+    assert!(re.is_match(b"aa"));
+    assert!(!re.is_match(b"aaX"));
+    assert!(!re.is_match(b"Xaa"));
+    assert!(!re.is_match(b"aXa"));
+    assert!(!re.is_match(b"aaa"));
 }
 
 #[test]
 fn optionals_in_groups() {
     // regex!(br"(a?)(a?)aa")
-    let re: fn(&[u8]) -> Option<(Option<&[u8]>, Option<&[u8]>)> = |data: &[u8]| {
+    let re: Matcher2<_> = safe_regex::Matcher2::new(|data: &[u8]| {
         assert!(data.len() < usize::MAX - 2);
         let mut start = Some((usize::MAX..usize::MAX, usize::MAX..usize::MAX));
         let mut b0: Option<(core::ops::Range<usize>, core::ops::Range<usize>)> = None;
@@ -330,42 +386,50 @@ fn optionals_in_groups() {
                 },
             )
         })
-    };
-    assert_eq!(None, re(b""));
-    assert_eq!(None, re(b"a"));
-    assert_eq!(None, re(b"Xaa"));
-    assert_eq!(None, re(b"aXa"));
-    assert_eq!(None, re(b"aaX"));
-    assert_eq!(None, re(b"Xaaa"));
-    assert_eq!(None, re(b"aXaa"));
-    assert_eq!(None, re(b"aaXa"));
-    assert_eq!(None, re(b"aaaX"));
+    });
+    assert!(!re.is_match(b""));
+    assert!(!re.is_match(b"a"));
+    assert!(!re.is_match(b"Xaa"));
+    assert!(!re.is_match(b"aXa"));
+    assert!(!re.is_match(b"aaX"));
+    assert!(!re.is_match(b"Xaaa"));
+    assert!(!re.is_match(b"aXaa"));
+    assert!(!re.is_match(b"aaXa"));
+    assert!(!re.is_match(b"aaaX"));
 
-    let groups = re(b"aa").unwrap();
+    let groups = re.match_all(b"aa").unwrap();
     assert_eq!("", escape_ascii(groups.0.unwrap()));
     assert_eq!("", escape_ascii(groups.1.unwrap()));
 
-    let groups = re(b"aaa").unwrap();
+    let groups = re.match_all(b"aaa").unwrap();
     assert_eq!("a", escape_ascii(groups.0.unwrap()));
     assert_eq!("", escape_ascii(groups.1.unwrap()));
 
-    let groups = re(b"aaaa").unwrap();
+    let groups = re.match_all(b"aaaa").unwrap();
     assert_eq!("a", escape_ascii(groups.0.unwrap()));
     assert_eq!("a", escape_ascii(groups.1.unwrap()));
 
-    assert_eq!(None, re(b"Xaaaa"));
-    assert_eq!(None, re(b"aXaaa"));
-    assert_eq!(None, re(b"aaXaa"));
-    assert_eq!(None, re(b"aaaXa"));
-    assert_eq!(None, re(b"aaaaX"));
-    assert_eq!(None, re(b"aaaaa"));
-    assert_eq!(None, re(b"aaaaaaaa"));
+    assert!(!re.is_match(b"Xaaaa"));
+    assert!(!re.is_match(b"aXaaa"));
+    assert!(!re.is_match(b"aaXaa"));
+    assert!(!re.is_match(b"aaaXa"));
+    assert!(!re.is_match(b"aaaaX"));
+    assert!(!re.is_match(b"aaaaa"));
+    assert!(!re.is_match(b"aaaaaaaa"));
+}
+
+#[test]
+fn capture10() {
+    // regex!(br"(a?)(a?)(a?)(a?)(a?)(a?)(a?)(a?)(a?)(a?)aaaaaaaaaa")
+    // let re: Matcher10<_> =
+    // ;
+    // assert!(re.is_match(b"aaaaaaaaaa"));
 }
 
 #[test]
 fn star() {
     // regex!(br"a*")
-    let re: fn(&[u8]) -> Option<()> = |data: &[u8]| {
+    let re: Matcher0<_> = safe_regex::Matcher0::new(|data: &[u8]| {
         let mut start = Some(());
         let mut b0: Option<()> = None;
         for b in data.iter() {
@@ -377,35 +441,35 @@ fn star() {
             start = None;
         }
         start.clone().or_else(|| b0.clone())
-    };
-    re(b"").unwrap();
-    assert_eq!(None, re(b"X"));
-    re(b"a").unwrap();
-    assert_eq!(None, re(b"aX"));
-    assert_eq!(None, re(b"Xa"));
-    re(b"aa").unwrap();
-    assert_eq!(None, re(b"Xaa"));
-    assert_eq!(None, re(b"aXa"));
-    assert_eq!(None, re(b"aaX"));
-    re(b"aaa").unwrap();
-    assert_eq!(None, re(b"Xaaa"));
-    assert_eq!(None, re(b"aXaa"));
-    assert_eq!(None, re(b"aaXa"));
-    assert_eq!(None, re(b"aaaX"));
-    re(b"aaaa").unwrap();
-    assert_eq!(None, re(b"Xaaaa"));
-    assert_eq!(None, re(b"aXaaa"));
-    assert_eq!(None, re(b"aaXaa"));
-    assert_eq!(None, re(b"aaaXa"));
-    assert_eq!(None, re(b"aaaaX"));
-    re(b"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa").unwrap();
-    assert_eq!(None, re(b"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaX"));
+    });
+    assert!(re.is_match(b""));
+    assert!(!re.is_match(b"X"));
+    assert!(re.is_match(b"a"));
+    assert!(!re.is_match(b"aX"));
+    assert!(!re.is_match(b"Xa"));
+    assert!(re.is_match(b"aa"));
+    assert!(!re.is_match(b"Xaa"));
+    assert!(!re.is_match(b"aXa"));
+    assert!(!re.is_match(b"aaX"));
+    assert!(re.is_match(b"aaa"));
+    assert!(!re.is_match(b"Xaaa"));
+    assert!(!re.is_match(b"aXaa"));
+    assert!(!re.is_match(b"aaXa"));
+    assert!(!re.is_match(b"aaaX"));
+    assert!(re.is_match(b"aaaa"));
+    assert!(!re.is_match(b"Xaaaa"));
+    assert!(!re.is_match(b"aXaaa"));
+    assert!(!re.is_match(b"aaXaa"));
+    assert!(!re.is_match(b"aaaXa"));
+    assert!(!re.is_match(b"aaaaX"));
+    assert!(re.is_match(b"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"));
+    assert!(!re.is_match(b"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaX"));
 }
 
 #[test]
 fn seq_in_star() {
     // regex!(br"(?abc)*")
-    let re: fn(&[u8]) -> Option<()> = |data: &[u8]| {
+    let re: Matcher0<_> = safe_regex::Matcher0::new(|data: &[u8]| {
         let mut start = Some(());
         let mut b0: Option<()> = None;
         let mut b1: Option<()> = None;
@@ -421,132 +485,29 @@ fn seq_in_star() {
             start = None;
         }
         start.clone().or_else(|| b2.clone())
-    };
-    re(b"").unwrap();
-    assert_eq!(None, re(b"X"));
-    assert_eq!(None, re(b"a"));
-    assert_eq!(None, re(b"ab"));
-    assert_eq!(None, re(b"Xabc"));
-    assert_eq!(None, re(b"aXbc"));
-    assert_eq!(None, re(b"abXc"));
-    assert_eq!(None, re(b"abcX"));
-    assert_eq!(None, re(b"abca"));
-    assert_eq!(None, re(b"abcab"));
-    assert_eq!(None, re(b"abcXabc"));
-    re(b"abc").unwrap();
-    re(b"abcabc").unwrap();
-    re(b"abcabcabc").unwrap();
-    re(b"abcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabc").unwrap();
-    assert_eq!(
-        None,
-        re(b"abcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcX")
-    );
-}
-
-#[test]
-fn empty_group_at_start() {
-    #![allow(unused_variables)]
-    // regex!(br"()a")
-    let re: fn(&[u8]) -> Option<(Option<&[u8]>,)> = |data: &[u8]| {
-        assert!(data.len() < usize::MAX - 2);
-        let mut start = Some((0..0,));
-        let mut b0: Option<(core::ops::Range<usize>,)> = None;
-        for (n, b) in data.iter().enumerate() {
-            b0 = start.clone().filter(|_| *b == 97u8);
-            start = None;
-        }
-        b0.map(|(r0,)| {
-            (
-                //
-                if r0.start != usize::MAX && r0.end != usize::MAX {
-                    Some(&data[r0])
-                } else {
-                    None
-                },
-            )
-        })
-    };
-    assert_eq!(None, re(b""));
-    assert_eq!(None, re(b"X"));
-    assert_eq!(None, re(b"aX"));
-    assert_eq!(None, re(b"Xa"));
-    assert_eq!(None, re(b"aa"));
-    assert_eq!(b"", re(b"a").unwrap().0.unwrap());
-}
-
-#[test]
-fn empty_group_at_end() {
-    // regex!(br"a()")
-    let re: fn(&[u8]) -> Option<(Option<&[u8]>,)> = |data: &[u8]| {
-        assert!(data.len() < usize::MAX - 2);
-        let mut start = Some((usize::MAX..usize::MAX,));
-        let mut b0: Option<(core::ops::Range<usize>,)> = None;
-        for (n, b) in data.iter().enumerate() {
-            b0 = start.clone().filter(|_| *b == 97u8).map(|_| (n..n,));
-            start = None;
-        }
-        b0.map(|(r0,)| {
-            (
-                //
-                if r0.start != usize::MAX && r0.end != usize::MAX {
-                    Some(&data[r0])
-                } else {
-                    None
-                },
-            )
-        })
-    };
-    assert_eq!(None, re(b""));
-    assert_eq!(None, re(b"X"));
-    assert_eq!(None, re(b"aX"));
-    assert_eq!(None, re(b"Xa"));
-    assert_eq!(None, re(b"aa"));
-    assert_eq!(b"", re(b"a").unwrap().0.unwrap());
-}
-
-#[test]
-fn empty_group_in_middle() {
-    // regex!(br"a()b")
-    let re: fn(&[u8]) -> Option<(Option<&[u8]>,)> = |data: &[u8]| {
-        assert!(data.len() < usize::MAX - 2);
-        let mut start = Some((usize::MAX..usize::MAX,));
-        let mut b0: Option<(core::ops::Range<usize>,)> = None;
-        let mut b1: Option<(core::ops::Range<usize>,)> = None;
-        for (n, b) in data.iter().enumerate() {
-            b1 = b0.clone().filter(|_| *b == 98u8);
-            b0 = start.clone().filter(|_| *b == 97u8).map(|_| (n..n,));
-            start = None;
-        }
-        b1.map(|(r0,)| {
-            (
-                //
-                if r0.start != usize::MAX && r0.end != usize::MAX {
-                    Some(&data[r0])
-                } else {
-                    None
-                },
-            )
-        })
-    };
-    assert_eq!(None, re(b""));
-    assert_eq!(None, re(b"X"));
-    assert_eq!(None, re(b"aX"));
-    assert_eq!(None, re(b"Xa"));
-    assert_eq!(None, re(b"aa"));
-    assert_eq!(None, re(b"bb"));
-    let groups = re(b"ab").unwrap();
-    assert_eq!(b"", groups.0.unwrap());
-    assert_eq!(None, re(b"Xab"));
-    assert_eq!(None, re(b"aXb"));
-    assert_eq!(None, re(b"abX"));
-    assert_eq!(None, re(b"aba"));
-    assert_eq!(None, re(b"abab"));
+    });
+    assert!(re.is_match(b""));
+    assert!(!re.is_match(b"X"));
+    assert!(!re.is_match(b"a"));
+    assert!(!re.is_match(b"ab"));
+    assert!(!re.is_match(b"Xabc"));
+    assert!(!re.is_match(b"aXbc"));
+    assert!(!re.is_match(b"abXc"));
+    assert!(!re.is_match(b"abcX"));
+    assert!(!re.is_match(b"abca"));
+    assert!(!re.is_match(b"abcab"));
+    assert!(!re.is_match(b"abcXabc"));
+    assert!(re.is_match(b"abc"));
+    assert!(re.is_match(b"abcabc"));
+    assert!(re.is_match(b"abcabcabc"));
+    assert!(re.is_match(b"abcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabc"));
+    assert!(!re.is_match(b"abcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcX"));
 }
 
 #[test]
 fn seq_in_group() {
     // regex!(br"(abc)d")
-    let re: fn(&[u8]) -> Option<(Option<&[u8]>,)> = |data: &[u8]| {
+    let re: Matcher1<_> = safe_regex::Matcher1::new(|data: &[u8]| {
         assert!(data.len() < usize::MAX - 2);
         let mut start = Some((usize::MAX..usize::MAX,));
         let mut b0: Option<(core::ops::Range<usize>,)> = None;
@@ -576,29 +537,32 @@ fn seq_in_group() {
                 },
             )
         })
-    };
-    assert_eq!(None, re(b""));
-    assert_eq!(None, re(b"a"));
-    assert_eq!(None, re(b"d"));
-    assert_eq!(None, re(b"ab"));
-    assert_eq!(None, re(b"bc"));
-    assert_eq!(None, re(b"cd"));
-    assert_eq!(None, re(b"abc"));
-    assert_eq!(None, re(b"acd"));
-    assert_eq!("abc", escape_ascii(re(b"abcd").unwrap().0.unwrap()));
-    assert_eq!(None, re(b"abcda"));
-    assert_eq!(None, re(b"abcdabcd"));
-    assert_eq!(None, re(b"Xabcd"));
-    assert_eq!(None, re(b"aXbcd"));
-    assert_eq!(None, re(b"abXcd"));
-    assert_eq!(None, re(b"abcXd"));
-    assert_eq!(None, re(b"abcdX"));
+    });
+    assert!(!re.is_match(b""));
+    assert!(!re.is_match(b"a"));
+    assert!(!re.is_match(b"d"));
+    assert!(!re.is_match(b"ab"));
+    assert!(!re.is_match(b"bc"));
+    assert!(!re.is_match(b"cd"));
+    assert!(!re.is_match(b"abc"));
+    assert!(!re.is_match(b"acd"));
+    assert_eq!(
+        "abc",
+        escape_ascii(re.match_all(b"abcd").unwrap().0.unwrap())
+    );
+    assert!(!re.is_match(b"abcda"));
+    assert!(!re.is_match(b"abcdabcd"));
+    assert!(!re.is_match(b"Xabcd"));
+    assert!(!re.is_match(b"aXbcd"));
+    assert!(!re.is_match(b"abXcd"));
+    assert!(!re.is_match(b"abcXd"));
+    assert!(!re.is_match(b"abcdX"));
 }
 
 #[test]
 fn alt_in_group() {
     // regex!(br"(a|b)")
-    let re: fn(&[u8]) -> Option<(Option<&[u8]>,)> = |data: &[u8]| {
+    let re: Matcher1<_> = safe_regex::Matcher1::new(|data: &[u8]| {
         assert!(data.len() < usize::MAX - 2);
         let mut start = Some((usize::MAX..usize::MAX,));
         let mut b0: Option<(core::ops::Range<usize>,)> = None;
@@ -618,17 +582,17 @@ fn alt_in_group() {
                 },
             )
         })
-    };
-    assert_eq!(None, re(b""));
-    assert_eq!(None, re(b"X"));
-    assert_eq!("a", escape_ascii(re(b"a").unwrap().0.unwrap()));
-    assert_eq!("b", escape_ascii(re(b"b").unwrap().0.unwrap()));
-    assert_eq!(None, re(b"aX"));
-    assert_eq!(None, re(b"Xa"));
-    assert_eq!(None, re(b"bX"));
-    assert_eq!(None, re(b"Xb"));
-    assert_eq!(None, re(b"ab"));
-    assert_eq!(None, re(b"aa"));
-    assert_eq!(None, re(b"ba"));
-    assert_eq!(None, re(b"bb"));
+    });
+    assert!(!re.is_match(b""));
+    assert!(!re.is_match(b"X"));
+    assert_eq!("a", escape_ascii(re.match_all(b"a").unwrap().0.unwrap()));
+    assert_eq!("b", escape_ascii(re.match_all(b"b").unwrap().0.unwrap()));
+    assert!(!re.is_match(b"aX"));
+    assert!(!re.is_match(b"Xa"));
+    assert!(!re.is_match(b"bX"));
+    assert!(!re.is_match(b"Xb"));
+    assert!(!re.is_match(b"ab"));
+    assert!(!re.is_match(b"aa"));
+    assert!(!re.is_match(b"ba"));
+    assert!(!re.is_match(b"bb"));
 }

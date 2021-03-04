@@ -1,7 +1,8 @@
 #![forbid(unsafe_code)]
-use core::fmt::Debug;
 use safe_regex::internal::escape_ascii;
-use safe_regex::regex;
+use safe_regex::{
+    regex, IsMatch, Matcher0, Matcher1, Matcher2, Matcher3, Matcher4, Matcher5, Matcher7,
+};
 
 // TODO(mleonhard) Test regexes that could match the empty string:
 // - ""
@@ -23,22 +24,20 @@ use safe_regex::regex;
 
 // TODO(mleonhard) Test greediness
 
+// TODO(mleonhard) Test alternate with empty arm, br"a{0}|b"
+
 #[must_use]
-fn check_non_matching_permutations<T, R>(
-    re: &R,
+fn check_non_matching_permutations(
+    matcher: &impl IsMatch,
     prefix: &mut Vec<u8>,
     alphabet: &[u8],
     len: usize,
     ok: &[&[u8]],
-) -> Result<(), String>
-where
-    R: Fn(&[u8]) -> Option<T>,
-    T: Debug + Sized,
-{
+) -> Result<(), String> {
     if ok.contains(&prefix.as_slice()) {
         return Ok(());
     }
-    if re(&prefix).is_some() {
+    if matcher.is_match(&prefix) {
         return Err(format!("matched {:?}", escape_ascii(prefix)));
     }
     if len == 0 {
@@ -46,28 +45,29 @@ where
     }
     for b in alphabet {
         prefix.push(*b);
-        check_non_matching_permutations::<T, R>(re, prefix, alphabet, len - 1, ok)?;
+        check_non_matching_permutations(matcher, prefix, alphabet, len - 1, ok)?;
         prefix.pop();
     }
     Ok(())
 }
 
 #[must_use]
-fn check_permutations<T, R>(re: &R, alphabet: &[u8], len: usize, ok: &[&[u8]]) -> Result<(), String>
-where
-    R: Fn(&[u8]) -> Option<T>,
-    T: Debug + Sized,
-{
+fn check_permutations(
+    matcher: &impl IsMatch,
+    alphabet: &[u8],
+    len: usize,
+    ok: &[&[u8]],
+) -> Result<(), String> {
     for s in ok {
-        if re(s).is_none() {
+        if !matcher.is_match(s) {
             return Err(format!("did not match {:?}", escape_ascii(s)));
         }
     }
-    check_non_matching_permutations::<T, R>(re, &mut Vec::new(), alphabet, len, ok)
+    check_non_matching_permutations(matcher, &mut Vec::new(), alphabet, len, ok)
 }
 
 fn match_re_fn(data: &[u8]) -> bool {
-    regex!(br"a")(data).is_some()
+    regex!(br"a").is_match(data)
 }
 
 #[test]
@@ -78,95 +78,94 @@ fn test_re_fn() {
 
 #[test]
 fn empty() {
-    let re = regex!(br"");
-    re(b"").unwrap();
-    assert_eq!(None, re(b"X"));
+    let re: Matcher0<_> = regex!(br"");
+    re.match_all(b"").unwrap();
+    assert!(!re.is_match(b"X"));
 }
 
 #[test]
 fn byte() {
-    let re = regex!(br"a");
-    check_permutations(&re, b"aX", 2, &[b"a"]).unwrap();
+    let matcher: Matcher0<_> = regex!(br"a");
+    check_permutations(&matcher, b"aX", 2, &[b"a"]).unwrap();
 }
 
 #[test]
 fn any_byte() {
-    let re = regex!(br".");
-    assert_eq!(None, re(b""));
-    re(b"X").unwrap();
-    assert_eq!(None, re(b"XY"));
+    let re: Matcher0<_> = regex!(br".");
+    assert!(!re.is_match(b""));
+    re.match_all(b"X").unwrap();
+    assert!(!re.is_match(b"XY"));
 }
 
 #[test]
 fn class_inclusive() {
-    let re = regex!(br"[abc2-4]");
-    assert_eq!(None, re(b""));
-    assert_eq!(None, re(b"X"));
-    re(b"a").unwrap();
-    re(b"b").unwrap();
-    re(b"c").unwrap();
-    assert_eq!(None, re(b"1"));
-    re(b"2").unwrap();
-    re(b"3").unwrap();
-    re(b"4").unwrap();
-    assert_eq!(None, re(b"5"));
-    assert_eq!(None, re(b"Xa"));
-    assert_eq!(None, re(b"aX"));
-    assert_eq!(None, re(b"aa"));
-    assert_eq!(None, re(b"abc"));
+    let re: Matcher0<_> = regex!(br"[abc2-4]");
+    assert!(!re.is_match(b""));
+    assert!(!re.is_match(b"X"));
+    re.match_all(b"a").unwrap();
+    re.match_all(b"b").unwrap();
+    re.match_all(b"c").unwrap();
+    assert!(!re.is_match(b"1"));
+    re.match_all(b"2").unwrap();
+    re.match_all(b"3").unwrap();
+    re.match_all(b"4").unwrap();
+    assert!(!re.is_match(b"5"));
+    assert!(!re.is_match(b"Xa"));
+    assert!(!re.is_match(b"aX"));
+    assert!(!re.is_match(b"aa"));
+    assert!(!re.is_match(b"abc"));
 }
 
 #[test]
 fn class_exclusive() {
-    let re = regex!(br"[^abc2-4]");
-    assert_eq!(None, re(b""));
-    re(b"X").unwrap();
-    re(b"Y").unwrap();
-    assert_eq!(None, re(b"XY"));
-    assert_eq!(None, re(b"a"));
-    assert_eq!(None, re(b"b"));
-    assert_eq!(None, re(b"c"));
-    re(b"1").unwrap();
-    assert_eq!(None, re(b"2"));
-    assert_eq!(None, re(b"3"));
-    assert_eq!(None, re(b"4"));
-    re(b"5").unwrap();
+    let re: Matcher0<_> = regex!(br"[^abc2-4]");
+    assert!(!re.is_match(b""));
+    re.match_all(b"X").unwrap();
+    re.match_all(b"Y").unwrap();
+    assert!(!re.is_match(b"XY"));
+    assert!(!re.is_match(b"a"));
+    assert!(!re.is_match(b"b"));
+    assert!(!re.is_match(b"c"));
+    re.match_all(b"1").unwrap();
+    assert!(!re.is_match(b"2"));
+    assert!(!re.is_match(b"3"));
+    assert!(!re.is_match(b"4"));
+    re.match_all(b"5").unwrap();
 }
 
 #[test]
 fn seq() {
     check_permutations(&regex!(br"ab"), b"abX", 5, &[b"ab"]).unwrap();
-    // {
-    //     let re = regex!(br"(ab)");
-    //     check_permutations(&re, b"abX", 4, &[b"ab"]).unwrap();
-    //     let groups = re(b"ab").unwrap();
-    //     assert_eq!(0..2, groups.group_range(0).unwrap());
-    //     assert_eq!("ab", escape_ascii(groups.group(0).unwrap()));
-    // }
+    {
+        let re: Matcher1<_> = regex!(br"(ab)");
+        check_permutations(&re, b"abX", 4, &[b"ab"]).unwrap();
+        let groups = re.match_all(b"ab").unwrap();
+        assert_eq!("ab", escape_ascii(groups.0.unwrap()));
+    }
 }
 
 #[test]
 fn alt() {
     check_permutations(&regex!(br"a|b"), b"abX", 3, &[b"a", b"b"]).unwrap();
-    // check_permutations(
-    //     &regex!(br"(a|b)(c|d)"),
-    //     b"abcdX",
-    //     4,
-    //     &[b"ac", b"ad", b"bc", b"bd"],
-    // )
-    // .unwrap();
-    // {
-    //     let re = regex!(br"(a|b)");
-    //     check_permutations(&re, b"abX", 3, &[b"a", b"b"]).unwrap();
-    //
-    //     let groups = re(b"a").unwrap();
-    //     assert_eq!(0..1, groups.group_range(0).unwrap());
-    //     assert_eq!("a", escape_ascii(groups.group(0).unwrap()));
-    //
-    //     let groups = re(b"b").unwrap();
-    //     assert_eq!(0..1, groups.group_range(0).unwrap());
-    //     assert_eq!("b", escape_ascii(groups.group(0).unwrap()));
-    // }
+    check_permutations(
+        &regex!(br"(a|b)(c|d)"),
+        b"abcdX",
+        4,
+        &[b"ac", b"ad", b"bc", b"bd"],
+    )
+    .unwrap();
+    {
+        let re: Matcher1<_> = regex!(br"(a|b)");
+        check_permutations(&re, b"abX", 3, &[b"a", b"b"]).unwrap();
+
+        let groups = re.match_all(b"a").unwrap();
+        // assert_eq!(0..1, groups.group_range(0).unwrap());
+        assert_eq!("a", escape_ascii(groups.0.unwrap()));
+
+        let groups = re.match_all(b"b").unwrap();
+        // assert_eq!(0..1, groups.group_range(0).unwrap());
+        assert_eq!("b", escape_ascii(groups.0.unwrap()));
+    }
 }
 
 #[test]
@@ -466,164 +465,157 @@ fn repeat_in_alt() {
     .unwrap();
 }
 
-// #[test]
-// fn repeat_in_group() {
-//     {
-//         let re = regex!(br"(a?)(ab)");
-//         check_permutations(&re, b"abX", 6, &[b"ab", b"aab"]).unwrap();
-//
-//         let groups = re(b"ab").unwrap();
-//         assert_eq!("", escape_ascii(groups.group(0).unwrap()));
-//         assert_eq!("ab", escape_ascii(groups.group(1).unwrap()));
-//
-//         let groups = re(b"aab").unwrap();
-//         assert_eq!(0..1, groups.group_range(0).unwrap());
-//         assert_eq!(1..3, groups.group_range(1).unwrap());
-//         assert_eq!("a", escape_ascii(groups.group(0).unwrap()));
-//         assert_eq!("ab", escape_ascii(groups.group(1).unwrap()));
-//     }
-//     {
-//         let re = regex!(br"a(a?)a");
-//         check_permutations(&re, b"aX", 5, &[b"aa", b"aaa"]).unwrap();
-//
-//         let groups = re(b"aa").unwrap();
-//         assert_eq!(1..1, groups.group_range(0).unwrap());
-//         assert_eq!("", escape_ascii(groups.group(0).unwrap()));
-//
-//         let groups = re(b"aaa").unwrap();
-//         assert_eq!(1..2, groups.group_range(0).unwrap());
-//         assert_eq!("a", escape_ascii(groups.group(0).unwrap()));
-//     }
-// }
-//
-// #[test]
-// fn group() {
-//     {
-//         let re = regex!(br"(a)");
-//         check_permutations(&re, b"aX", 2, &[b"a"]).unwrap();
-//         let groups = re(b"a").unwrap();
-//         assert_eq!("a", escape_ascii(groups.group(0).unwrap()));
-//         assert_eq!(0..1, groups.group_range(0).unwrap());
-//     }
-//     {
-//         let re = regex!(br"()a");
-//         check_permutations(&re, b"aX", 4, &[b"a"]).unwrap();
-//         let groups = re(b"a").unwrap();
-//         assert_eq!(0..0, groups.group_range(0).unwrap());
-//         assert_eq!("", escape_ascii(groups.group(0).unwrap()));
-//     }
-//     {
-//         let re = regex!(br"((a))");
-//         check_permutations(&re, b"aX", 3, &[b"a"]).unwrap();
-//         let groups = re(b"a").unwrap();
-//         assert_eq!(0..1, groups.group_range(0).unwrap());
-//         assert_eq!(0..1, groups.group_range(1).unwrap());
-//         assert_eq!("a", escape_ascii(groups.group(0).unwrap()));
-//         assert_eq!("a", escape_ascii(groups.group(1).unwrap()));
-//     }
-//     {
-//         let re = regex!(br"(a(b))");
-//         check_permutations(&re, b"abX", 4, &[b"ab"]).unwrap();
-//         let groups = re(b"ab").unwrap();
-//         assert_eq!(0..2, groups.group_range(0).unwrap());
-//         assert_eq!(1..2, groups.group_range(1).unwrap());
-//         assert_eq!("ab", escape_ascii(groups.group(0).unwrap()));
-//         assert_eq!("b", escape_ascii(groups.group(1).unwrap()));
-//     }
-//     {
-//         let re = regex!(br"((a)b)");
-//         check_permutations(&re, b"abX", 4, &[b"ab"]).unwrap();
-//         let groups = re(b"ab").unwrap();
-//         assert_eq!(0..2, groups.group_range(0).unwrap());
-//         assert_eq!(0..1, groups.group_range(1).unwrap());
-//         assert_eq!("ab", escape_ascii(groups.group(0).unwrap()));
-//         assert_eq!("a", escape_ascii(groups.group(1).unwrap()));
-//     }
-//     {
-//         let re = regex!(br"((a)(b))");
-//         check_permutations(&re, b"abX", 4, &[b"ab"]).unwrap();
-//         let groups = re(b"ab").unwrap();
-//         assert_eq!(0..2, groups.group_range(0).unwrap());
-//         assert_eq!(0..1, groups.group_range(1).unwrap());
-//         assert_eq!(1..2, groups.group_range(2).unwrap());
-//         assert_eq!("ab", escape_ascii(groups.group(0).unwrap()));
-//         assert_eq!("a", escape_ascii(groups.group(1).unwrap()));
-//         assert_eq!("b", escape_ascii(groups.group(2).unwrap()));
-//     }
-//     {
-//         let re = regex!(br"((a(b))(c))");
-//         check_permutations(&re, b"abcX", 6, &[b"abc"]).unwrap();
-//         let groups = re(b"abc").unwrap();
-//         assert_eq!(0..3, groups.group_range(0).unwrap());
-//         assert_eq!(0..2, groups.group_range(1).unwrap());
-//         assert_eq!(1..2, groups.group_range(2).unwrap());
-//         assert_eq!(2..3, groups.group_range(3).unwrap());
-//         assert_eq!("abc", escape_ascii(groups.group(0).unwrap()));
-//         assert_eq!("ab", escape_ascii(groups.group(1).unwrap()));
-//         assert_eq!("b", escape_ascii(groups.group(2).unwrap()));
-//         assert_eq!("c", escape_ascii(groups.group(3).unwrap()));
-//     }
-//     {
-//         let re = regex!(br"((a)((b)c))");
-//         check_permutations(&re, b"abcX", 6, &[b"abc"]).unwrap();
-//         let groups = re(b"abc").unwrap();
-//         assert_eq!(0..3, groups.group_range(0).unwrap());
-//         assert_eq!(0..1, groups.group_range(1).unwrap());
-//         assert_eq!(1..3, groups.group_range(2).unwrap());
-//         assert_eq!(1..2, groups.group_range(3).unwrap());
-//         assert_eq!("abc", escape_ascii(groups.group(0).unwrap()));
-//         assert_eq!("a", escape_ascii(groups.group(1).unwrap()));
-//         assert_eq!("bc", escape_ascii(groups.group(2).unwrap()));
-//         assert_eq!("b", escape_ascii(groups.group(3).unwrap()));
-//     }
-//     {
-//         let re = regex!(br"((a(b))((c)d))");
-//         check_permutations(&re, b"abcdX", 5, &[b"abcd"]).unwrap();
-//         assert_eq!(None, re(b"abcdabcd"));
-//         let groups = re(b"abcd").unwrap();
-//         assert_eq!(0..4, groups.group_range(0).unwrap());
-//         assert_eq!(0..2, groups.group_range(1).unwrap());
-//         assert_eq!(1..2, groups.group_range(2).unwrap());
-//         assert_eq!(2..4, groups.group_range(3).unwrap());
-//         assert_eq!(2..3, groups.group_range(4).unwrap());
-//         assert_eq!("abcd", escape_ascii(groups.group(0).unwrap()));
-//         assert_eq!("ab", escape_ascii(groups.group(1).unwrap()));
-//         assert_eq!("b", escape_ascii(groups.group(2).unwrap()));
-//         assert_eq!("cd", escape_ascii(groups.group(3).unwrap()));
-//         assert_eq!("c", escape_ascii(groups.group(4).unwrap()));
-//     }
-//     {
-//         let re = regex!(br"(a(b(c)))");
-//         check_permutations(&re, b"abcX", 6, &[b"abc"]).unwrap();
-//         let groups = re(b"abc").unwrap();
-//         assert_eq!(0..3, groups.group_range(0).unwrap());
-//         assert_eq!(1..3, groups.group_range(1).unwrap());
-//         assert_eq!(2..3, groups.group_range(2).unwrap());
-//         assert_eq!("abc", escape_ascii(groups.group(0).unwrap()));
-//         assert_eq!("bc", escape_ascii(groups.group(1).unwrap()));
-//         assert_eq!("c", escape_ascii(groups.group(2).unwrap()));
-//     }
-//     {
-//         let re = regex!(br"(a(b))((c)d)((e)(f))");
-//         check_permutations(&re, b"abcdefX", 6, &[b"abcdef"]).unwrap();
-//         assert_eq!(None, re(b"Xabcdef"));
-//         assert_eq!(None, re(b"abcdefX"));
-//         assert_eq!(None, re(b"abcdefabcdef"));
-//
-//         let groups = re(b"abcdef").unwrap();
-//         assert_eq!(0..2, groups.group_range(0).unwrap());
-//         assert_eq!(1..2, groups.group_range(1).unwrap());
-//         assert_eq!(2..4, groups.group_range(2).unwrap());
-//         assert_eq!(2..3, groups.group_range(3).unwrap());
-//         assert_eq!(4..6, groups.group_range(4).unwrap());
-//         assert_eq!(4..5, groups.group_range(5).unwrap());
-//         assert_eq!(5..6, groups.group_range(6).unwrap());
-//         assert_eq!("ab", escape_ascii(groups.group(0).unwrap()));
-//         assert_eq!("b", escape_ascii(groups.group(1).unwrap()));
-//         assert_eq!("cd", escape_ascii(groups.group(2).unwrap()));
-//         assert_eq!("c", escape_ascii(groups.group(3).unwrap()));
-//         assert_eq!("ef", escape_ascii(groups.group(4).unwrap()));
-//         assert_eq!("e", escape_ascii(groups.group(5).unwrap()));
-//         assert_eq!("f", escape_ascii(groups.group(6).unwrap()));
-//     }
-// }
+#[test]
+fn repeat_in_group() {
+    {
+        let re: Matcher2<_> = regex!(br"(a?)(ab)");
+        check_permutations(&re, b"abX", 6, &[b"ab", b"aab"]).unwrap();
+
+        let groups = re.match_all(b"ab").unwrap();
+        assert_eq!("", escape_ascii(groups.0.unwrap()));
+        assert_eq!("ab", escape_ascii(groups.1.unwrap()));
+
+        let groups = re.match_all(b"aab").unwrap();
+        // assert_eq!(0..1, groups.group_range(0).unwrap());
+        // assert_eq!(1..3, groups.group_range(1).unwrap());
+        assert_eq!("a", escape_ascii(groups.0.unwrap()));
+        assert_eq!("ab", escape_ascii(groups.1.unwrap()));
+    }
+    {
+        let re: Matcher1<_> = regex!(br"a(a?)a");
+        check_permutations(&re, b"aX", 5, &[b"aa", b"aaa"]).unwrap();
+
+        let groups = re.match_all(b"aa").unwrap();
+        // assert_eq!(1..1, groups.group_range(0).unwrap());
+        assert_eq!("", escape_ascii(groups.0.unwrap()));
+
+        let groups = re.match_all(b"aaa").unwrap();
+        // assert_eq!(1..2, groups.group_range(0).unwrap());
+        assert_eq!("a", escape_ascii(groups.0.unwrap()));
+    }
+}
+
+#[test]
+fn group() {
+    {
+        let re: Matcher1<_> = regex!(br"(a)");
+        check_permutations(&re, b"aX", 2, &[b"a"]).unwrap();
+        let groups = re.match_all(b"a").unwrap();
+        assert_eq!("a", escape_ascii(groups.0.unwrap()));
+        // assert_eq!(0..1, groups.group_range(0).unwrap());
+    }
+    {
+        let re: Matcher2<_> = regex!(br"((a))");
+        check_permutations(&re, b"aX", 3, &[b"a"]).unwrap();
+        let groups = re.match_all(b"a").unwrap();
+        // assert_eq!(0..1, groups.group_range(0).unwrap());
+        // assert_eq!(0..1, groups.group_range(1).unwrap());
+        assert_eq!("a", escape_ascii(groups.0.unwrap()));
+        assert_eq!("a", escape_ascii(groups.1.unwrap()));
+    }
+    {
+        let re: Matcher2<_> = regex!(br"(a(b))");
+        check_permutations(&re, b"abX", 4, &[b"ab"]).unwrap();
+        let groups = re.match_all(b"ab").unwrap();
+        // assert_eq!(0..2, groups.group_range(0).unwrap());
+        // assert_eq!(1..2, groups.group_range(1).unwrap());
+        assert_eq!("ab", escape_ascii(groups.0.unwrap()));
+        assert_eq!("b", escape_ascii(groups.1.unwrap()));
+    }
+    {
+        let re: Matcher2<_> = regex!(br"((a)b)");
+        check_permutations(&re, b"abX", 4, &[b"ab"]).unwrap();
+        let groups = re.match_all(b"ab").unwrap();
+        // assert_eq!(0..2, groups.group_range(0).unwrap());
+        // assert_eq!(0..1, groups.group_range(1).unwrap());
+        assert_eq!("ab", escape_ascii(groups.0.unwrap()));
+        assert_eq!("a", escape_ascii(groups.1.unwrap()));
+    }
+    {
+        let re: Matcher3<_> = regex!(br"((a)(b))");
+        check_permutations(&re, b"abX", 4, &[b"ab"]).unwrap();
+        let groups = re.match_all(b"ab").unwrap();
+        // assert_eq!(0..2, groups.group_range(0).unwrap());
+        // assert_eq!(0..1, groups.group_range(1).unwrap());
+        // assert_eq!(1..2, groups.group_range(2).unwrap());
+        assert_eq!("ab", escape_ascii(groups.0.unwrap()));
+        assert_eq!("a", escape_ascii(groups.1.unwrap()));
+        assert_eq!("b", escape_ascii(groups.2.unwrap()));
+    }
+    {
+        let re: Matcher4<_> = regex!(br"((a(b))(c))");
+        check_permutations(&re, b"abcX", 6, &[b"abc"]).unwrap();
+        let groups = re.match_all(b"abc").unwrap();
+        // assert_eq!(0..3, groups.group_range(0).unwrap());
+        // assert_eq!(0..2, groups.group_range(1).unwrap());
+        // assert_eq!(1..2, groups.group_range(2).unwrap());
+        // assert_eq!(2..3, groups.group_range(3).unwrap());
+        assert_eq!("abc", escape_ascii(groups.0.unwrap()));
+        assert_eq!("ab", escape_ascii(groups.1.unwrap()));
+        assert_eq!("b", escape_ascii(groups.2.unwrap()));
+        assert_eq!("c", escape_ascii(groups.3.unwrap()));
+    }
+    {
+        let re: Matcher4<_> = regex!(br"((a)((b)c))");
+        check_permutations(&re, b"abcX", 6, &[b"abc"]).unwrap();
+        let groups = re.match_all(b"abc").unwrap();
+        // assert_eq!(0..3, groups.group_range(0).unwrap());
+        // assert_eq!(0..1, groups.group_range(1).unwrap());
+        // assert_eq!(1..3, groups.group_range(2).unwrap());
+        // assert_eq!(1..2, groups.group_range(3).unwrap());
+        assert_eq!("abc", escape_ascii(groups.0.unwrap()));
+        assert_eq!("a", escape_ascii(groups.1.unwrap()));
+        assert_eq!("bc", escape_ascii(groups.2.unwrap()));
+        assert_eq!("b", escape_ascii(groups.3.unwrap()));
+    }
+    {
+        let re: Matcher5<_> = regex!(br"((a(b))((c)d))");
+        check_permutations(&re, b"abcdX", 5, &[b"abcd"]).unwrap();
+        assert!(!re.is_match(b"abcdabcd"));
+        let groups = re.match_all(b"abcd").unwrap();
+        // assert_eq!(0..4, groups.group_range(0).unwrap());
+        // assert_eq!(0..2, groups.group_range(1).unwrap());
+        // assert_eq!(1..2, groups.group_range(2).unwrap());
+        // assert_eq!(2..4, groups.group_range(3).unwrap());
+        // assert_eq!(2..3, groups.group_range(4).unwrap());
+        assert_eq!("abcd", escape_ascii(groups.0.unwrap()));
+        assert_eq!("ab", escape_ascii(groups.1.unwrap()));
+        assert_eq!("b", escape_ascii(groups.2.unwrap()));
+        assert_eq!("cd", escape_ascii(groups.3.unwrap()));
+        assert_eq!("c", escape_ascii(groups.4.unwrap()));
+    }
+    {
+        let re: Matcher3<_> = regex!(br"(a(b(c)))");
+        check_permutations(&re, b"abcX", 6, &[b"abc"]).unwrap();
+        let groups = re.match_all(b"abc").unwrap();
+        // assert_eq!(0..3, groups.group_range(0).unwrap());
+        // assert_eq!(1..3, groups.group_range(1).unwrap());
+        // assert_eq!(2..3, groups.group_range(2).unwrap());
+        assert_eq!("abc", escape_ascii(groups.0.unwrap()));
+        assert_eq!("bc", escape_ascii(groups.1.unwrap()));
+        assert_eq!("c", escape_ascii(groups.2.unwrap()));
+    }
+    {
+        let re: Matcher7<_> = regex!(br"(a(b))((c)d)((e)(f))");
+        check_permutations(&re, b"abcdefX", 6, &[b"abcdef"]).unwrap();
+        assert!(!re.is_match(b"Xabcdef"));
+        assert!(!re.is_match(b"abcdefX"));
+        assert!(!re.is_match(b"abcdefabcdef"));
+
+        let groups = re.match_all(b"abcdef").unwrap();
+        // assert_eq!(0..2, groups.group_range(0).unwrap());
+        // assert_eq!(1..2, groups.group_range(1).unwrap());
+        // assert_eq!(2..4, groups.group_range(2).unwrap());
+        // assert_eq!(2..3, groups.group_range(3).unwrap());
+        // assert_eq!(4..6, groups.group_range(4).unwrap());
+        // assert_eq!(4..5, groups.group_range(5).unwrap());
+        // assert_eq!(5..6, groups.group_range(6).unwrap());
+        assert_eq!("ab", escape_ascii(groups.0.unwrap()));
+        assert_eq!("b", escape_ascii(groups.1.unwrap()));
+        assert_eq!("cd", escape_ascii(groups.2.unwrap()));
+        assert_eq!("c", escape_ascii(groups.3.unwrap()));
+        assert_eq!("ef", escape_ascii(groups.4.unwrap()));
+        assert_eq!("e", escape_ascii(groups.5.unwrap()));
+        assert_eq!("f", escape_ascii(groups.6.unwrap()));
+    }
+}

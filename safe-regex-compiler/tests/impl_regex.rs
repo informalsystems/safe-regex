@@ -21,11 +21,26 @@ fn syntax_errors() {
     assert_eq!(err, impl_regex(quote! {br"a" br"b"}).map(to_s));
 }
 
-// TODO(mleonhard) Test macro with comment.
+#[test]
+fn empty() {
+    let expected = quote! {
+        safe_regex::Matcher0::new(|data: &[u8]| {
+            if data.is_empty() {
+                Some(())
+            } else {
+                None
+            }
+        })
+    };
+    assert_eq!(
+        format!("{}", expected),
+        format!("{}", impl_regex(quote! { br"" }).unwrap())
+    );
+}
 
 #[test]
 fn byte() {
-    let expected = quote! { |data: &[u8]| {
+    let expected = quote! { safe_regex::Matcher0::new(|data: &[u8]| {
         let mut start = Some(());
         let mut b0: Option<()> = None;
         for b in data.iter() {
@@ -33,7 +48,7 @@ fn byte() {
             start = None;
         }
         b0
-    } };
+    }) };
     assert_eq!(
         format!("{}", expected),
         format!("{}", impl_regex(quote! { br"a" }).unwrap())
@@ -42,7 +57,7 @@ fn byte() {
 
 #[test]
 fn any_byte() {
-    let expected = quote! { |data: &[u8]| {
+    let expected = quote! { safe_regex::Matcher0::new(|data: &[u8]| {
         let mut start = Some(());
         let mut b0: Option<()> = None;
         for b in data.iter() {
@@ -50,7 +65,7 @@ fn any_byte() {
             start = None;
         }
         b0
-    } };
+    }) };
     assert_eq!(
         format!("{}", expected),
         format!("{}", impl_regex(quote! { br"." }).unwrap())
@@ -59,7 +74,7 @@ fn any_byte() {
 
 #[test]
 fn class_inclusive() {
-    let expected = quote! { |data: &[u8]| {
+    let expected = quote! { safe_regex::Matcher0::new(|data: &[u8]| {
         let mut start = Some(());
         let mut b0: Option<()> = None;
         for b in data.iter() {
@@ -69,7 +84,7 @@ fn class_inclusive() {
             start = None;
         }
         b0
-    } };
+    }) };
     assert_eq!(
         format!("{}", expected),
         format!("{}", impl_regex(quote! { br"[abc2-4]" }).unwrap())
@@ -78,7 +93,7 @@ fn class_inclusive() {
 
 #[test]
 fn class_exclusive() {
-    let expected = quote! { |data: &[u8]| {
+    let expected = quote! { safe_regex::Matcher0::new(|data: &[u8]| {
         let mut start = Some(());
         let mut b0: Option<()> = None;
         for b in data.iter() {
@@ -88,7 +103,7 @@ fn class_exclusive() {
             start = None;
         }
         b0
-    } };
+    }) };
     assert_eq!(
         format!("{}", expected),
         format!("{}", impl_regex(quote! { br"[^abc2-4]" }).unwrap())
@@ -98,7 +113,7 @@ fn class_exclusive() {
 #[test]
 #[allow(clippy::too_many_lines)]
 fn seq() {
-    let expected = quote! { |data: &[u8]| {
+    let expected = quote! { safe_regex::Matcher0::new(|data: &[u8]| {
         let mut start = Some(());
         let mut b0: Option<()> = None;
         let mut b1: Option<()> = None;
@@ -110,7 +125,7 @@ fn seq() {
             start = None;
         }
         b2
-    } };
+    }) };
     assert_eq!(
         format!("{}", expected),
         format!("{}", impl_regex(quote! { br"aab" }).unwrap())
@@ -119,7 +134,7 @@ fn seq() {
 
 #[test]
 fn alt() {
-    let expected = quote! { |data: &[u8]| {
+    let expected = quote! { safe_regex::Matcher0::new(|data: &[u8]| {
         let mut start = Some(());
         let mut b0: Option<()> = None;
         let mut b1: Option<()> = None;
@@ -129,7 +144,7 @@ fn alt() {
             start = None;
         }
         None.or_else(|| b0.clone()).or_else(|| b1.clone())
-    } };
+    }) };
     assert_eq!(
         format!("{}", expected),
         format!("{}", impl_regex(quote! { br"a|b" }).unwrap())
@@ -138,28 +153,27 @@ fn alt() {
 
 #[test]
 fn group() {
-    let expected = quote! { |data: &[u8]| {
+    let expected = quote! { safe_regex::Matcher1::new(|data: &[u8]| {
         assert!(data.len() < usize::MAX - 2);
         let mut start = Some((usize::MAX..usize::MAX,));
         let mut b0: Option<(core::ops::Range<usize>,)> = None;
         for (n, b) in data.iter().enumerate() {
             b0 = start
                 .clone()
+                .map(|(r0,)| (n..n,))
+                .clone()
                 .filter(|_| *b == 97u8)
-                .map(|(r0,)| (n..n + 1,));
+                .map(|(r0,)| (r0.start..n + 1,));
             start = None;
         }
         b0.map(|(r0,)| {
-            (
-                //
-                if r0.start != usize::MAX && r0.end != usize::MAX {
-                    Some(&data[r0])
-                } else {
-                    None
-                },
-            )
+            (if r0.start != usize::MAX && r0.end != usize::MAX {
+                Some(&data[r0])
+            } else {
+                None
+            },)
         })
-    } };
+    }) };
     assert_eq!(
         format!("{}", expected),
         format!("{}", impl_regex(quote! { br"(a)" }).unwrap())
@@ -167,8 +181,51 @@ fn group() {
 }
 
 #[test]
+fn groups_nested() {
+    let expected = quote! { safe_regex::Matcher2::new(|data: &[u8]| {
+        assert!(data.len() < usize::MAX - 2);
+        let mut start = Some((usize::MAX..usize::MAX, usize::MAX..usize::MAX));
+        let mut b0: Option<(core::ops::Range<usize>, core::ops::Range<usize>)> = None;
+        let mut b1: Option<(core::ops::Range<usize>, core::ops::Range<usize>)> = None;
+        for (n, b) in data.iter().enumerate() {
+            b1 = b0
+                .clone()
+                .map(|(r0, r1)| (r0, n..n))
+                .clone()
+                .filter(|_| *b == 98u8)
+                .map(|(r0, r1)| (r0.start..n + 1, r1.start..n + 1));
+            b0 = start
+                .clone()
+                .map(|(r0, r1)| (n..n, r1))
+                .clone()
+                .filter(|_| *b == 97u8)
+                .map(|(r0, r1)| (r0.start..n + 1, r1));
+            start = None;
+        }
+        b1.map(|(r0, r1)| {
+            (
+                if r0.start != usize::MAX && r0.end != usize::MAX {
+                    Some(&data[r0])
+                } else {
+                    None
+                },
+                if r1.start != usize::MAX && r1.end != usize::MAX {
+                    Some(&data[r1])
+                } else {
+                    None
+                },
+            )
+        })
+    }) };
+    assert_eq!(
+        format!("{}", expected),
+        format!("{}", impl_regex(quote! { br"(a(b))" }).unwrap())
+    );
+}
+
+#[test]
 fn optional() {
-    let expected = quote! { |data: &[u8]| {
+    let expected = quote! { safe_regex::Matcher0::new(|data: &[u8]| {
         let mut start = Some(());
         let mut b0: Option<()> = None;
         for b in data.iter() {
@@ -176,7 +233,7 @@ fn optional() {
             start = None;
         }
         start.clone().or_else(|| b0.clone())
-    } };
+    }) };
     assert_eq!(
         format!("{}", expected),
         format!("{}", impl_regex(quote! { br"a?" }).unwrap())
@@ -185,7 +242,7 @@ fn optional() {
 
 #[test]
 fn star() {
-    let expected = quote! { |data: &[u8]| {
+    let expected = quote! { safe_regex::Matcher0::new(|data: &[u8]| {
         let mut start = Some(());
         let mut b0: Option<()> = None;
         for b in data.iter() {
@@ -197,36 +254,9 @@ fn star() {
             start = None;
         }
         start.clone().or_else(|| b0.clone())
-    } };
+    }) };
     assert_eq!(
         format!("{}", expected),
         format!("{}", impl_regex(quote! { br"a*" }).unwrap())
-    );
-}
-
-#[test]
-fn empty_group_at_start() {
-    let expected = quote! { |data: &[u8]| {
-        assert!(data.len() < usize::MAX - 2);
-        let mut start = Some((0..0,));
-        let mut b0: Option<(core::ops::Range<usize>,)> = None;
-        for (n, b) in data.iter().enumerate() {
-            b0 = start.clone().filter(|_| *b == 97u8);
-            start = None;
-        }
-        b0.map(|(r0,)| {
-            (
-                //
-                if r0.start != usize::MAX && r0.end != usize::MAX {
-                    Some(&data[r0])
-                } else {
-                    None
-                },
-            )
-        })
-    } };
-    assert_eq!(
-        format!("{}", expected),
-        format!("{}", impl_regex(quote! { br"()a" }).unwrap())
     );
 }
