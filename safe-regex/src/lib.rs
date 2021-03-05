@@ -70,7 +70,7 @@
 //! ```
 //!
 //! # Changelog
-//! - v0.2.1 - Non-capturing groups
+//! - v0.2.1 - Non-capturing groups, big fixes
 //! - v0.2.0
 //!   - Linear-time & constant-memory algorithm! :)
 //!   - Work around rustc optimizer hang on regexes with exponential execution paths like "a{,30}".

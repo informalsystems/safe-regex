@@ -328,7 +328,7 @@ fn optional() {
         let mut b1: Option<()> = None;
         let mut data_iter = data.iter();
         loop {
-            let alt0 = start.clone().or_else(|| b1.clone());
+            let opt0 = start.clone().or_else(|| b1.clone());
             if let Some(b) = data_iter.next() {
                 b1 = start.clone().filter(|_| {
                     //
@@ -336,7 +336,7 @@ fn optional() {
                 });
                 start = None;
             } else {
-                return alt0;
+                return opt0;
             }
         }
     });
@@ -358,9 +358,9 @@ fn optional_at_start() {
         let mut b2: Option<()> = None;
         let mut data_iter = data.iter();
         loop {
-            let alt0 = start.clone().or_else(|| b1.clone());
+            let opt0 = start.clone().or_else(|| b1.clone());
             if let Some(b) = data_iter.next() {
-                b2 = alt0.clone().filter(|_| {
+                b2 = opt0.clone().filter(|_| {
                     //
                     *b == 97u8
                 });
@@ -395,7 +395,7 @@ fn optional_at_end() {
         let mut b2: Option<()> = None;
         let mut data_iter = data.iter();
         loop {
-            let alt1 = b0.clone().or_else(|| b2.clone());
+            let opt1 = b0.clone().or_else(|| b2.clone());
             if let Some(b) = data_iter.next() {
                 b2 = b0.clone().filter(|_| {
                     //
@@ -407,7 +407,7 @@ fn optional_at_end() {
                 });
                 start = None;
             } else {
-                return alt1;
+                return opt1;
             }
         }
     });
@@ -433,15 +433,15 @@ fn optionals_in_seq() {
         let mut b5: Option<()> = None;
         let mut data_iter = data.iter();
         loop {
-            let alt0 = start.clone().or_else(|| b1.clone());
-            let alt2 = alt0.clone().or_else(|| b3.clone());
-            let alt4 = alt2.clone().or_else(|| b5.clone());
+            let opt0 = start.clone().or_else(|| b1.clone());
+            let opt2 = opt0.clone().or_else(|| b3.clone());
+            let opt4 = opt2.clone().or_else(|| b5.clone());
             if let Some(b) = data_iter.next() {
-                b5 = alt2.clone().filter(|_| {
+                b5 = opt2.clone().filter(|_| {
                     //
                     *b == 97u8
                 });
-                b3 = alt0.clone().filter(|_| {
+                b3 = opt0.clone().filter(|_| {
                     //
                     *b == 97u8
                 });
@@ -451,7 +451,7 @@ fn optionals_in_seq() {
                 });
                 start = None;
             } else {
-                return alt4;
+                return opt4;
             }
         }
     });
@@ -485,19 +485,19 @@ fn optionals_in_groups() {
         let mut data_iter = data.iter();
         let mut n = 0;
         loop {
-            let alt0 = start
+            let opt0 = start
                 .clone()
                 .map(|(r0, r1)| (n..n, r1))
                 .clone()
                 .or_else(|| b1.clone());
-            let alt2 = alt0
+            let opt2 = opt0
                 .clone()
                 .map(|(r0, r1)| (r0, n..n))
                 .clone()
                 .or_else(|| b3.clone());
-            accept = alt2.clone();
+            accept = opt2.clone();
             if let Some(b) = data_iter.next() {
-                b3 = alt0
+                b3 = opt0
                     .clone()
                     .map(|(r0, r1)| (r0, n..n))
                     .clone()
@@ -560,17 +560,18 @@ fn star() {
     // regex!(br"a*")
     let re: Matcher0<_> = safe_regex::Matcher0::new(|data: &[u8]| {
         let mut start = Some(());
-        let mut b0: Option<()> = None;
+        let mut b1: Option<()> = None;
         let mut data_iter = data.iter();
         loop {
+            let star0 = start.clone().or_else(|| b1.clone());
             if let Some(b) = data_iter.next() {
-                b0 = start.clone().or_else(|| b0.clone()).clone().filter(|_| {
+                b1 = star0.clone().filter(|_| {
                     //
                     *b == 97u8
                 });
                 start = None;
             } else {
-                return start.clone().or_else(|| b0.clone());
+                return star0;
             }
         }
     });
@@ -600,30 +601,31 @@ fn star() {
 
 #[test]
 fn seq_in_star() {
-    // regex!(br"(?abc)*")
+    // regex!(br"(?:abc)*")
     let re: Matcher0<_> = safe_regex::Matcher0::new(|data: &[u8]| {
         let mut start = Some(());
-        let mut b0: Option<()> = None;
         let mut b1: Option<()> = None;
         let mut b2: Option<()> = None;
+        let mut b3: Option<()> = None;
         let mut data_iter = data.iter();
         loop {
+            let star0 = start.clone().or_else(|| b3.clone());
             if let Some(b) = data_iter.next() {
-                b2 = b1.clone().filter(|_| {
+                b3 = b2.clone().filter(|_| {
                     //
                     *b == 99u8
                 });
-                b1 = b0.clone().filter(|_| {
+                b2 = b1.clone().filter(|_| {
                     //
                     *b == 98u8
                 });
-                b0 = start.clone().or_else(|| b2.clone()).clone().filter(|_| {
+                b1 = star0.clone().filter(|_| {
                     //
                     *b == 97u8
                 });
                 start = None;
             } else {
-                return start.clone().or_else(|| b2.clone());
+                return star0;
             }
         }
     });
@@ -639,11 +641,10 @@ fn seq_in_star() {
     assert!(!re.is_match(b"abcab"));
     assert!(!re.is_match(b"abcXabc"));
     assert!(re.is_match(b"abc"));
-    // TODO(mleonhard) Fix.
-    // assert!(re.is_match(b"abcabc"));
-    // assert!(re.is_match(b"abcabcabc"));
-    // assert!(re.is_match(b"abcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabc"));
-    // assert!(!re.is_match(b"abcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcX"));
+    assert!(re.is_match(b"abcabc"));
+    assert!(re.is_match(b"abcabcabc"));
+    assert!(re.is_match(b"abcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabc"));
+    assert!(!re.is_match(b"abcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcX"));
 }
 
 #[test]

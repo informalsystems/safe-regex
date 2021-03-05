@@ -160,7 +160,7 @@ enum TaggedNode {
     Seq(Vec<TaggedNode>),
     Alt(Vec<TaggedNode>),
     Optional(usize, Box<TaggedNode>),
-    Star(Box<TaggedNode>),
+    Star(usize, Box<TaggedNode>),
     Group(usize, Box<TaggedNode>),
 }
 impl TaggedNode {
@@ -189,11 +189,10 @@ impl TaggedNode {
                 var_counter.get_and_increment(),
                 Box::new(TaggedNode::from_optimized(var_counter, group_counter, node)),
             ),
-            OptimizedNode::Star(node) => TaggedNode::Star(Box::new(TaggedNode::from_optimized(
-                var_counter,
-                group_counter,
-                node,
-            ))),
+            OptimizedNode::Star(node) => TaggedNode::Star(
+                var_counter.get_and_increment(),
+                Box::new(TaggedNode::from_optimized(var_counter, group_counter, node)),
+            ),
             OptimizedNode::Group(node) => {
                 let this_group = group_counter.get_and_increment();
                 TaggedNode::Group(
@@ -206,11 +205,9 @@ impl TaggedNode {
     pub fn var_name(&self) -> Ident {
         match self {
             TaggedNode::Byte(var_num, ..) => format_ident!("b{}", var_num),
-            TaggedNode::Optional(var_num, _) => format_ident!("alt{}", var_num),
-            TaggedNode::Seq(_)
-            | TaggedNode::Alt(_)
-            | TaggedNode::Star(_)
-            | TaggedNode::Group(..) => {
+            TaggedNode::Optional(var_num, _) => format_ident!("opt{}", var_num),
+            TaggedNode::Star(var_num, _) => format_ident!("star{}", var_num),
+            TaggedNode::Seq(_) | TaggedNode::Alt(_) | TaggedNode::Group(..) => {
                 panic!("name called on {:?}", self)
             }
         }
@@ -223,7 +220,7 @@ impl core::fmt::Debug for TaggedNode {
             TaggedNode::Seq(nodes) => write!(f, "Seq({:?})", nodes),
             TaggedNode::Alt(nodes) => write!(f, "Alt({:?})", nodes),
             TaggedNode::Optional(var_num, node) => write!(f, "Optional({},{:?})", var_num, node),
-            TaggedNode::Star(node) => write!(f, "Star({:?})", node),
+            TaggedNode::Star(var_num, node) => write!(f, "Star({},{:?})", var_num, node),
             TaggedNode::Group(group_num, node) => {
                 write!(f, "Group({},{:?})", group_num, node)
             }
@@ -239,7 +236,7 @@ fn collect_var_names(var_names: &mut Vec<Ident>, node: &TaggedNode) {
                 collect_var_names(var_names, node);
             }
         }
-        TaggedNode::Optional(_, node) | TaggedNode::Star(node) | TaggedNode::Group(_, node) => {
+        TaggedNode::Optional(_, node) | TaggedNode::Star(_, node) | TaggedNode::Group(_, node) => {
             collect_var_names(var_names, node)
         }
     }
@@ -350,27 +347,32 @@ fn build(
             });
             quote! { #var_name }
         }
-        TaggedNode::Star(inner) => {
-            // TODO(mleonhard) Save intermediate value like we do with Optional.
-            let node_expr = build(
+        // See safe-regex/tests/machine::seq_in_star .
+        TaggedNode::Star(_, inner) => {
+            // Call `build` once to get the expression for the node, discarding
+            // any statements created.
+            let node_state_expr = build(
                 num_groups,
                 enclosing_groups,
-                &mut Vec::new(),
-                &mut Vec::new(),
+                &mut Vec::new(), // <-- discards
+                &mut Vec::new(), // <-- discards
                 prev_state_expr,
                 inner,
             );
-            let prev_or_node_expr =
-                quote! { #prev_state_expr .clone().or_else(|| #node_expr .clone()) };
-            let node_expr = build(
+            let var_name = node.var_name();
+            statements1.push(quote! {
+                let #var_name = #prev_state_expr .clone() .or_else(|| #node_state_expr .clone()) ;
+            });
+            // Call `build` again and keep all statements created.
+            build(
                 num_groups,
                 enclosing_groups,
                 statements1,
                 statements2_reversed,
-                &prev_or_node_expr,
+                &quote! { #var_name },
                 inner,
             );
-            quote! { #prev_state_expr .clone() .or_else(|| #node_expr .clone()) }
+            quote! { #var_name }
         }
         TaggedNode::Group(group_num, inner) => {
             let inner_enclosing_groups: Vec<usize> = enclosing_groups

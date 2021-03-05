@@ -715,3 +715,24 @@ fn non_capturing_group() {
         assert_eq!("ef", escape_ascii(groups.2.unwrap()));
     }
 }
+
+#[test]
+fn seq_in_star() {
+    let re: Matcher0<_> = regex!(br"(?:abc)*");
+    assert!(re.is_match(b""));
+    assert!(!re.is_match(b"X"));
+    assert!(!re.is_match(b"a"));
+    assert!(!re.is_match(b"ab"));
+    assert!(!re.is_match(b"Xabc"));
+    assert!(!re.is_match(b"aXbc"));
+    assert!(!re.is_match(b"abXc"));
+    assert!(!re.is_match(b"abcX"));
+    assert!(!re.is_match(b"abca"));
+    assert!(!re.is_match(b"abcab"));
+    assert!(!re.is_match(b"abcXabc"));
+    assert!(re.is_match(b"abc"));
+    assert!(re.is_match(b"abcabc"));
+    assert!(re.is_match(b"abcabcabc"));
+    assert!(re.is_match(b"abcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabc"));
+    assert!(!re.is_match(b"abcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcX"));
+}
