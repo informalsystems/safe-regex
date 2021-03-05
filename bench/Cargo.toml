@@ -7,6 +7,6 @@ version = "0.0.0"
 [dependencies]
 rand = "^0.8"
 regex = "^1.4"
-safe-regex = { version = "^0.1", path = "../safe-regex/" }
+safe-regex = { version = "^0.2", path = "../safe-regex/" }
 
 [dev-dependencies]

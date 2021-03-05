@@ -96,6 +96,10 @@ assert_eq!(b"42", digits.unwrap());
 ```
 
 ## Changelog
+- v0.2.0
+  - Linear-time & constant-memory algorithm! :)
+  - Work around rustc optimizer hang on regexes with exponential execution paths like "a{,30}".
+    See `src/bin/uncompilable/main.rs`.
 - v0.1.1 - Bug fixes and more tests.
 - v0.1.0 - First published version
 

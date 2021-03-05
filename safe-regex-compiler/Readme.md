@@ -24,7 +24,7 @@ Symbols:
 
 Functions  Expressions  Impls  Traits  Methods  Dependency
 
-0/0        0/0          0/0    0/0     0/0      🔒  safe-regex-compiler 0.1.1
+0/0        0/0          0/0    0/0     0/0      🔒  safe-regex-compiler 0.2.0
 0/0        0/0          0/0    0/0     0/0      🔒  ├── safe-proc-macro2 1.0.24
 0/0        0/0          0/0    0/0     0/0      🔒  │   └── unicode-xid 0.2.1
 0/0        0/0          0/0    0/0     0/0      🔒  └── safe-quote 1.0.9
@@ -34,17 +34,7 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 
 ```
 ## Changelog
-- v0.1.1 - Bug fixes and more tests.
-- v0.1.0 - First published version
-
-## TO DO
-- DONE - Read about regular expressions
-- DONE - Read about parsing
-- DONE - Implement parser
-- DONE - Add tests for parser
-- DONE - Implement macro generator
-- DONE - Add tests for macro generator
-- Add fuzzing tests
+See [`safe_regex`](https://crates.io/crates/safe-regex) create.
 
 ## Release Process
 1. Edit `Cargo.toml` and bump version number.

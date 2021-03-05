@@ -13,8 +13,7 @@
 //! # Cargo Geiger Safety Report
 //!
 //! # Changelog
-//! - v0.1.1 - Bug fixes and more tests.
-//! - v0.1.0 - First published version
+//! See [`safe_regex`](https://crates.io/crates/safe-regex) create.
 //!
 //! # Release Process
 //! 1. Edit `Cargo.toml` and bump version number.
