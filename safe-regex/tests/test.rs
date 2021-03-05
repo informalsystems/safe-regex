@@ -174,6 +174,15 @@ fn optional() {
     check_permutations(&regex!(br"a?a"), b"aX", 4, &[b"a", b"aa"]).unwrap();
     check_permutations(&regex!(br"aa?"), b"aX", 4, &[b"a", b"aa"]).unwrap();
     check_permutations(&regex!(br"aaa?"), b"aX", 6, &[b"aa", b"aaa"]).unwrap();
+    check_permutations(&regex!(br"(a?)(a?)"), b"aX", 4, &[b"", b"a", b"aa"]).unwrap();
+    check_permutations(&regex!(br"(a?)(a?)aa"), b"aX", 8, &[b"aa", b"aaa", b"aaaa"]).unwrap();
+    check_permutations(
+        &regex!(br"(a?)(a?)(a?)"),
+        b"aX",
+        6,
+        &[b"", b"a", b"aa", b"aaa"],
+    )
+    .unwrap();
 }
 
 #[test]

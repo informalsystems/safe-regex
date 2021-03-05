@@ -156,7 +156,7 @@ enum TaggedNode {
     Byte(usize, Predicate),
     Seq(Vec<TaggedNode>),
     Alt(Vec<TaggedNode>),
-    Optional(Box<TaggedNode>),
+    Optional(usize, Box<TaggedNode>),
     Star(Box<TaggedNode>),
     Group(usize, Box<TaggedNode>),
 }
@@ -182,9 +182,10 @@ impl TaggedNode {
                     .map(|node| TaggedNode::from_optimized(var_counter, group_counter, node))
                     .collect(),
             ),
-            OptimizedNode::Optional(node) => TaggedNode::Optional(Box::new(
-                TaggedNode::from_optimized(var_counter, group_counter, node),
-            )),
+            OptimizedNode::Optional(node) => TaggedNode::Optional(
+                var_counter.get_and_increment(),
+                Box::new(TaggedNode::from_optimized(var_counter, group_counter, node)),
+            ),
             OptimizedNode::Star(node) => TaggedNode::Star(Box::new(TaggedNode::from_optimized(
                 var_counter,
                 group_counter,
@@ -202,9 +203,9 @@ impl TaggedNode {
     pub fn var_name(&self) -> Ident {
         match self {
             TaggedNode::Byte(var_num, ..) => format_ident!("b{}", var_num),
+            TaggedNode::Optional(var_num, _) => format_ident!("alt{}", var_num),
             TaggedNode::Seq(_)
             | TaggedNode::Alt(_)
-            | TaggedNode::Optional(_)
             | TaggedNode::Star(_)
             | TaggedNode::Group(..) => {
                 panic!("name called on {:?}", self)
@@ -218,7 +219,7 @@ impl core::fmt::Debug for TaggedNode {
             TaggedNode::Byte(var_num, predicate) => write!(f, "Byte({},{:?})", var_num, predicate),
             TaggedNode::Seq(nodes) => write!(f, "Seq({:?})", nodes),
             TaggedNode::Alt(nodes) => write!(f, "Alt({:?})", nodes),
-            TaggedNode::Optional(node) => write!(f, "Optional({:?})", node),
+            TaggedNode::Optional(var_num, node) => write!(f, "Optional({},{:?})", var_num, node),
             TaggedNode::Star(node) => write!(f, "Star({:?})", node),
             TaggedNode::Group(group_num, node) => {
                 write!(f, "Group({},{:?})", group_num, node)
@@ -235,7 +236,7 @@ fn collect_var_names(var_names: &mut Vec<Ident>, node: &TaggedNode) {
                 collect_var_names(var_names, node);
             }
         }
-        TaggedNode::Optional(node) | TaggedNode::Star(node) | TaggedNode::Group(_, node) => {
+        TaggedNode::Optional(_, node) | TaggedNode::Star(node) | TaggedNode::Group(_, node) => {
             collect_var_names(var_names, node)
         }
     }
@@ -245,13 +246,14 @@ fn collect_var_names(var_names: &mut Vec<Ident>, node: &TaggedNode) {
 fn build(
     num_groups: usize,
     enclosing_groups: &Vec<usize>,
-    statements: &mut Vec<TokenStream>,
+    statements1: &mut Vec<TokenStream>,
+    statements2_reversed: &mut Vec<TokenStream>,
     prev_state_expr: &TokenStream,
     node: &TaggedNode,
 ) -> TokenStream {
     crate::dprintln!("build {:?}", node);
     let result = match node {
-        TaggedNode::Byte(_var_num, predicate) => {
+        TaggedNode::Byte(_, predicate) => {
             let var_name = node.var_name();
             let filter = match predicate {
                 Predicate::Any => quote! {},
@@ -260,14 +262,14 @@ fn build(
                         ClassItem::Byte(b) => quote! {*b == #b},
                         ClassItem::ByteRange(x, y) => quote! {(#x ..= #y).contains(b)},
                     });
-                    quote! { .filter(|_| #( #comparisons )||* )  }
+                    quote! { .filter(|_| { #( #comparisons )||* } )  }
                 }
                 Predicate::Excl(items) => {
                     let comparisons = items.iter().map(|p| match p {
                         ClassItem::Byte(b) => quote! {*b != #b},
                         ClassItem::ByteRange(x, y) => quote! {!(#x ..= #y).contains(b)},
                     });
-                    quote! { .filter(|_| #( #comparisons )&&* )  }
+                    quote! { .filter(|_| { #( #comparisons )&&* } )  }
                 }
             };
             let update_groups = if enclosing_groups.is_empty() {
@@ -295,75 +297,85 @@ fn build(
                     )
                 }
             };
-            statements.push(quote! {
+            statements2_reversed.push(quote! {
                 #var_name = #prev_state_expr .clone() #filter #update_groups ;
             });
             quote! { #var_name }
         }
-        TaggedNode::Seq(nodes) => {
-            assert!(!nodes.is_empty());
+        TaggedNode::Seq(inner_nodes) => {
+            assert!(!inner_nodes.is_empty());
             let mut last_state_expr = prev_state_expr.clone();
-            for node in nodes {
+            for node in inner_nodes {
                 last_state_expr = build(
                     num_groups,
                     enclosing_groups,
-                    statements,
+                    statements1,
+                    statements2_reversed,
                     &last_state_expr,
                     node,
                 );
             }
             last_state_expr
         }
-        TaggedNode::Alt(nodes) => {
-            assert!(!nodes.is_empty());
+        TaggedNode::Alt(inner_nodes) => {
+            assert!(!inner_nodes.is_empty());
             let mut arm_state_exprs: Vec<TokenStream> = Vec::new();
-            for node in nodes {
+            for node in inner_nodes {
                 arm_state_exprs.push(build(
                     num_groups,
                     enclosing_groups,
-                    statements,
+                    statements1,
+                    statements2_reversed,
                     prev_state_expr,
                     node,
                 ));
             }
             quote! { None #( .or_else(|| #arm_state_exprs.clone()) )* }
         }
-        TaggedNode::Optional(node) => {
+        TaggedNode::Optional(_, inner) => {
             let node_state_expr = build(
                 num_groups,
                 enclosing_groups,
-                statements,
+                statements1,
+                statements2_reversed,
                 prev_state_expr,
-                node,
+                inner,
             );
-            quote! { #prev_state_expr .clone() .or_else(|| #node_state_expr .clone()) }
+            let var_name = node.var_name();
+            statements1.push(quote! {
+                let #var_name = #prev_state_expr .clone() .or_else(|| #node_state_expr .clone()) ;
+            });
+            quote! { #var_name }
         }
-        TaggedNode::Star(node) => {
+        TaggedNode::Star(inner) => {
+            // TODO(mleonhard) Save intermediate value like we do with Optional.
             let node_expr = build(
                 num_groups,
                 enclosing_groups,
                 &mut Vec::new(),
+                &mut Vec::new(),
                 prev_state_expr,
-                node,
+                inner,
             );
             let prev_or_node_expr =
                 quote! { #prev_state_expr .clone().or_else(|| #node_expr .clone()) };
             let node_expr = build(
                 num_groups,
                 enclosing_groups,
-                statements,
+                statements1,
+                statements2_reversed,
                 &prev_or_node_expr,
-                node,
+                inner,
             );
             quote! { #prev_state_expr .clone() .or_else(|| #node_expr .clone()) }
         }
-        TaggedNode::Group(group_num, node) => {
-            let node_enclosing_groups: Vec<usize> = enclosing_groups
+        TaggedNode::Group(group_num, inner) => {
+            let inner_enclosing_groups: Vec<usize> = enclosing_groups
                 .iter()
                 .chain(core::iter::once(group_num))
                 .copied()
                 .collect();
-            let node_prev_state_expr = {
+            let inner_prev_state_expr = {
                 let mut range_names = Vec::new();
                 let mut range_values = Vec::new();
                 let extra_comma = if num_groups > 1 {
@@ -386,14 +398,14 @@ fn build(
                     )
                 }
             };
-            let node_state_expr = build(
+            build(
                 num_groups,
-                &node_enclosing_groups,
-                statements,
-                &node_prev_state_expr,
-                node,
-            );
-            quote! { #node_state_expr }
+                &inner_enclosing_groups,
+                statements1,
+                statements2_reversed,
+                &inner_prev_state_expr,
+                inner,
+            )
         }
     };
     crate::dprintln!("build returning {:?}", result);
@@ -417,7 +429,6 @@ pub fn generate(final_node: &FinalNode) -> safe_proc_macro2::TokenStream {
                     None
                 }
             })
-
         };
     };
     let mut group_counter = Counter::new();
@@ -427,25 +438,32 @@ pub fn generate(final_node: &FinalNode) -> safe_proc_macro2::TokenStream {
     let matcher_type_name = format_ident!("Matcher{}", num_groups);
     let mut var_names: Vec<Ident> = Vec::new();
     collect_var_names(&mut var_names, &tagged_node);
-    let mut statements: Vec<TokenStream> = Vec::new();
+    let mut statements1: Vec<TokenStream> = Vec::new();
+    let mut statements2_reversed: Vec<TokenStream> = Vec::new();
     let accept_expr = build(
         num_groups,
         &Vec::new(),
-        &mut statements,
+        &mut statements1,
+        &mut statements2_reversed,
         &quote! { start },
         &tagged_node,
     );
-    let statements_reversed = statements.iter().rev();
+    let statements2 = statements2_reversed.iter().rev();
     let result = if num_groups == 0 {
         quote! {
             safe_regex::#matcher_type_name::new(|data: &[u8]| {
                 let mut start = Some(());
                 #( let mut #var_names : Option<()> = None; )*
-                for b in data.iter() {
-                    #( #statements_reversed )*
-                    start = None;
+                let mut data_iter = data.iter();
+                loop {
+                    #( #statements1 )*
+                    if let Some(b) = data_iter.next() {
+                    #( #statements2 )*
+                        start = None;
+                    } else {
+                        return #accept_expr ;
+                    }
                 }
-                #accept_expr
             })
         }
     } else {
@@ -455,6 +473,7 @@ pub fn generate(final_node: &FinalNode) -> safe_proc_macro2::TokenStream {
         } else {
             quote! {,}
         };
+        var_names.push(format_ident!("accept"));
         let range_types = core::iter::repeat(quote! { core::ops::Range<usize> }).take(num_groups);
         let range_type = quote! { Option<( #( #range_types ),* #extra_comma )> };
         let range_names: Vec<Ident> = (0..num_groups).map(|r| format_ident!("r{}", r)).collect();
@@ -463,11 +482,20 @@ pub fn generate(final_node: &FinalNode) -> safe_proc_macro2::TokenStream {
                 assert!(data.len() < usize::MAX - 2);
                 let mut start = Some(( #( #default_ranges ),* #extra_comma ));
                 #( let mut #var_names : #range_type = None; )*
-                for (n, b) in data.iter().enumerate() {
-                    #( #statements_reversed )*
-                    start = None;
+                let mut data_iter = data.iter();
+                let mut n = 0;
+                loop {
+                    #( #statements1 )*
+                    accept = #accept_expr .clone() ;
+                    if let Some(b) = data_iter.next() {
+                        #( #statements2 )*
+                        start = None;
+                    } else {
+                        break;
+                    }
+                    n = n + 1;
                 }
-                #accept_expr .map(|( #( #range_names ),* #extra_comma )| {
+                accept .map(|( #( #range_names ),* #extra_comma )| {
                     (
                         #(
                             if #range_names.start != usize::MAX && #range_names.end != usize::MAX {

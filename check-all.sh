@@ -21,6 +21,8 @@ check_all() {
   time check_crate safe-regex-compiler
   time check_crate safe-regex-macro
   time check_crate safe-regex
+  # TODO(mleonhard) Build benchmark.
+  # TODO(mleonhard) Run benchmark and check for regressions.
   echo "$0 finished"
 }
 

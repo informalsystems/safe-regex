@@ -88,6 +88,7 @@ pub fn impl_regex(stream: TokenStream) -> Result<TokenStream, String> {
     // So we convert the literal to a string and parse it ourselves.
     // https://stackoverflow.com/questions/61169932/how-do-i-get-the-value-and-type-of-a-literal-in-a-rust-proc-macro
     let literal_string = literal.to_string();
+    // println!("compiling safe_regex::regex!({})", literal_string);
     let raw_byte_string = literal_string
         .strip_prefix("br")
         .ok_or_else(|| ERR.to_string())?
