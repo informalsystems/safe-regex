@@ -1,6 +1,8 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_lines)]
-use safe_regex_compiler::parser::FinalNode::{Alt, AnyByte, Byte, Class, Group, Repeat, Seq};
+use safe_regex_compiler::parser::FinalNode::{
+    Alt, AnyByte, Byte, Class, Group, NonCapturingGroup, Repeat, Seq,
+};
 use safe_regex_compiler::parser::{parse, ClassItem};
 
 #[test]
@@ -253,6 +255,35 @@ fn group() {
 }
 
 #[test]
+fn non_capturing_group() {
+    assert_eq!(Err("missing closing `)`".to_string()), parse(br"(?"));
+    assert_eq!(
+        Err("unexpected symbol after `(?`".to_string()),
+        parse(br"(?.)")
+    );
+    assert_eq!(Err("missing closing `)`".to_string()), parse(br"(?:"));
+    assert_eq!(Err("missing closing `)`".to_string()), parse(br"(?:."));
+    assert_eq!(
+        Ok(NonCapturingGroup(Box::new(Seq(vec![])))),
+        parse(br"(?:)")
+    );
+    assert_eq!(Ok(NonCapturingGroup(Box::new(AnyByte))), parse(br"(?:.)"));
+    assert_eq!(
+        Ok(NonCapturingGroup(Box::new(NonCapturingGroup(Box::new(
+            AnyByte
+        ))))),
+        parse(br"(?:(?:.))")
+    );
+    assert_eq!(
+        Ok(NonCapturingGroup(Box::new(Seq(vec![
+            AnyByte,
+            NonCapturingGroup(Box::new(AnyByte))
+        ])))),
+        parse(br"(?:.(?:.))")
+    );
+}
+
+#[test]
 fn question_mark() {
     assert_eq!(
         Err("missing element before repeat element: `?`".to_string()),
@@ -263,7 +294,7 @@ fn question_mark() {
         parse(br"b|?")
     );
     assert_eq!(
-        Err("missing element before repeat element: `?`".to_string()),
+        Err("unexpected symbol after `(?`".to_string()),
         parse(br"(?)")
     );
     assert_eq!(Ok(Repeat(Box::new(AnyByte), 0, Some(1))), parse(br".?"));

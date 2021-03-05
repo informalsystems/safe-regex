@@ -20,7 +20,8 @@ A safe regular expression library.
   - Classes: `[-ab0-9]`, `[^ab]`
   - Repetition: `a?`, `a*`, `a+`, `a{1}`, `a{1,}`, `a{,1}`, `a{1,2}`, `a{,}`
   - Alternates: `a|b|c`
-  - Capturing groups: `a(b*)?`
+  - Capturing groups: `a(bc)?`
+  - Non-capturing groups: `a(?:bc)?`
 
 ## Limitations
 - Only works on byte slices, not strings.
@@ -35,8 +36,8 @@ A safe regular expression library.
   | 1 | 6 | find phone num `.*([0-9]{3})[-. ]?([0-9]{3})[-. ]?([0-9]{4}).*` |
   | 1 | 18 | find date time `.*([0-9]+)-([0-9]+)-([0-9]+) ([0-9]+):([0-9]+).*` |
   | 1 | 0.9 | parse date time `([0-9]+)-([0-9]+)-([0-9]+) ([0-9]+):([0-9]+)` |
-  | 1 | 30 | check PEM Base64 `[a-zA-Z0-9+/=]{0,64}=*` |
-  | 1 | 20-550 | substring search `.*(2G8H81RFNZ).*` |
+  | 1 | 30 | check PEM Base64 `[a-zA-Z0-9+/]{0,64}=*` |
+  | 1 | 20-400 | substring search `.*(2G8H81RFNZ).*` |
 
 ## Alternatives
 - [`regex`](https://crates.io/crates/regex)
@@ -95,6 +96,7 @@ assert_eq!(b"42", digits.unwrap());
 ```
 
 ## Changelog
+- v0.2.1 - Non-capturing groups
 - v0.2.0
   - Linear-time & constant-memory algorithm! :)
   - Work around rustc optimizer hang on regexes with exponential execution paths like "a{,30}".

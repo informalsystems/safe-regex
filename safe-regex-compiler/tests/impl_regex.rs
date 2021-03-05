@@ -506,37 +506,39 @@ fn star() {
     );
 }
 
-// TODO(mleonhard) Implement non-capturing groups and then enable this test.
-// #[test]
-// fn seq_in_star() {
-//     let expected = quote! { safe_regex::Matcher0::new(|data: &[u8]| {
-//         let mut start = Some(());
-//         let mut b0: Option<()> = None;
-//         let mut b1: Option<()> = None;
-//         let mut b2: Option<()> = None;
-//         for b in data.iter() {
-//             let prev_b2 = b2.clone();
-//             b2 = b1.clone().filter(|_| {
-//                 //
-//                 *b == 99u8
-//             });
-//             b1 = b0.clone().filter(|_| {
-//                 //
-//                 *b == 98u8
-//             });
-//             b0 = start.clone().or_else(|| prev_b2.clone()).filter(|_| {
-//                 //
-//                 *b == 97u8
-//             });
-//             start = None;
-//         }
-//         start.clone().or_else(|| b2.clone())
-//     }) };
-//     assert_eq!(
-//         format!("{}", expected),
-//         format!("{}", impl_regex(quote! { br"(?abc)*" }).unwrap())
-//     );
-// }
+#[test]
+fn seq_in_star() {
+    let expected = quote! { safe_regex::Matcher0::new(|data: &[u8]| {
+        let mut start = Some(());
+        let mut b0: Option<()> = None;
+        let mut b1: Option<()> = None;
+        let mut b2: Option<()> = None;
+        let mut data_iter = data.iter();
+        loop {
+            if let Some(b) = data_iter.next() {
+                b2 = b1.clone().filter(|_| {
+                    //
+                    *b == 99u8
+                });
+                b1 = b0.clone().filter(|_| {
+                    //
+                    *b == 98u8
+                });
+                b0 = start.clone().or_else(|| b2.clone()).clone().filter(|_| {
+                    //
+                    *b == 97u8
+                });
+                start = None;
+            } else {
+                return start.clone().or_else(|| b2.clone());
+            }
+        }
+    }) };
+    assert_eq!(
+        format!("{}", expected),
+        format!("{}", impl_regex(quote! { br"(?:abc)*" }).unwrap())
+    );
+}
 
 #[test]
 fn seq_in_group() {

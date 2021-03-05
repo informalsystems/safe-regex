@@ -89,6 +89,8 @@ pub enum NonFinalNode {
     OpenByteRange(u8),
     ByteRange(u8, u8),
     OpenGroup,
+    OpenExtendedGroup,
+    OpenNonCapturingGroup,
     OpenAlt(Vec<FinalNode>),
     RepeatMin(String),
     RepeatMax(String, String),
@@ -116,6 +118,8 @@ impl core::fmt::Debug for NonFinalNode {
                 escape_ascii([*b])
             ),
             NonFinalNode::OpenGroup => write!(f, "OpenGroup"),
+            NonFinalNode::OpenExtendedGroup => write!(f, "OpenExtendedGroup"),
+            NonFinalNode::OpenNonCapturingGroup => write!(f, "OpenNonCapturingGroup"),
             NonFinalNode::OpenAlt(nodes) => write!(f, "OpenAlt{:?}", nodes),
             NonFinalNode::RepeatMin(min) => write!(f, "RepeatMin({})", min),
             NonFinalNode::RepeatMax(min, max) => write!(f, "RepeatMax({},{})", min, max),
@@ -143,7 +147,9 @@ impl NonFinalNode {
             NonFinalNode::OpenByteRange(b) => {
                 format!("missing byte to close range: `{}-`", escape_ascii([*b]))
             }
-            NonFinalNode::OpenGroup => "missing closing `)`".to_string(),
+            NonFinalNode::OpenGroup
+            | NonFinalNode::OpenExtendedGroup
+            | NonFinalNode::OpenNonCapturingGroup => "missing closing `)`".to_string(),
             NonFinalNode::OpenAlt(_) => "missing element after bar `|`".to_string(),
             NonFinalNode::RepeatMin(min) => {
                 format!("missing closing `}}` symbol: `{{{}`", min)
@@ -316,7 +322,7 @@ pub enum FinalNode {
 
     /// `Group(Box<FinalNode>)`
     ///
-    /// A group of nodes.
+    /// A capturing group of nodes.
     /// Regular expression authors use it to override operator precedence rules
     /// and to capture sub-slices of input.
     ///
@@ -351,6 +357,43 @@ pub enum FinalNode {
     /// );
     /// ```
     Group(Box<FinalNode>),
+
+    /// `NonCapturingGroup(Box<FinalNode>)`
+    ///
+    /// A non-capturing group of nodes.
+    /// Regular expression authors use it to override operator precedence rules.
+    ///
+    /// # Examples
+    /// ```
+    /// use safe_regex_compiler::parser::parse;
+    /// use safe_regex_compiler::parser::FinalNode;
+    /// assert_eq!(
+    ///    Ok(FinalNode::Seq(vec![
+    ///       FinalNode::Byte(b'a'),
+    ///       FinalNode::NonCapturingGroup(Box::new(
+    ///          FinalNode::Alt(vec![
+    ///             FinalNode::Byte(b'b'),
+    ///             FinalNode::Byte(b'c'),
+    ///          ])
+    ///       )),
+    ///    ])),
+    ///    parse(br"a(?:b|c)"),
+    /// );
+    /// assert_eq!(
+    ///    Ok(FinalNode::Repeat(
+    ///       Box::new(FinalNode::NonCapturingGroup(Box::new(
+    ///           FinalNode::Seq(vec![
+    ///              FinalNode::Byte(b'a'),
+    ///              FinalNode::Byte(b'b'),
+    ///           ])
+    ///       ))),
+    ///       0,    // min
+    ///       None, // max
+    ///    )),
+    ///    parse(br"(?:ab)*"),
+    /// );
+    /// ```
+    NonCapturingGroup(Box<FinalNode>),
 
     /// `Alt(Vec<FinalNode>)`
     ///
@@ -477,6 +520,7 @@ impl core::fmt::Debug for FinalNode {
             FinalNode::Class(true, items) => write!(f, "Class{:?}", items),
             FinalNode::Class(false, items) => write!(f, "Class^{:?}", items),
             FinalNode::Group(nodes) => write!(f, "Group({:?})", nodes),
+            FinalNode::NonCapturingGroup(nodes) => write!(f, "NonCapturingGroup({:?})", nodes),
             FinalNode::Alt(nodes) => write!(f, "Alt{:?}", nodes),
             FinalNode::Repeat(node, min, opt_max) => {
                 write!(f, "Repeat({:?},{}-{:?})", node, min, opt_max)
@@ -510,11 +554,12 @@ fn apply_rule_once(
     mut last: &mut Option<Node>,
     byte: &mut Option<u8>,
 ) -> Result<Option<Node>, String> {
-    use FinalNode::{Alt, AnyByte, Byte, Class, Group, Repeat, Seq};
+    use FinalNode::{Alt, AnyByte, Byte, Class, Group, NonCapturingGroup, Repeat, Seq};
     use Node::{Final, NonFinal};
     use NonFinalNode::{
         ByteRange, Escape, HexEscape0, HexEscape1, OpenAlt, OpenByteRange, OpenClass, OpenClass0,
-        OpenClassNeg, OpenGroup, RepeatMax, RepeatMin, RepeatToken,
+        OpenClassNeg, OpenExtendedGroup, OpenGroup, OpenNonCapturingGroup, RepeatMax, RepeatMin,
+        RepeatToken,
     };
     #[allow(clippy::match_same_arms)]
     match (&mut prev, &mut last, byte.map(|b| b)) {
@@ -574,6 +619,12 @@ fn apply_rule_once(
 
         // Combine group tokens
         (Some(NonFinal(OpenGroup)), Some(Final(_)), None) => Err(OpenGroup.reason()),
+        (Some(NonFinal(OpenExtendedGroup)), Some(Final(_)), None) => {
+            Err(OpenExtendedGroup.reason())
+        }
+        (Some(NonFinal(OpenNonCapturingGroup)), Some(Final(_)), None) => {
+            Err(OpenNonCapturingGroup.reason())
+        }
         // Combine Seq tokens
         (Some(Final(Seq(nodes))), Some(Final(_)), _) => {
             let node = last.take().unwrap().unwrap_final();
@@ -739,6 +790,53 @@ fn apply_rule_once(
             Ok(Some(Final(Byte(b))))
         }
 
+        // Group `(ab)` and NonCapturingGroup `(?:ab)`
+        (_, _, Some(b'(')) => {
+            byte.take();
+            Ok(Some(NonFinal(OpenGroup)))
+        }
+        (_, Some(NonFinal(OpenGroup)), Some(b')')) => {
+            last.take();
+            byte.take();
+            Ok(Some(Final(Group(Box::new(Seq(vec![]))))))
+        }
+        (_, Some(NonFinal(OpenGroup)), Some(b'?')) => {
+            last.take();
+            byte.take();
+            Ok(Some(NonFinal(OpenExtendedGroup)))
+        }
+        (_, Some(NonFinal(OpenExtendedGroup)), Some(b':')) => {
+            last.take();
+            byte.take();
+            Ok(Some(NonFinal(OpenNonCapturingGroup)))
+        }
+        (_, Some(NonFinal(OpenExtendedGroup)), Some(_)) => {
+            Err("unexpected symbol after `(?`".to_string())
+        }
+        (_, Some(NonFinal(OpenNonCapturingGroup)), Some(b')')) => {
+            last.take();
+            byte.take();
+            Ok(Some(Final(NonCapturingGroup(Box::new(Seq(vec![]))))))
+        }
+        (Some(NonFinal(OpenGroup)), Some(NonFinal(non_final)), Some(b')')) => {
+            Err(non_final.reason())
+        }
+        (Some(NonFinal(OpenNonCapturingGroup)), Some(NonFinal(non_final)), Some(b')')) => {
+            Err(non_final.reason())
+        }
+        (Some(NonFinal(OpenGroup)), Some(Final(_)), Some(b')')) => {
+            byte.take();
+            let node = last.take().unwrap().unwrap_final();
+            prev.take();
+            Ok(Some(Final(Group(Box::new(node)))))
+        }
+        (Some(NonFinal(OpenNonCapturingGroup)), Some(Final(_)), Some(b')')) => {
+            byte.take();
+            let node = last.take().unwrap().unwrap_final();
+            prev.take();
+            Ok(Some(Final(NonCapturingGroup(Box::new(node)))))
+        }
+
         // Repeat, postfix operators `?` `+` `*` `{n}` `{n,}` `{,m}` `{n,m}`
         (_, _, Some(b'?')) => {
             byte.take();
@@ -830,26 +928,6 @@ fn apply_rule_once(
             Ok(Some(NonFinal(OpenAlt(vec![node]))))
         }
         (_, None, Some(b'|')) => Err("missing element before bar `|`".to_string()),
-
-        // Group `(ab)`
-        (_, _, Some(b'(')) => {
-            byte.take();
-            Ok(Some(NonFinal(OpenGroup)))
-        }
-        (_, Some(NonFinal(OpenGroup)), Some(b')')) => {
-            last.take();
-            byte.take();
-            Ok(Some(Final(Group(Box::new(Seq(vec![]))))))
-        }
-        (Some(NonFinal(OpenGroup)), Some(NonFinal(non_final)), Some(b')')) => {
-            Err(non_final.reason())
-        }
-        (Some(NonFinal(OpenGroup)), Some(Final(_)), Some(b')')) => {
-            byte.take();
-            let node = last.take().unwrap().unwrap_final();
-            prev.take();
-            Ok(Some(Final(Group(Box::new(node)))))
-        }
 
         // Other bytes
         (_, _, Some(b)) => {

@@ -1,54 +1,51 @@
 // $ cargo +nightly bench --package bench
-//    Compiling safe-regex-compiler v0.1.1 (safe-regex-rs/safe-regex-compiler)
-//    Compiling safe-regex-macro v0.1.1 (safe-regex-rs/safe-regex-macro)
-//    Compiling safe-regex v0.1.1 (safe-regex-rs/safe-regex)
 //    Compiling bench v0.0.0 (safe-regex-rs/bench)
-//     Finished bench [optimized] target(s) in 10.22s
-//      Running safe-regex-rs/target/release/deps/lib-9f5f0d3bacb64d1e
+//     Finished bench [optimized] target(s) in 7.89s
+//      Running safe-regex-rs/target/release/deps/lib-c7a79fd1a7d4629d
 //
 // running 40 tests
-// test capture10_regex                  ... bench:       2,267 ns/iter (+/- 370)
-// test capture10_safe_regex             ... bench:       1,777 ns/iter (+/- 696)
-// test datetime_capture_100_regex       ... bench:         220 ns/iter (+/- 15)
-// test datetime_capture_100_safe_regex  ... bench:       1,966 ns/iter (+/- 516)
-// test datetime_capture_10kb_regex      ... bench:      11,765 ns/iter (+/- 2,426)
-// test datetime_capture_10kb_safe_regex ... bench:     199,057 ns/iter (+/- 22,629)
-// test datetime_capture_1kb_regex       ... bench:       1,004 ns/iter (+/- 236)
-// test datetime_capture_1kb_safe_regex  ... bench:      19,776 ns/iter (+/- 4,234)
-// test datetime_parse_regex             ... bench:         373 ns/iter (+/- 41)
-// test datetime_parse_safe_regex        ... bench:         322 ns/iter (+/- 56)
-// test pem_base64_regex                 ... bench:         119 ns/iter (+/- 23)
-// test pem_base64_safe_regex            ... bench:       3,344 ns/iter (+/- 659)
-// test phone_capture_100kb_regex        ... bench:     182,787 ns/iter (+/- 13,992)
-// test phone_capture_100kb_safe_regex   ... bench:   1,198,306 ns/iter (+/- 151,207)
-// test phone_capture_10kb_regex         ... bench:      18,319 ns/iter (+/- 3,423)
-// test phone_capture_10kb_safe_regex    ... bench:     106,017 ns/iter (+/- 16,037)
-// test phone_capture_1kb_regex          ... bench:       1,744 ns/iter (+/- 254)
-// test phone_capture_1kb_safe_regex     ... bench:      10,180 ns/iter (+/- 2,121)
-// test phone_capture_1mb_regex          ... bench:   1,904,455 ns/iter (+/- 166,638)
-// test phone_capture_1mb_safe_regex     ... bench:  11,500,098 ns/iter (+/- 1,071,888)
-// test repeat10_regex                   ... bench:          32 ns/iter (+/- 2)
-// test repeat10_safe_regex              ... bench:         103 ns/iter (+/- 2)
-// test repeat20_regex                   ... bench:         178 ns/iter (+/- 30)
-// test repeat20_safe_regex              ... bench:         447 ns/iter (+/- 79)
-// test repeat30_regex                   ... bench:          63 ns/iter (+/- 19)
-// test repeat30_safe_regex              ... bench:       1,190 ns/iter (+/- 91)
-// test repeat_capture10_regex           ... bench:         234 ns/iter (+/- 58)
-// test repeat_capture10_safe_regex      ... bench:         138 ns/iter (+/- 9)
-// test repeat_capture20_regex           ... bench:         312 ns/iter (+/- 30)
-// test repeat_capture20_safe_regex      ... bench:         616 ns/iter (+/- 137)
-// test repeat_capture30_regex           ... bench:         368 ns/iter (+/- 69)
-// test repeat_capture30_safe_regex      ... bench:       1,555 ns/iter (+/- 241)
-// test string_search_100_regex          ... bench:          22 ns/iter (+/- 1)
-// test string_search_100_safe_regex     ... bench:         473 ns/iter (+/- 47)
-// test string_search_100kb_regex        ... bench:       1,058 ns/iter (+/- 63)
-// test string_search_100kb_safe_regex   ... bench:     512,418 ns/iter (+/- 187,392)
-// test string_search_10kb_regex         ... bench:          82 ns/iter (+/- 1)
-// test string_search_10kb_safe_regex    ... bench:      44,745 ns/iter (+/- 6,804)
-// test string_search_1kb_regex          ... bench:          21 ns/iter (+/- 3)
-// test string_search_1kb_safe_regex     ... bench:       4,486 ns/iter (+/- 571)
+// test capture10_regex                  ... bench:       2,223 ns/iter (+/- 462)
+// test capture10_safe_regex             ... bench:       1,764 ns/iter (+/- 418)
+// test datetime_capture_100_regex       ... bench:         190 ns/iter (+/- 22)
+// test datetime_capture_100_safe_regex  ... bench:       1,966 ns/iter (+/- 149)
+// test datetime_capture_10kb_regex      ... bench:      12,093 ns/iter (+/- 3,025)
+// test datetime_capture_10kb_safe_regex ... bench:     203,558 ns/iter (+/- 32,367)
+// test datetime_capture_1kb_regex       ... bench:       1,105 ns/iter (+/- 312)
+// test datetime_capture_1kb_safe_regex  ... bench:      20,118 ns/iter (+/- 3,166)
+// test datetime_parse_regex             ... bench:         376 ns/iter (+/- 101)
+// test datetime_parse_safe_regex        ... bench:         325 ns/iter (+/- 42)
+// test pem_base64_regex                 ... bench:         121 ns/iter (+/- 9)
+// test pem_base64_safe_regex            ... bench:       3,480 ns/iter (+/- 544)
+// test phone_capture_100kb_regex        ... bench:     173,566 ns/iter (+/- 22,632)
+// test phone_capture_100kb_safe_regex   ... bench:   1,064,410 ns/iter (+/- 99,961)
+// test phone_capture_10kb_regex         ... bench:      17,235 ns/iter (+/- 1,796)
+// test phone_capture_10kb_safe_regex    ... bench:     112,972 ns/iter (+/- 20,852)
+// test phone_capture_1kb_regex          ... bench:       1,772 ns/iter (+/- 276)
+// test phone_capture_1kb_safe_regex     ... bench:       9,973 ns/iter (+/- 885)
+// test phone_capture_1mb_regex          ... bench:   1,825,205 ns/iter (+/- 154,677)
+// test phone_capture_1mb_safe_regex     ... bench:  10,350,923 ns/iter (+/- 777,875)
+// test repeat10_regex                   ... bench:          33 ns/iter (+/- 2)
+// test repeat10_safe_regex              ... bench:         111 ns/iter (+/- 34)
+// test repeat20_regex                   ... bench:         179 ns/iter (+/- 24)
+// test repeat20_safe_regex              ... bench:         463 ns/iter (+/- 146)
+// test repeat30_regex                   ... bench:          65 ns/iter (+/- 4)
+// test repeat30_safe_regex              ... bench:       1,177 ns/iter (+/- 104)
+// test repeat_capture10_regex           ... bench:         232 ns/iter (+/- 54)
+// test repeat_capture10_safe_regex      ... bench:         133 ns/iter (+/- 27)
+// test repeat_capture20_regex           ... bench:         300 ns/iter (+/- 71)
+// test repeat_capture20_safe_regex      ... bench:         594 ns/iter (+/- 74)
+// test repeat_capture30_regex           ... bench:         351 ns/iter (+/- 68)
+// test repeat_capture30_safe_regex      ... bench:       1,496 ns/iter (+/- 258)
+// test string_search_100_regex          ... bench:          21 ns/iter (+/- 1)
+// test string_search_100_safe_regex     ... bench:         451 ns/iter (+/- 37)
+// test string_search_100kb_regex        ... bench:       1,077 ns/iter (+/- 128)
+// test string_search_100kb_safe_regex   ... bench:     416,884 ns/iter (+/- 24,524)
+// test string_search_10kb_regex         ... bench:          81 ns/iter (+/- 11)
+// test string_search_10kb_safe_regex    ... bench:      41,808 ns/iter (+/- 4,265)
+// test string_search_1kb_regex          ... bench:          21 ns/iter (+/- 1)
+// test string_search_1kb_safe_regex     ... bench:       4,197 ns/iter (+/- 326)
 //
-// test result: ok. 0 passed; 0 failed; 0 ignored; 40 measured; 0 filtered out; finished in 61.07s
+// test result: ok. 0 passed; 0 failed; 0 ignored; 40 measured; 0 filtered out; finished in 46.72s
 #![allow(soft_unstable)]
 #![feature(test)]
 #![forbid(unsafe_code)]
@@ -73,7 +70,7 @@ fn string_search_100_regex(b: &mut Bencher) {
 
 #[bench]
 fn string_search_100_safe_regex(b: &mut Bencher) {
-    let re: Matcher1<_> = regex!(br".*(2G8H81RFNZ).*");
+    let re: Matcher0<_> = regex!(br".*2G8H81RFNZ.*");
     let data: Vec<u8> = rand_bytes_without_z(100);
     b.iter(|| re.match_all(&data));
 }
@@ -87,7 +84,7 @@ fn string_search_1kb_regex(b: &mut Bencher) {
 
 #[bench]
 fn string_search_1kb_safe_regex(b: &mut Bencher) {
-    let re: Matcher1<_> = regex!(br".*(2G8H81RFNZ).*");
+    let re: Matcher0<_> = regex!(br".*2G8H81RFNZ.*");
     let data: Vec<u8> = rand_bytes_without_z(1024);
     b.iter(|| re.match_all(&data));
 }
@@ -101,7 +98,7 @@ fn string_search_10kb_regex(b: &mut Bencher) {
 
 #[bench]
 fn string_search_10kb_safe_regex(b: &mut Bencher) {
-    let re: Matcher1<_> = regex!(br".*(2G8H81RFNZ).*");
+    let re: Matcher0<_> = regex!(br".*2G8H81RFNZ.*");
     let data: Vec<u8> = rand_bytes_without_z(10 * 1024);
     b.iter(|| re.match_all(&data));
 }
@@ -115,7 +112,7 @@ fn string_search_100kb_regex(b: &mut Bencher) {
 
 #[bench]
 fn string_search_100kb_safe_regex(b: &mut Bencher) {
-    let re: Matcher1<_> = regex!(br".*(2G8H81RFNZ).*");
+    let re: Matcher0<_> = regex!(br".*2G8H81RFNZ.*");
     let data: Vec<u8> = rand_bytes_without_z(100 * 1024);
     b.iter(|| re.match_all(&data));
 }
@@ -296,7 +293,7 @@ fn pem_base64_regex(b: &mut Bencher) {
 
 #[bench]
 fn pem_base64_safe_regex(b: &mut Bencher) {
-    let re: Matcher0<_> = regex!(br"[a-zA-Z0-9+/=]{0,64}=*");
+    let re: Matcher0<_> = regex!(br"[a-zA-Z0-9+/]{0,64}=*");
     b.iter(|| re.match_all(PEM_BASE64_LINE));
 }
 

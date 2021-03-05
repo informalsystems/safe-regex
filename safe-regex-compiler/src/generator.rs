@@ -106,6 +106,9 @@ impl OptimizedNode {
             FinalNode::Group(inner_final_node) => Some(OptimizedNode::Group(Box::new(
                 OptimizedNode::from_final_node(inner_final_node).expect("found empty group"),
             ))),
+            FinalNode::NonCapturingGroup(inner_final_node) => {
+                Some(OptimizedNode::from_final_node(inner_final_node)?)
+            }
         }
     }
 }

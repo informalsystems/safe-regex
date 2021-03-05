@@ -68,6 +68,14 @@ fn non_final_node() {
     );
     assert_eq!("OpenGroup", format!("{:?}", NonFinalNode::OpenGroup));
     assert_eq!(
+        "OpenExtendedGroup",
+        format!("{:?}", NonFinalNode::OpenExtendedGroup)
+    );
+    assert_eq!(
+        "OpenNonCapturingGroup",
+        format!("{:?}", NonFinalNode::OpenNonCapturingGroup)
+    );
+    assert_eq!(
         "OpenAlt[AnyByte]",
         format!("{:?}", NonFinalNode::OpenAlt(vec![FinalNode::AnyByte]))
     );
@@ -151,6 +159,13 @@ fn final_node() {
     assert_eq!(
         "Group(AnyByte)",
         format!("{:?}", FinalNode::Group(Box::new(FinalNode::AnyByte)))
+    );
+    assert_eq!(
+        "NonCapturingGroup(AnyByte)",
+        format!(
+            "{:?}",
+            FinalNode::NonCapturingGroup(Box::new(FinalNode::AnyByte))
+        )
     );
     assert_eq!(
         "Alt[AnyByte]",
