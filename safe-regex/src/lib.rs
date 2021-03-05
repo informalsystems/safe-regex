@@ -8,12 +8,13 @@
 //! # Features
 //! - `forbid(unsafe_code)`
 //! - Good test coverage (~80%)
-//! - Checks input in a single pass.
-//!   Runtime and memory usage are both `O(n * r * 2^g)` where
+//! - Runtime is linear.  Memory usage is constant.
+//!   Runtime and memory usage are both `O(n * r * g)` where
 //!   - `n` is the length of the data to check
 //!   - `r` is the length of the regex
 //!   - `g` is the number of capturing groups in the regex
-//!   - TODO(mleonhard) Confirm this with a benchmark.
+//! - Does not allocate
+//! - `no_std`
 //! - Rust compiler checks and optimizes the matcher
 //! - Supports basic regular expression syntax:
 //!   - Any byte: `.`
@@ -25,14 +26,19 @@
 //!
 //! # Limitations
 //! - Only works on byte slices, not strings.
-//! - Allocates.  Uses
-//!   [`std::collections::HashSet`](https://doc.rust-lang.org/stable/std/collections/struct.HashSet.html)
-//!   during matching.
-//! - Not optimized.
-//!   For comparison, this crate takes 10 times more CPU time than the
-//!   [`regex`](https://crates.io/crates/regex) crate to match complex expressions.
-//!   And it takes 1,000 times more CPU time to match simple expressions.
-//!   See [`safe-regex-rs/bench`](https://gitlab.com/leonhard-llc/safe-regex-rs/-/tree/main/bench).
+//! - Partially optimized.  Runtime is about 10 times slower than
+//!   [`regex`](https://crates.io/crates/regex) crate.
+//!   Here are relative runtimes measured with
+//!   [`safe-regex-rs/bench`](https://gitlab.com/leonhard-llc/safe-regex-rs/-/tree/main/bench)
+//!   run on a 2018 Macbook Pro:
+//!
+//!   | `regex` | `safe_regex` | expression |
+//!   | ----- | ---------- | ---------- |
+//!   | 1 | 6 | find phone num `.*([0-9]{3})[-. ]?([0-9]{3})[-. ]?([0-9]{4}).*` |
+//!   | 1 | 18 | find date time `.*([0-9]+)-([0-9]+)-([0-9]+) ([0-9]+):([0-9]+).*` |
+//!   | 1 | 0.9 | parse date time `([0-9]+)-([0-9]+)-([0-9]+) ([0-9]+):([0-9]+)` |
+//!   | 1 | 30 | check PEM Base64 `[a-zA-Z0-9+/=]{0,64}=*` |
+//!   | 1 | 20-550 | substring search `.*(2G8H81RFNZ).*` |
 //!
 //! # Alternatives
 //! - [`regex`](https://crates.io/crates/regex)
@@ -49,20 +55,18 @@
 //!
 //! # Examples
 //! ```rust
-//! use safe_regex::{regex, Matcher};
-//! let re: Matcher<_> = regex!(br"(ab)?c");
-//! assert_eq!(None, re.match_all(b""));
-//! assert_eq!(None, re.match_all(b"abcX"));
+//! use safe_regex::{regex, IsMatch, Matcher0};
+//! let matcher: Matcher0<_> = regex!(br"[abc][0-9]*");
+//! assert!(matcher.is_match(b"a42"));
+//! assert!(!matcher.is_match(b"X"));
+//! ```
 //!
-//! let groups1 = re.match_all(b"abc").unwrap();
-//! assert_eq!(b"ab", groups1.group(0).unwrap());
-//! assert_eq!(0..2, groups1.group_range(0).unwrap());
-//!
-//! let groups2 = re.match_all(b"c").unwrap();
-//! assert_eq!(None, groups2.group(0));
-//! assert_eq!(None, groups2.group_range(0));
-//!
-//! // groups2.group(1); // panics
+//! ```rust
+//! use safe_regex::{regex, IsMatch, Matcher2};
+//! let matcher: Matcher2<_> = regex!(br"([abc])([0-9]*)");
+//! let (prefix, digits) = matcher.match_all(b"a42").unwrap();
+//! assert_eq!(b"a", prefix.unwrap());
+//! assert_eq!(b"42", digits.unwrap());
 //! ```
 //!
 //! # Changelog
@@ -75,19 +79,21 @@
 //! - DONE - Design API
 //! - DONE - Implement
 //! - DONE - Add integration tests
-//! - Support more than 10 matching groups
+//! - Simplify `match_all` return type
+//! - Non-capturing groups
+//! - >10 capturing groups
 //! - Increase coverage
 //! - Add fuzzing tests
-//! - Add common character classes: whitespace, letters, punctuation, etc.
+//! - Common character classes: whitespace, letters, punctuation, etc.
 //! - Match strings
 //! - Implement optimizations explained in <https://swtch.com/%7Ersc/regexp/regexp3.html> .
 //!   Some of the code already exists in `tests/dfa_single_pass.rs`
 //!   and `tests/nfa_without_capturing.rs`.
-//! - Add a memory-limited `match_all` fn, for use on untrusted data.
-//!   Make it the default.
 //! - Once [const generics](https://github.com/rust-lang/rust/issues/44580)
 //!   are stable, use the feature to simplify some types.
-//!
+//! - Once
+//!   [trait bounds on \`const fn\` parameters are stable](https://github.com/rust-lang/rust/issues/57563),
+//!   make the `MatcherN::new` functions `const`.
 //! # Release Process
 //! 1. Edit `Cargo.toml` and bump version number.
 //! 1. Run `../release.sh`
@@ -95,12 +101,32 @@
 // https://swtch.com/~rsc/regexp/regexp1.html
 
 #![forbid(unsafe_code)]
+#![allow(clippy::type_complexity)]
 pub use safe_regex_macro::regex;
 
+/// Provides an `is_match` function.
 pub trait IsMatch {
+    /// Returns `true` if `data` matches the regular expression,
+    /// otherwise returns `false`.
+    ///
+    /// This is a whole-string match.
+    /// For sub-string search, put `.*` at the beginning and end of the regex.
+    ///
+    /// # Example
+    /// ```rust
+    /// use safe_regex::{regex, IsMatch, Matcher0};
+    /// let matcher: Matcher0<_> = regex!(br"[abc][0-9]*");
+    /// assert!(matcher.is_match(b"a42"));
+    /// assert!(!matcher.is_match(b"X"));
+    /// ```
     fn is_match(&self, data: &[u8]) -> bool;
 }
 
+/// A compiled regular expression with no capturing groups.
+///
+/// This is a zero-length type.
+/// The `regex!` macro generates a Rust type that implements the regular expression.
+/// This struct holds that type.
 pub struct Matcher0<F>
 where
     F: Fn(&[u8]) -> Option<()>,
@@ -111,10 +137,29 @@ impl<F> Matcher0<F>
 where
     F: Fn(&[u8]) -> Option<()>,
 {
+    /// Executes the regular expression against the byte string `data`.
+    ///
+    /// Returns `Some` if the expression matched all of the bytes in `data`.
+    ///
+    /// This is a whole-string match.
+    /// For sub-string search, put `.*` at the beginning and end of the regex.
+    ///
+    /// Returns `None` if the expression did not match `data`.
+    ///
+    /// # Example
+    /// ```rust
+    /// use safe_regex::{regex, IsMatch, Matcher2};
+    /// let matcher: Matcher2<_> = regex!(br"([abc])([0-9]*)");
+    /// let (prefix, digits) = matcher.match_all(b"a42").unwrap();
+    /// assert_eq!(b"a", prefix.unwrap());
+    /// assert_eq!(b"42", digits.unwrap());
+    /// ```
     #[must_use]
     pub fn match_all(&self, data: &[u8]) -> Option<()> {
         (self.f)(data)
     }
+    /// This is used internally by the `regex!` macro.
+    /// This is used internally by the `regex!` macro.
     #[must_use]
     pub fn new(f: F) -> Self {
         Self { f }
@@ -130,6 +175,11 @@ where
     }
 }
 
+/// A compiled regular expression with 1 capturing group.
+///
+/// This is a zero-length type.
+/// The `regex!` macro generates a Rust type that implements the regular expression.
+/// This struct holds that type.
 pub struct Matcher1<F>
 where
     F: for<'d> Fn(&'d [u8]) -> Option<(Option<&'d [u8]>,)>,
@@ -140,9 +190,29 @@ impl<F> Matcher1<F>
 where
     F: for<'d> Fn(&'d [u8]) -> Option<(Option<&'d [u8]>,)>,
 {
+    /// Executes the regular expression against the byte string `data`.
+    ///
+    /// Returns `Some(T)` if the expression matched all of the bytes in `data`.
+    /// The value `T` is a tuple of captured group slices.
+    ///
+    /// This is a whole-string match.
+    /// For sub-string search, put `.*` at the beginning and end of the regex.
+    ///
+    /// Returns `None` if the expression did not match `data`.
+    ///
+    /// # Example
+    /// ```rust
+    /// use safe_regex::{regex, IsMatch, Matcher2};
+    /// let matcher: Matcher2<_> = regex!(br"([abc])([0-9]*)");
+    /// let (prefix, digits) = matcher.match_all(b"a42").unwrap();
+    /// assert_eq!(b"a", prefix.unwrap());
+    /// assert_eq!(b"42", digits.unwrap());
+    /// ```
+    #[must_use]
     pub fn match_all<'d>(&self, data: &'d [u8]) -> Option<(Option<&'d [u8]>,)> {
         (self.f)(data)
     }
+    /// This is used internally by the `regex!` macro.
     #[must_use]
     pub fn new(f: F) -> Self {
         Self { f }
@@ -157,6 +227,11 @@ where
     }
 }
 
+/// A compiled regular expression with 2 capturing groups.
+///
+/// This is a zero-length type.
+/// The `regex!` macro generates a Rust type that implements the regular expression.
+/// This struct holds that type.
 pub struct Matcher2<F>
 where
     F: for<'d> Fn(&'d [u8]) -> Option<(Option<&'d [u8]>, Option<&'d [u8]>)>,
@@ -167,9 +242,29 @@ impl<F> Matcher2<F>
 where
     F: for<'d> Fn(&'d [u8]) -> Option<(Option<&'d [u8]>, Option<&'d [u8]>)>,
 {
+    /// Executes the regular expression against the byte string `data`.
+    ///
+    /// Returns `Some(T)` if the expression matched all of the bytes in `data`.
+    /// The value `T` is a tuple of captured group slices.
+    ///
+    /// This is a whole-string match.
+    /// For sub-string search, put `.*` at the beginning and end of the regex.
+    ///
+    /// Returns `None` if the expression did not match `data`.
+    ///
+    /// # Example
+    /// ```rust
+    /// use safe_regex::{regex, IsMatch, Matcher2};
+    /// let matcher: Matcher2<_> = regex!(br"([abc])([0-9]*)");
+    /// let (prefix, digits) = matcher.match_all(b"a42").unwrap();
+    /// assert_eq!(b"a", prefix.unwrap());
+    /// assert_eq!(b"42", digits.unwrap());
+    /// ```
+    #[must_use]
     pub fn match_all<'d>(&self, data: &'d [u8]) -> Option<(Option<&'d [u8]>, Option<&'d [u8]>)> {
         (self.f)(data)
     }
+    /// This is used internally by the `regex!` macro.
     #[must_use]
     pub fn new(f: F) -> Self {
         Self { f }
@@ -184,6 +279,11 @@ where
     }
 }
 
+/// A compiled regular expression with 3 capturing groups.
+///
+/// This is a zero-length type.
+/// The `regex!` macro generates a Rust type that implements the regular expression.
+/// This struct holds that type.
 pub struct Matcher3<F>
 where
     F: for<'d> Fn(&'d [u8]) -> Option<(Option<&'d [u8]>, Option<&'d [u8]>, Option<&'d [u8]>)>,
@@ -195,12 +295,32 @@ where
     F: for<'d> Fn(&'d [u8]) -> Option<(Option<&'d [u8]>, Option<&'d [u8]>, Option<&'d [u8]>)>,
 {
     #[must_use]
+    /// Executes the regular expression against the byte string `data`.
+    ///
+    /// Returns `Some(T)` if the expression matched all of the bytes in `data`.
+    /// The value `T` is a tuple of captured group slices.
+    ///
+    /// This is a whole-string match.
+    /// For sub-string search, put `.*` at the beginning and end of the regex.
+    ///
+    /// Returns `None` if the expression did not match `data`.
+    ///
+    /// # Example
+    /// ```rust
+    /// use safe_regex::{regex, IsMatch, Matcher2};
+    /// let matcher: Matcher2<_> = regex!(br"([abc])([0-9]*)");
+    /// let (prefix, digits) = matcher.match_all(b"a42").unwrap();
+    /// assert_eq!(b"a", prefix.unwrap());
+    /// assert_eq!(b"42", digits.unwrap());
+    /// ```
+    #[must_use]
     pub fn match_all<'d>(
         &self,
         data: &'d [u8],
     ) -> Option<(Option<&'d [u8]>, Option<&'d [u8]>, Option<&'d [u8]>)> {
         (self.f)(data)
     }
+    /// This is used internally by the `regex!` macro.
     #[must_use]
     pub fn new(f: F) -> Self {
         Self { f }
@@ -216,6 +336,11 @@ where
     }
 }
 
+/// A compiled regular expression with 4 capturing groups.
+///
+/// This is a zero-length type.
+/// The `regex!` macro generates a Rust type that implements the regular expression.
+/// This struct holds that type.
 pub struct Matcher4<F>
 where
     F: for<'d> Fn(
@@ -240,6 +365,24 @@ where
         Option<&'d [u8]>,
     )>,
 {
+    /// Executes the regular expression against the byte string `data`.
+    ///
+    /// Returns `Some(T)` if the expression matched all of the bytes in `data`.
+    /// The value `T` is a tuple of captured group slices.
+    ///
+    /// This is a whole-string match.
+    /// For sub-string search, put `.*` at the beginning and end of the regex.
+    ///
+    /// Returns `None` if the expression did not match `data`.
+    ///
+    /// # Example
+    /// ```rust
+    /// use safe_regex::{regex, IsMatch, Matcher2};
+    /// let matcher: Matcher2<_> = regex!(br"([abc])([0-9]*)");
+    /// let (prefix, digits) = matcher.match_all(b"a42").unwrap();
+    /// assert_eq!(b"a", prefix.unwrap());
+    /// assert_eq!(b"42", digits.unwrap());
+    /// ```
     #[must_use]
     pub fn match_all<'d>(
         &self,
@@ -252,6 +395,7 @@ where
     )> {
         (self.f)(data)
     }
+    /// This is used internally by the `regex!` macro.
     #[must_use]
     pub fn new(f: F) -> Self {
         Self { f }
@@ -274,6 +418,11 @@ where
     }
 }
 
+/// A compiled regular expression with 5 capturing groups.
+///
+/// This is a zero-length type.
+/// The `regex!` macro generates a Rust type that implements the regular expression.
+/// This struct holds that type.
 pub struct Matcher5<F>
 where
     F: for<'d> Fn(
@@ -300,6 +449,24 @@ where
         Option<&'d [u8]>,
     )>,
 {
+    /// Executes the regular expression against the byte string `data`.
+    ///
+    /// Returns `Some(T)` if the expression matched all of the bytes in `data`.
+    /// The value `T` is a tuple of captured group slices.
+    ///
+    /// This is a whole-string match.
+    /// For sub-string search, put `.*` at the beginning and end of the regex.
+    ///
+    /// Returns `None` if the expression did not match `data`.
+    ///
+    /// # Example
+    /// ```rust
+    /// use safe_regex::{regex, IsMatch, Matcher2};
+    /// let matcher: Matcher2<_> = regex!(br"([abc])([0-9]*)");
+    /// let (prefix, digits) = matcher.match_all(b"a42").unwrap();
+    /// assert_eq!(b"a", prefix.unwrap());
+    /// assert_eq!(b"42", digits.unwrap());
+    /// ```
     #[must_use]
     pub fn match_all<'d>(
         &self,
@@ -313,6 +480,7 @@ where
     )> {
         (self.f)(data)
     }
+    /// This is used internally by the `regex!` macro.
     #[must_use]
     pub fn new(f: F) -> Self {
         Self { f }
@@ -336,6 +504,11 @@ where
     }
 }
 
+/// A compiled regular expression with 6 capturing groups.
+///
+/// This is a zero-length type.
+/// The `regex!` macro generates a Rust type that implements the regular expression.
+/// This struct holds that type.
 pub struct Matcher6<F>
 where
     F: for<'d> Fn(
@@ -364,6 +537,24 @@ where
         Option<&'d [u8]>,
     )>,
 {
+    /// Executes the regular expression against the byte string `data`.
+    ///
+    /// Returns `Some(T)` if the expression matched all of the bytes in `data`.
+    /// The value `T` is a tuple of captured group slices.
+    ///
+    /// This is a whole-string match.
+    /// For sub-string search, put `.*` at the beginning and end of the regex.
+    ///
+    /// Returns `None` if the expression did not match `data`.
+    ///
+    /// # Example
+    /// ```rust
+    /// use safe_regex::{regex, IsMatch, Matcher2};
+    /// let matcher: Matcher2<_> = regex!(br"([abc])([0-9]*)");
+    /// let (prefix, digits) = matcher.match_all(b"a42").unwrap();
+    /// assert_eq!(b"a", prefix.unwrap());
+    /// assert_eq!(b"42", digits.unwrap());
+    /// ```
     #[must_use]
     pub fn match_all<'d>(
         &self,
@@ -378,6 +569,7 @@ where
     )> {
         (self.f)(data)
     }
+    /// This is used internally by the `regex!` macro.
     #[must_use]
     pub fn new(f: F) -> Self {
         Self { f }
@@ -402,6 +594,11 @@ where
     }
 }
 
+/// A compiled regular expression with 7 capturing groups.
+///
+/// This is a zero-length type.
+/// The `regex!` macro generates a Rust type that implements the regular expression.
+/// This struct holds that type.
 pub struct Matcher7<F>
 where
     F: for<'d> Fn(
@@ -432,6 +629,24 @@ where
         Option<&'d [u8]>,
     )>,
 {
+    /// Executes the regular expression against the byte string `data`.
+    ///
+    /// Returns `Some(T)` if the expression matched all of the bytes in `data`.
+    /// The value `T` is a tuple of captured group slices.
+    ///
+    /// This is a whole-string match.
+    /// For sub-string search, put `.*` at the beginning and end of the regex.
+    ///
+    /// Returns `None` if the expression did not match `data`.
+    ///
+    /// # Example
+    /// ```rust
+    /// use safe_regex::{regex, IsMatch, Matcher2};
+    /// let matcher: Matcher2<_> = regex!(br"([abc])([0-9]*)");
+    /// let (prefix, digits) = matcher.match_all(b"a42").unwrap();
+    /// assert_eq!(b"a", prefix.unwrap());
+    /// assert_eq!(b"42", digits.unwrap());
+    /// ```
     #[must_use]
     pub fn match_all<'d>(
         &self,
@@ -447,6 +662,7 @@ where
     )> {
         (self.f)(data)
     }
+    /// This is used internally by the `regex!` macro.
     #[must_use]
     pub fn new(f: F) -> Self {
         Self { f }
@@ -472,6 +688,11 @@ where
     }
 }
 
+/// A compiled regular expression with 8 capturing groups.
+///
+/// This is a zero-length type.
+/// The `regex!` macro generates a Rust type that implements the regular expression.
+/// This struct holds that type.
 pub struct Matcher8<F>
 where
     F: for<'d> Fn(
@@ -504,6 +725,24 @@ where
         Option<&'d [u8]>,
     )>,
 {
+    /// Executes the regular expression against the byte string `data`.
+    ///
+    /// Returns `Some(T)` if the expression matched all of the bytes in `data`.
+    /// The value `T` is a tuple of captured group slices.
+    ///
+    /// This is a whole-string match.
+    /// For sub-string search, put `.*` at the beginning and end of the regex.
+    ///
+    /// Returns `None` if the expression did not match `data`.
+    ///
+    /// # Example
+    /// ```rust
+    /// use safe_regex::{regex, IsMatch, Matcher2};
+    /// let matcher: Matcher2<_> = regex!(br"([abc])([0-9]*)");
+    /// let (prefix, digits) = matcher.match_all(b"a42").unwrap();
+    /// assert_eq!(b"a", prefix.unwrap());
+    /// assert_eq!(b"42", digits.unwrap());
+    /// ```
     #[must_use]
     pub fn match_all<'d>(
         &self,
@@ -520,6 +759,7 @@ where
     )> {
         (self.f)(data)
     }
+    /// This is used internally by the `regex!` macro.
     #[must_use]
     pub fn new(f: F) -> Self {
         Self { f }
@@ -546,6 +786,11 @@ where
     }
 }
 
+/// A compiled regular expression with 9 capturing groups.
+///
+/// This is a zero-length type.
+/// The `regex!` macro generates a Rust type that implements the regular expression.
+/// This struct holds that type.
 pub struct Matcher9<F>
 where
     F: for<'d> Fn(
@@ -580,6 +825,24 @@ where
         Option<&'d [u8]>,
     )>,
 {
+    /// Executes the regular expression against the byte string `data`.
+    ///
+    /// Returns `Some(T)` if the expression matched all of the bytes in `data`.
+    /// The value `T` is a tuple of captured group slices.
+    ///
+    /// This is a whole-string match.
+    /// For sub-string search, put `.*` at the beginning and end of the regex.
+    ///
+    /// Returns `None` if the expression did not match `data`.
+    ///
+    /// # Example
+    /// ```rust
+    /// use safe_regex::{regex, IsMatch, Matcher2};
+    /// let matcher: Matcher2<_> = regex!(br"([abc])([0-9]*)");
+    /// let (prefix, digits) = matcher.match_all(b"a42").unwrap();
+    /// assert_eq!(b"a", prefix.unwrap());
+    /// assert_eq!(b"42", digits.unwrap());
+    /// ```
     #[must_use]
     pub fn match_all<'d>(
         &self,
@@ -597,6 +860,7 @@ where
     )> {
         (self.f)(data)
     }
+    /// This is used internally by the `regex!` macro.
     #[must_use]
     pub fn new(f: F) -> Self {
         Self { f }
@@ -624,6 +888,11 @@ where
     }
 }
 
+/// A compiled regular expression with 10 capturing groups.
+///
+/// This is a zero-length type.
+/// The `regex!` macro generates a Rust type that implements the regular expression.
+/// This struct holds that type.
 pub struct Matcher10<F>
 where
     F: for<'d> Fn(
@@ -660,6 +929,24 @@ where
         Option<&'d [u8]>,
     )>,
 {
+    /// Executes the regular expression against the byte string `data`.
+    ///
+    /// Returns `Some(T)` if the expression matched all of the bytes in `data`.
+    /// The value `T` is a tuple of captured group slices.
+    ///
+    /// This is a whole-string match.
+    /// For sub-string search, put `.*` at the beginning and end of the regex.
+    ///
+    /// Returns `None` if the expression did not match `data`.
+    ///
+    /// # Example
+    /// ```rust
+    /// use safe_regex::{regex, IsMatch, Matcher2};
+    /// let matcher: Matcher2<_> = regex!(br"([abc])([0-9]*)");
+    /// let (prefix, digits) = matcher.match_all(b"a42").unwrap();
+    /// assert_eq!(b"a", prefix.unwrap());
+    /// assert_eq!(b"42", digits.unwrap());
+    /// ```
     #[must_use]
     pub fn match_all<'d>(
         &self,
@@ -678,6 +965,7 @@ where
     )> {
         (self.f)(data)
     }
+    /// This is used internally by the `regex!` macro.
     #[must_use]
     pub fn new(f: F) -> Self {
         Self { f }

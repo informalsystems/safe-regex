@@ -1,48 +1,54 @@
 // $ cargo +nightly bench --package bench
-//     Finished bench [optimized] target(s) in 7.28s
+//    Compiling safe-regex-compiler v0.1.1 (safe-regex-rs/safe-regex-compiler)
+//    Compiling safe-regex-macro v0.1.1 (safe-regex-rs/safe-regex-macro)
+//    Compiling safe-regex v0.1.1 (safe-regex-rs/safe-regex)
+//    Compiling bench v0.0.0 (safe-regex-rs/bench)
+//     Finished bench [optimized] target(s) in 10.22s
 //      Running safe-regex-rs/target/release/deps/lib-9f5f0d3bacb64d1e
 //
-// running 38 tests
-// test capture10_regex                  ... bench:       2,228 ns/iter (+/- 357)
-// test capture10_safe_regex             ... bench:       1,739 ns/iter (+/- 239)
-// test datetime_capture_100_regex       ... bench:         191 ns/iter (+/- 29)
-// test datetime_capture_100_safe_regex  ... bench:       1,961 ns/iter (+/- 159)
-// test datetime_capture_10kb_regex      ... bench:      11,508 ns/iter (+/- 2,883)
-// test datetime_capture_10kb_safe_regex ... bench:     209,243 ns/iter (+/- 14,722)
-// test datetime_capture_1kb_regex       ... bench:       1,178 ns/iter (+/- 305)
-// test datetime_capture_1kb_safe_regex  ... bench:      20,785 ns/iter (+/- 1,039)
-// test datetime_parse_regex             ... bench:         374 ns/iter (+/- 31)
-// test datetime_parse_safe_regex        ... bench:         328 ns/iter (+/- 42)
-// test pem_base64_regex                 ... bench:         115 ns/iter (+/- 17)
-// test pem_base64_safe_regex            ... bench:       3,542 ns/iter (+/- 846)
-// test phone_capture_100kb_regex        ... bench:     182,595 ns/iter (+/- 15,503)
-// test phone_capture_100kb_safe_regex   ... bench:   1,084,106 ns/iter (+/- 89,293)
-// test phone_capture_10kb_regex         ... bench:      17,562 ns/iter (+/- 752)
-// test phone_capture_10kb_safe_regex    ... bench:     100,845 ns/iter (+/- 3,527)
-// test phone_capture_1kb_regex          ... bench:       1,899 ns/iter (+/- 252)
-// test phone_capture_1kb_safe_regex     ... bench:      10,059 ns/iter (+/- 1,585)
-// test phone_capture_1mb_regex          ... bench:   1,801,609 ns/iter (+/- 70,862)
-// test phone_capture_1mb_safe_regex     ... bench:  11,776,301 ns/iter (+/- 387,629)
-// test repeat10_regex                   ... bench:          68 ns/iter (+/- 3)
-// test repeat10_safe_regex              ... bench:         120 ns/iter (+/- 11)
-// test repeat20_regex                   ... bench:         257 ns/iter (+/- 60)
-// test repeat20_safe_regex              ... bench:         517 ns/iter (+/- 42)
-// test repeat30_regex                   ... bench:         139 ns/iter (+/- 29)
-// test repeat30_safe_regex              ... bench:       1,157 ns/iter (+/- 74)
-// test repeat_capture10_regex           ... bench:       1,344 ns/iter (+/- 221)
-// test repeat_capture10_safe_regex      ... bench:         155 ns/iter (+/- 22)
-// test repeat_capture20_regex           ... bench:       4,228 ns/iter (+/- 455)
-// test repeat_capture20_safe_regex      ... bench:         620 ns/iter (+/- 97)
-// test string_search_100_regex          ... bench:          22 ns/iter (+/- 2)
-// test string_search_100_safe_regex     ... bench:         498 ns/iter (+/- 60)
-// test string_search_100kb_regex        ... bench:       1,048 ns/iter (+/- 61)
-// test string_search_100kb_safe_regex   ... bench:     527,838 ns/iter (+/- 102,330)
-// test string_search_10kb_regex         ... bench:          82 ns/iter (+/- 14)
-// test string_search_10kb_safe_regex    ... bench:      50,741 ns/iter (+/- 10,356)
-// test string_search_1kb_regex          ... bench:          22 ns/iter (+/- 3)
-// test string_search_1kb_safe_regex     ... bench:       5,171 ns/iter (+/- 377)
+// running 40 tests
+// test capture10_regex                  ... bench:       2,267 ns/iter (+/- 370)
+// test capture10_safe_regex             ... bench:       1,777 ns/iter (+/- 696)
+// test datetime_capture_100_regex       ... bench:         220 ns/iter (+/- 15)
+// test datetime_capture_100_safe_regex  ... bench:       1,966 ns/iter (+/- 516)
+// test datetime_capture_10kb_regex      ... bench:      11,765 ns/iter (+/- 2,426)
+// test datetime_capture_10kb_safe_regex ... bench:     199,057 ns/iter (+/- 22,629)
+// test datetime_capture_1kb_regex       ... bench:       1,004 ns/iter (+/- 236)
+// test datetime_capture_1kb_safe_regex  ... bench:      19,776 ns/iter (+/- 4,234)
+// test datetime_parse_regex             ... bench:         373 ns/iter (+/- 41)
+// test datetime_parse_safe_regex        ... bench:         322 ns/iter (+/- 56)
+// test pem_base64_regex                 ... bench:         119 ns/iter (+/- 23)
+// test pem_base64_safe_regex            ... bench:       3,344 ns/iter (+/- 659)
+// test phone_capture_100kb_regex        ... bench:     182,787 ns/iter (+/- 13,992)
+// test phone_capture_100kb_safe_regex   ... bench:   1,198,306 ns/iter (+/- 151,207)
+// test phone_capture_10kb_regex         ... bench:      18,319 ns/iter (+/- 3,423)
+// test phone_capture_10kb_safe_regex    ... bench:     106,017 ns/iter (+/- 16,037)
+// test phone_capture_1kb_regex          ... bench:       1,744 ns/iter (+/- 254)
+// test phone_capture_1kb_safe_regex     ... bench:      10,180 ns/iter (+/- 2,121)
+// test phone_capture_1mb_regex          ... bench:   1,904,455 ns/iter (+/- 166,638)
+// test phone_capture_1mb_safe_regex     ... bench:  11,500,098 ns/iter (+/- 1,071,888)
+// test repeat10_regex                   ... bench:          32 ns/iter (+/- 2)
+// test repeat10_safe_regex              ... bench:         103 ns/iter (+/- 2)
+// test repeat20_regex                   ... bench:         178 ns/iter (+/- 30)
+// test repeat20_safe_regex              ... bench:         447 ns/iter (+/- 79)
+// test repeat30_regex                   ... bench:          63 ns/iter (+/- 19)
+// test repeat30_safe_regex              ... bench:       1,190 ns/iter (+/- 91)
+// test repeat_capture10_regex           ... bench:         234 ns/iter (+/- 58)
+// test repeat_capture10_safe_regex      ... bench:         138 ns/iter (+/- 9)
+// test repeat_capture20_regex           ... bench:         312 ns/iter (+/- 30)
+// test repeat_capture20_safe_regex      ... bench:         616 ns/iter (+/- 137)
+// test repeat_capture30_regex           ... bench:         368 ns/iter (+/- 69)
+// test repeat_capture30_safe_regex      ... bench:       1,555 ns/iter (+/- 241)
+// test string_search_100_regex          ... bench:          22 ns/iter (+/- 1)
+// test string_search_100_safe_regex     ... bench:         473 ns/iter (+/- 47)
+// test string_search_100kb_regex        ... bench:       1,058 ns/iter (+/- 63)
+// test string_search_100kb_safe_regex   ... bench:     512,418 ns/iter (+/- 187,392)
+// test string_search_10kb_regex         ... bench:          82 ns/iter (+/- 1)
+// test string_search_10kb_safe_regex    ... bench:      44,745 ns/iter (+/- 6,804)
+// test string_search_1kb_regex          ... bench:          21 ns/iter (+/- 3)
+// test string_search_1kb_safe_regex     ... bench:       4,486 ns/iter (+/- 571)
 //
-// test result: ok. 0 passed; 0 failed; 0 ignored; 38 measured; 0 filtered out; finished in 72.29s
+// test result: ok. 0 passed; 0 failed; 0 ignored; 40 measured; 0 filtered out; finished in 61.07s
 #![allow(soft_unstable)]
 #![feature(test)]
 #![forbid(unsafe_code)]
@@ -118,38 +124,38 @@ fn string_search_100kb_safe_regex(b: &mut Bencher) {
 
 #[bench]
 fn repeat10_regex(b: &mut Bencher) {
-    let re = Regex::new(r"^a?a?a?a?a?a?a?a?a?a?aaaaaaaaaa$").unwrap();
+    let re = Regex::new(r"^a{10,20}$").unwrap();
     b.iter(|| re.is_match(b"aaaaaaaaaa"));
 }
 
 #[bench]
 fn repeat10_safe_regex(b: &mut Bencher) {
-    let re: Matcher0<_> = regex!(br"a?a?a?a?a?a?a?a?a?a?aaaaaaaaaa");
+    let re: Matcher0<_> = regex!(br"a{10,20}");
     b.iter(|| re.match_all(b"aaaaaaaaaa"));
 }
 
 #[bench]
 fn repeat20_regex(b: &mut Bencher) {
-    let re = Regex::new(r"^a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?aaaaaaaaaaaaaaaaaaaa$").unwrap();
+    let re = Regex::new(r"^a{20,40}$").unwrap();
     b.iter(|| re.captures(b"aaaaaaaaaaaaaaaaaaaa"));
 }
 
 // Very very slow.  May never complete.
 #[bench]
 fn repeat20_safe_regex(b: &mut Bencher) {
-    let re: Matcher0<_> = regex!(br"a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?aaaaaaaaaaaaaaaaaaaa");
+    let re: Matcher0<_> = regex!(br"a{20,40}");
     b.iter(|| re.match_all(b"aaaaaaaaaaaaaaaaaaaa"));
 }
 
 #[bench]
 fn repeat30_regex(b: &mut Bencher) {
-    let re = Regex::new(r"^a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa$").unwrap();
+    let re = Regex::new(r"^a{30,60}$").unwrap();
     b.iter(|| re.is_match(b"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"));
 }
 
 #[bench]
 fn repeat30_safe_regex(b: &mut Bencher) {
-    let re: Matcher0<_> = regex!(br"a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+    let re: Matcher0<_> = regex!(br"a{30,60}");
     b.iter(|| re.match_all(b"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"));
 }
 
@@ -157,28 +163,38 @@ fn repeat30_safe_regex(b: &mut Bencher) {
 
 #[bench]
 fn repeat_capture10_regex(b: &mut Bencher) {
-    let re = Regex::new(r"^(a?a?a?a?a?a?a?a?a?a?aaaaaaaaaa)$").unwrap();
+    let re = Regex::new(r"^(a{10,20})$").unwrap();
     b.iter(|| re.captures(b"aaaaaaaaaa"));
 }
 
 #[bench]
 fn repeat_capture10_safe_regex(b: &mut Bencher) {
-    let re: Matcher1<_> = regex!(br"(a?a?a?a?a?a?a?a?a?a?aaaaaaaaaa)");
+    let re: Matcher1<_> = regex!(br"(a{10,20})");
     b.iter(|| re.match_all(b"aaaaaaaaaa"));
 }
 
 #[bench]
 fn repeat_capture20_regex(b: &mut Bencher) {
-    let re =
-        Regex::new(r"^(a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?aaaaaaaaaaaaaaaaaaaa)$").unwrap();
+    let re = Regex::new(r"^(a{20,40})$").unwrap();
     b.iter(|| re.captures(b"aaaaaaaaaaaaaaaaaaaa"));
 }
 
 #[bench]
 fn repeat_capture20_safe_regex(b: &mut Bencher) {
-    let re: Matcher1<_> =
-        regex!(br"(a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?aaaaaaaaaaaaaaaaaaaa)");
+    let re: Matcher1<_> = regex!(br"(a{20,40})");
     b.iter(|| re.match_all(b"aaaaaaaaaaaaaaaaaaaa"));
+}
+
+#[bench]
+fn repeat_capture30_regex(b: &mut Bencher) {
+    let re = Regex::new(r"^(a{30,60})$").unwrap();
+    b.iter(|| re.captures(b"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"));
+}
+
+#[bench]
+fn repeat_capture30_safe_regex(b: &mut Bencher) {
+    let re: Matcher1<_> = regex!(br"(a{30,60})");
+    b.iter(|| re.match_all(b"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"));
 }
 
 //////////////

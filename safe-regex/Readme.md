@@ -10,12 +10,13 @@ A safe regular expression library.
 ## Features
 - `forbid(unsafe_code)`
 - Good test coverage (~80%)
-- Checks input in a single pass.
-  Runtime and memory usage are both `O(n * r * 2^g)` where
+- Runtime is linear.  Memory usage is constant.
+  Runtime and memory usage are both `O(n * r * g)` where
   - `n` is the length of the data to check
   - `r` is the length of the regex
   - `g` is the number of capturing groups in the regex
-  - TODO(mleonhard) Confirm this with a benchmark.
+- Does not allocate
+- `no_std`
 - Rust compiler checks and optimizes the matcher
 - Supports basic regular expression syntax:
   - Any byte: `.`
@@ -27,14 +28,19 @@ A safe regular expression library.
 
 ## Limitations
 - Only works on byte slices, not strings.
-- Allocates.  Uses
-  [`std::collections::HashSet`](https://doc.rust-lang.org/stable/std/collections/struct.HashSet.html)
-  during matching.
-- Not optimized.
-  For comparison, this crate takes 10 times more CPU time than the
-  [`regex`](https://crates.io/crates/regex) crate to match complex expressions.
-  And it takes 1,000 times more CPU time to match simple expressions.
-  See [`safe-regex-rs/bench`](https://gitlab.com/leonhard-llc/safe-regex-rs/-/tree/main/bench).
+- Partially optimized.  Runtime is about 10 times slower than
+  [`regex`](https://crates.io/crates/regex) crate.
+  Here are relative runtimes measured with
+  [`safe-regex-rs/bench`](https://gitlab.com/leonhard-llc/safe-regex-rs/-/tree/main/bench)
+  run on a 2018 Macbook Pro:
+
+  | `regex` | `safe_regex` | expression |
+  | ----- | ---------- | ---------- |
+  | 1 | 6 | find phone num `.*([0-9]{3})[-. ]?([0-9]{3})[-. ]?([0-9]{4}).*` |
+  | 1 | 18 | find date time `.*([0-9]+)-([0-9]+)-([0-9]+) ([0-9]+):([0-9]+).*` |
+  | 1 | 0.9 | parse date time `([0-9]+)-([0-9]+)-([0-9]+) ([0-9]+):([0-9]+)` |
+  | 1 | 30 | check PEM Base64 `[a-zA-Z0-9+/=]{0,64}=*` |
+  | 1 | 20-550 | substring search `.*(2G8H81RFNZ).*` |
 
 ## Alternatives
 - [`regex`](https://crates.io/crates/regex)
@@ -75,20 +81,18 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 ```
 ## Examples
 ```rust
-use safe_regex::{regex, Matcher};
-let re: Matcher<_> = regex!(br"(ab)?c");
-assert_eq!(None, re.match_all(b""));
-assert_eq!(None, re.match_all(b"abcX"));
+use safe_regex::{regex, IsMatch, Matcher0};
+let matcher: Matcher0<_> = regex!(br"[abc][0-9]*");
+assert!(matcher.is_match(b"a42"));
+assert!(!matcher.is_match(b"X"));
+```
 
-let groups1 = re.match_all(b"abc").unwrap();
-assert_eq!(b"ab", groups1.group(0).unwrap());
-assert_eq!(0..2, groups1.group_range(0).unwrap());
-
-let groups2 = re.match_all(b"c").unwrap();
-assert_eq!(None, groups2.group(0));
-assert_eq!(None, groups2.group_range(0));
-
-// groups2.group(1); // panics
+```rust
+use safe_regex::{regex, IsMatch, Matcher2};
+let matcher: Matcher2<_> = regex!(br"([abc])([0-9]*)");
+let (prefix, digits) = matcher.match_all(b"a42").unwrap();
+assert_eq!(b"a", prefix.unwrap());
+assert_eq!(b"42", digits.unwrap());
 ```
 
 ## Changelog
@@ -101,18 +105,21 @@ assert_eq!(None, groups2.group_range(0));
 - DONE - Design API
 - DONE - Implement
 - DONE - Add integration tests
+- Simplify `match_all` return type
+- Non-capturing groups
+- >10 capturing groups
 - Increase coverage
 - Add fuzzing tests
-- Add common character classes: whitespace, letters, punctuation, etc.
+- Common character classes: whitespace, letters, punctuation, etc.
 - Match strings
 - Implement optimizations explained in <https://swtch.com/%7Ersc/regexp/regexp3.html> .
   Some of the code already exists in `tests/dfa_single_pass.rs`
   and `tests/nfa_without_capturing.rs`.
-- Add a memory-limited `match_all` fn, for use on untrusted data.
-  Make it the default.
 - Once [const generics](https://github.com/rust-lang/rust/issues/44580)
   are stable, use the feature to simplify some types.
-
+- Once
+  [trait bounds on \`const fn\` parameters are stable](https://github.com/rust-lang/rust/issues/57563),
+  make the `MatcherN::new` functions `const`.
 ## Release Process
 1. Edit `Cargo.toml` and bump version number.
 1. Run `../release.sh`

@@ -23,27 +23,26 @@
 
 /// Compiles a regular expression into a Rust type.
 ///
-/// Returns a `Matcher` struct
-/// with a `match_all` function that takes a byte string.
+/// Returns a `MatcherN` struct where `N` is the number of capturing groups.
 ///
-/// The `Matcher<T>` struct is zero-length.  Its parameter `T` is the regex type.
+/// Specify the type of the expected matcher so your editor can
+/// show its functions and documentation:
+/// `let matcher: Matcher0<_> = regex!(br".")`.
 ///
 /// # Examples
 /// ```rust
-/// use safe_regex::{regex, Matcher};
-/// let re: Matcher<_> = regex!(br"(ab)?c");
-/// assert_eq!(None, re.match_all(b""));
-/// assert_eq!(None, re.match_all(b"abcX"));
+/// use safe_regex::{regex, IsMatch, Matcher0};
+/// let matcher: Matcher0<_> = regex!(br"[abc][0-9]*");
+/// assert!(matcher.is_match(b"a42"));
+/// assert!(!matcher.is_match(b"X"));
+/// ```
 ///
-/// let groups1 = re.match_all(b"abc").unwrap();
-/// assert_eq!(b"ab", groups1.group(0).unwrap());
-/// assert_eq!(0..2, groups1.group_range(0).unwrap());
-///
-/// let groups2 = re.match_all(b"c").unwrap();
-/// assert_eq!(None, groups2.group(0));
-/// assert_eq!(None, groups2.group_range(0));
-///
-/// // groups2.group(1); // panics
+/// ```rust
+/// use safe_regex::{regex, IsMatch, Matcher2};
+/// let matcher: Matcher2<_> = regex!(br"([abc])([0-9]*)");
+/// let (prefix, digits) = matcher.match_all(b"a42").unwrap();
+/// assert_eq!(b"a", prefix.unwrap());
+/// assert_eq!(b"42", digits.unwrap());
 /// ```
 #[proc_macro]
 pub fn regex(input: proc_macro::TokenStream) -> proc_macro::TokenStream {

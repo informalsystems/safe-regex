@@ -60,9 +60,6 @@ pub fn impl_regex(stream: TokenStream) -> Result<TokenStream, String> {
     // Group {
     //   delimiter: Parenthesis,
     //   stream: TokenStream [
-    //     Ident { sym: enum },
-    //     Ident { sym: Re },
-    //     Punct { char: '=', spacing: Alone },
     //     Literal { lit: br"a" }
     //   ]
     // }
@@ -101,10 +98,5 @@ pub fn impl_regex(stream: TokenStream) -> Result<TokenStream, String> {
     // > regex!(br"€"); // error: raw byte string must be ASCII
     // Therefore, we can slice the string at any byte offset.
     let final_node = crate::parser::parse(raw_byte_string.as_bytes())?;
-
-    // panic!("literal: {:?} str={:?}", literal, literal.to_string());
-    // if let Some(tree) = attr.into_iter().next() {
-    //     return quote_spanned!(tree.span()=>compile_error!("parameters not allowed"););
-    // }
     Ok(generate(&final_node))
 }
