@@ -56,15 +56,18 @@
 //! # Examples
 //! ```rust
 //! use safe_regex::{regex, IsMatch, Matcher0};
-//! let matcher: Matcher0<_> = regex!(br"[abc][0-9]*");
+//! let matcher: Matcher0<_> =
+//!     regex!(br"[abc][0-9]*");
 //! assert!(matcher.is_match(b"a42"));
 //! assert!(!matcher.is_match(b"X"));
 //! ```
 //!
 //! ```rust
 //! use safe_regex::{regex, IsMatch, Matcher2};
-//! let matcher: Matcher2<_> = regex!(br"([abc])([0-9]*)");
-//! let (prefix, digits) = matcher.match_all(b"a42").unwrap();
+//! let matcher: Matcher2<_> =
+//!     regex!(br"([abc])([0-9]*)");
+//! let (prefix, digits) =
+//!     matcher.match_all(b"a42").unwrap();
 //! assert_eq!(b"a", prefix.unwrap());
 //! assert_eq!(b"42", digits.unwrap());
 //! ```
@@ -85,7 +88,7 @@
 //! - DONE - Add integration tests
 //! - Simplify `match_all` return type
 //! - Non-capturing groups
-//! - >10 capturing groups
+//! - 11+ capturing groups
 //! - Increase coverage
 //! - Add fuzzing tests
 //! - Common character classes: whitespace, letters, punctuation, etc.
