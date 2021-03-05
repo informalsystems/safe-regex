@@ -14,10 +14,11 @@ mod matcher;
 ///      Running `safe-regex-rs/target/release/compilable`
 /// Matcher(br"a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?aaaaaaaaaaaaaaaaaaaa").match_all("aaaaaaaaaaaaaaaaaaaa") -> Some(Groups { ranges: [], data: [97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97, 97] })
 ///
-/// real	0m5.476s
-/// user	0m7.284s
-/// sys	0m0.713s
+/// real    0m5.476s
+/// user    0m7.284s
+/// sys     0m0.713s
 /// ```
+#[allow(clippy::too_many_lines)]
 fn main() {
     let re = {
         use matcher::{InputByte, Machine, Matcher};
@@ -27,7 +28,8 @@ fn main() {
             pub fn new() -> Self {
                 Self
             }
-            pub fn inner(&self) -> &[core::ops::Range<u32>; 0usize] {
+            #[allow(clippy::unused_self)]
+            pub fn inner(&self) -> &[core::ops::Range<u32>; 0_usize] {
                 &[]
             }
         }
@@ -81,7 +83,7 @@ fn main() {
         impl CompiledRegex_ {
             fn byte59(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 match ib.byte() {
-                    Some(b) if b == 97u8 => Self::accept(ranges, ib.consume(), next_states),
+                    Some(b) if b == 97_u8 => Self::accept(ranges, ib.consume(), next_states),
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte59(ranges.clone()));
@@ -90,7 +92,7 @@ fn main() {
             }
             fn byte58(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 match ib.byte() {
-                    Some(b) if b == 97u8 => Self::byte59(ranges, ib.consume(), next_states),
+                    Some(b) if b == 97_u8 => Self::byte59(ranges, ib.consume(), next_states),
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte58(ranges.clone()));
@@ -99,7 +101,7 @@ fn main() {
             }
             fn byte57(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 match ib.byte() {
-                    Some(b) if b == 97u8 => Self::byte58(ranges, ib.consume(), next_states),
+                    Some(b) if b == 97_u8 => Self::byte58(ranges, ib.consume(), next_states),
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte57(ranges.clone()));
@@ -108,7 +110,7 @@ fn main() {
             }
             fn byte56(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 match ib.byte() {
-                    Some(b) if b == 97u8 => Self::byte57(ranges, ib.consume(), next_states),
+                    Some(b) if b == 97_u8 => Self::byte57(ranges, ib.consume(), next_states),
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte56(ranges.clone()));
@@ -117,7 +119,7 @@ fn main() {
             }
             fn byte55(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 match ib.byte() {
-                    Some(b) if b == 97u8 => Self::byte56(ranges, ib.consume(), next_states),
+                    Some(b) if b == 97_u8 => Self::byte56(ranges, ib.consume(), next_states),
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte55(ranges.clone()));
@@ -126,7 +128,7 @@ fn main() {
             }
             fn byte54(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 match ib.byte() {
-                    Some(b) if b == 97u8 => Self::byte55(ranges, ib.consume(), next_states),
+                    Some(b) if b == 97_u8 => Self::byte55(ranges, ib.consume(), next_states),
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte54(ranges.clone()));
@@ -135,7 +137,7 @@ fn main() {
             }
             fn byte53(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 match ib.byte() {
-                    Some(b) if b == 97u8 => Self::byte54(ranges, ib.consume(), next_states),
+                    Some(b) if b == 97_u8 => Self::byte54(ranges, ib.consume(), next_states),
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte53(ranges.clone()));
@@ -144,7 +146,7 @@ fn main() {
             }
             fn byte52(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 match ib.byte() {
-                    Some(b) if b == 97u8 => Self::byte53(ranges, ib.consume(), next_states),
+                    Some(b) if b == 97_u8 => Self::byte53(ranges, ib.consume(), next_states),
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte52(ranges.clone()));
@@ -153,7 +155,7 @@ fn main() {
             }
             fn byte51(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 match ib.byte() {
-                    Some(b) if b == 97u8 => Self::byte52(ranges, ib.consume(), next_states),
+                    Some(b) if b == 97_u8 => Self::byte52(ranges, ib.consume(), next_states),
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte51(ranges.clone()));
@@ -162,7 +164,7 @@ fn main() {
             }
             fn byte50(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 match ib.byte() {
-                    Some(b) if b == 97u8 => Self::byte51(ranges, ib.consume(), next_states),
+                    Some(b) if b == 97_u8 => Self::byte51(ranges, ib.consume(), next_states),
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte50(ranges.clone()));
@@ -171,7 +173,7 @@ fn main() {
             }
             fn byte49(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 match ib.byte() {
-                    Some(b) if b == 97u8 => Self::byte50(ranges, ib.consume(), next_states),
+                    Some(b) if b == 97_u8 => Self::byte50(ranges, ib.consume(), next_states),
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte49(ranges.clone()));
@@ -180,7 +182,7 @@ fn main() {
             }
             fn byte48(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 match ib.byte() {
-                    Some(b) if b == 97u8 => Self::byte49(ranges, ib.consume(), next_states),
+                    Some(b) if b == 97_u8 => Self::byte49(ranges, ib.consume(), next_states),
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte48(ranges.clone()));
@@ -189,7 +191,7 @@ fn main() {
             }
             fn byte47(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 match ib.byte() {
-                    Some(b) if b == 97u8 => Self::byte48(ranges, ib.consume(), next_states),
+                    Some(b) if b == 97_u8 => Self::byte48(ranges, ib.consume(), next_states),
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte47(ranges.clone()));
@@ -198,7 +200,7 @@ fn main() {
             }
             fn byte46(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 match ib.byte() {
-                    Some(b) if b == 97u8 => Self::byte47(ranges, ib.consume(), next_states),
+                    Some(b) if b == 97_u8 => Self::byte47(ranges, ib.consume(), next_states),
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte46(ranges.clone()));
@@ -207,7 +209,7 @@ fn main() {
             }
             fn byte45(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 match ib.byte() {
-                    Some(b) if b == 97u8 => Self::byte46(ranges, ib.consume(), next_states),
+                    Some(b) if b == 97_u8 => Self::byte46(ranges, ib.consume(), next_states),
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte45(ranges.clone()));
@@ -216,7 +218,7 @@ fn main() {
             }
             fn byte44(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 match ib.byte() {
-                    Some(b) if b == 97u8 => Self::byte45(ranges, ib.consume(), next_states),
+                    Some(b) if b == 97_u8 => Self::byte45(ranges, ib.consume(), next_states),
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte44(ranges.clone()));
@@ -225,7 +227,7 @@ fn main() {
             }
             fn byte43(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 match ib.byte() {
-                    Some(b) if b == 97u8 => Self::byte44(ranges, ib.consume(), next_states),
+                    Some(b) if b == 97_u8 => Self::byte44(ranges, ib.consume(), next_states),
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte43(ranges.clone()));
@@ -234,7 +236,7 @@ fn main() {
             }
             fn byte42(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 match ib.byte() {
-                    Some(b) if b == 97u8 => Self::byte43(ranges, ib.consume(), next_states),
+                    Some(b) if b == 97_u8 => Self::byte43(ranges, ib.consume(), next_states),
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte42(ranges.clone()));
@@ -243,7 +245,7 @@ fn main() {
             }
             fn byte41(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 match ib.byte() {
-                    Some(b) if b == 97u8 => Self::byte42(ranges, ib.consume(), next_states),
+                    Some(b) if b == 97_u8 => Self::byte42(ranges, ib.consume(), next_states),
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte41(ranges.clone()));
@@ -252,7 +254,7 @@ fn main() {
             }
             fn byte40(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 match ib.byte() {
-                    Some(b) if b == 97u8 => Self::byte41(ranges, ib.consume(), next_states),
+                    Some(b) if b == 97_u8 => Self::byte41(ranges, ib.consume(), next_states),
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte40(ranges.clone()));
@@ -261,7 +263,7 @@ fn main() {
             }
             fn byte39(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 match ib.byte() {
-                    Some(b) if b == 97u8 => Self::byte40(ranges, ib.consume(), next_states),
+                    Some(b) if b == 97_u8 => Self::byte40(ranges, ib.consume(), next_states),
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte39(ranges.clone()));
@@ -280,7 +282,7 @@ fn main() {
             }
             fn byte37(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 match ib.byte() {
-                    Some(b) if b == 97u8 => Self::optional38(ranges, ib.consume(), next_states),
+                    Some(b) if b == 97_u8 => Self::optional38(ranges, ib.consume(), next_states),
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte37(ranges.clone()));
@@ -407,7 +409,7 @@ fn main() {
             }
             fn byte35(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 match ib.byte() {
-                    Some(b) if b == 97u8 => Self::optional36(ranges, ib.consume(), next_states),
+                    Some(b) if b == 97_u8 => Self::optional36(ranges, ib.consume(), next_states),
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte35(ranges.clone()));
@@ -420,7 +422,7 @@ fn main() {
             }
             fn byte33(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 match ib.byte() {
-                    Some(b) if b == 97u8 => Self::optional34(ranges, ib.consume(), next_states),
+                    Some(b) if b == 97_u8 => Self::optional34(ranges, ib.consume(), next_states),
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte33(ranges.clone()));
@@ -433,7 +435,7 @@ fn main() {
             }
             fn byte31(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 match ib.byte() {
-                    Some(b) if b == 97u8 => Self::optional32(ranges, ib.consume(), next_states),
+                    Some(b) if b == 97_u8 => Self::optional32(ranges, ib.consume(), next_states),
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte31(ranges.clone()));
@@ -446,7 +448,7 @@ fn main() {
             }
             fn byte29(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 match ib.byte() {
-                    Some(b) if b == 97u8 => Self::optional30(ranges, ib.consume(), next_states),
+                    Some(b) if b == 97_u8 => Self::optional30(ranges, ib.consume(), next_states),
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte29(ranges.clone()));
@@ -459,7 +461,7 @@ fn main() {
             }
             fn byte27(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 match ib.byte() {
-                    Some(b) if b == 97u8 => Self::optional28(ranges, ib.consume(), next_states),
+                    Some(b) if b == 97_u8 => Self::optional28(ranges, ib.consume(), next_states),
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte27(ranges.clone()));
@@ -472,7 +474,7 @@ fn main() {
             }
             fn byte25(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 match ib.byte() {
-                    Some(b) if b == 97u8 => Self::optional26(ranges, ib.consume(), next_states),
+                    Some(b) if b == 97_u8 => Self::optional26(ranges, ib.consume(), next_states),
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte25(ranges.clone()));
@@ -485,7 +487,7 @@ fn main() {
             }
             fn byte23(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 match ib.byte() {
-                    Some(b) if b == 97u8 => Self::optional24(ranges, ib.consume(), next_states),
+                    Some(b) if b == 97_u8 => Self::optional24(ranges, ib.consume(), next_states),
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte23(ranges.clone()));
@@ -498,7 +500,7 @@ fn main() {
             }
             fn byte21(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 match ib.byte() {
-                    Some(b) if b == 97u8 => Self::optional22(ranges, ib.consume(), next_states),
+                    Some(b) if b == 97_u8 => Self::optional22(ranges, ib.consume(), next_states),
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte21(ranges.clone()));
@@ -511,7 +513,7 @@ fn main() {
             }
             fn byte19(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 match ib.byte() {
-                    Some(b) if b == 97u8 => Self::optional20(ranges, ib.consume(), next_states),
+                    Some(b) if b == 97_u8 => Self::optional20(ranges, ib.consume(), next_states),
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte19(ranges.clone()));
@@ -524,7 +526,7 @@ fn main() {
             }
             fn byte17(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 match ib.byte() {
-                    Some(b) if b == 97u8 => Self::optional18(ranges, ib.consume(), next_states),
+                    Some(b) if b == 97_u8 => Self::optional18(ranges, ib.consume(), next_states),
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte17(ranges.clone()));
@@ -537,7 +539,7 @@ fn main() {
             }
             fn byte15(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 match ib.byte() {
-                    Some(b) if b == 97u8 => Self::optional16(ranges, ib.consume(), next_states),
+                    Some(b) if b == 97_u8 => Self::optional16(ranges, ib.consume(), next_states),
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte15(ranges.clone()));
@@ -550,7 +552,7 @@ fn main() {
             }
             fn byte13(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 match ib.byte() {
-                    Some(b) if b == 97u8 => Self::optional14(ranges, ib.consume(), next_states),
+                    Some(b) if b == 97_u8 => Self::optional14(ranges, ib.consume(), next_states),
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte13(ranges.clone()));
@@ -563,7 +565,7 @@ fn main() {
             }
             fn byte11(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 match ib.byte() {
-                    Some(b) if b == 97u8 => Self::optional12(ranges, ib.consume(), next_states),
+                    Some(b) if b == 97_u8 => Self::optional12(ranges, ib.consume(), next_states),
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte11(ranges.clone()));
@@ -576,7 +578,7 @@ fn main() {
             }
             fn byte9(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 match ib.byte() {
-                    Some(b) if b == 97u8 => Self::optional10(ranges, ib.consume(), next_states),
+                    Some(b) if b == 97_u8 => Self::optional10(ranges, ib.consume(), next_states),
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte9(ranges.clone()));
@@ -589,7 +591,7 @@ fn main() {
             }
             fn byte7(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 match ib.byte() {
-                    Some(b) if b == 97u8 => Self::optional8(ranges, ib.consume(), next_states),
+                    Some(b) if b == 97_u8 => Self::optional8(ranges, ib.consume(), next_states),
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte7(ranges.clone()));
@@ -602,7 +604,7 @@ fn main() {
             }
             fn byte5(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 match ib.byte() {
-                    Some(b) if b == 97u8 => Self::optional6(ranges, ib.consume(), next_states),
+                    Some(b) if b == 97_u8 => Self::optional6(ranges, ib.consume(), next_states),
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte5(ranges.clone()));
@@ -615,7 +617,7 @@ fn main() {
             }
             fn byte3(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 match ib.byte() {
-                    Some(b) if b == 97u8 => Self::optional4(ranges, ib.consume(), next_states),
+                    Some(b) if b == 97_u8 => Self::optional4(ranges, ib.consume(), next_states),
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte3(ranges.clone()));
@@ -628,7 +630,7 @@ fn main() {
             }
             fn byte1(ranges: &Ranges_, ib: InputByte, next_states: &mut States_) {
                 match ib.byte() {
-                    Some(b) if b == 97u8 => Self::optional2(ranges, ib.consume(), next_states),
+                    Some(b) if b == 97_u8 => Self::optional2(ranges, ib.consume(), next_states),
                     Some(_) => {}
                     None => {
                         next_states.insert(Self::Byte1(ranges.clone()));
@@ -649,7 +651,7 @@ fn main() {
             }
         }
         impl Machine for CompiledRegex_ {
-            type GroupRanges = [core::ops::Range<u32>; 0usize];
+            type GroupRanges = [core::ops::Range<u32>; 0_usize];
             fn expression() -> &'static [u8] {
                 br"a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?aaaaaaaaaaaaaaaaaaaa"
             }

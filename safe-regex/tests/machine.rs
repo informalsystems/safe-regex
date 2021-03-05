@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 #![allow(unused_variables)]
 #![allow(unused_assignments)]
+#![allow(clippy::unseparated_literal_suffix)]
 use safe_regex::internal::escape_ascii;
 use safe_regex::{IsMatch, Matcher0, Matcher1, Matcher2};
 
@@ -33,7 +34,6 @@ fn byte() {
 
 #[test]
 fn any_byte() {
-    #![allow(unused_variables)]
     // regex!(br".")
     let re: Matcher0<_> = safe_regex::Matcher0::new(|data: &[u8]| {
         let mut start = Some(());

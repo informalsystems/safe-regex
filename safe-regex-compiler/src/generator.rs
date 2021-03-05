@@ -245,7 +245,7 @@ fn collect_var_names(var_names: &mut Vec<Ident>, node: &TaggedNode) {
 #[allow(clippy::too_many_lines)]
 fn build(
     num_groups: usize,
-    enclosing_groups: &Vec<usize>,
+    enclosing_groups: &[usize],
     statements1: &mut Vec<TokenStream>,
     statements2_reversed: &mut Vec<TokenStream>,
     prev_state_expr: &TokenStream,
