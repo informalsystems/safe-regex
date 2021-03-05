@@ -10,12 +10,8 @@ A safe regular expression library.
 ## Features
 - `forbid(unsafe_code)`
 - Good test coverage (~80%)
-- Runtime is linear.  Memory usage is constant.
-  Runtime and memory usage are both `O(n * r * g)` where
-  - `n` is the length of the data to check
-  - `r` is the length of the regex
-  - `g` is the number of capturing groups in the regex
-- Does not allocate
+- Runtime is linear.
+- Memory usage is constant.  Does not allocate.
 - `no_std`
 - Rust compiler checks and optimizes the matcher
 - Supports basic regular expression syntax:
