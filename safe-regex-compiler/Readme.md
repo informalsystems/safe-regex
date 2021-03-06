@@ -24,7 +24,7 @@ Symbols:
 
 Functions  Expressions  Impls  Traits  Methods  Dependency
 
-0/0        0/0          0/0    0/0     0/0      🔒  safe-regex-compiler 0.2.1
+0/0        0/0          0/0    0/0     0/0      🔒  safe-regex-compiler 0.2.2
 0/0        0/0          0/0    0/0     0/0      🔒  ├── safe-proc-macro2 1.0.24
 0/0        0/0          0/0    0/0     0/0      🔒  │   └── unicode-xid 0.2.1
 0/0        0/0          0/0    0/0     0/0      🔒  └── safe-quote 1.0.9
