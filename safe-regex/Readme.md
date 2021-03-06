@@ -65,7 +65,7 @@ Symbols:
 Functions  Expressions  Impls  Traits  Methods  Dependency
 
 0/0        0/0          0/0    0/0     0/0      🔒  safe-regex 0.2.1
-0/0        0/0          0/0    0/0     0/0      🔒  └── safe-regex-macro 0.2.0
+0/0        0/0          0/0    0/0     0/0      🔒  └── safe-regex-macro 0.2.1
 0/0        0/0          0/0    0/0     0/0      🔒      ├── safe-proc-macro2 1.0.24
 0/0        0/0          0/0    0/0     0/0      🔒      │   └── unicode-xid 0.2.1
 0/0        0/0          0/0    0/0     0/0      🔒      └── safe-regex-compiler 0.2.1
@@ -86,17 +86,18 @@ assert!(!matcher.is_match(b"X"));
 ```
 
 ```rust
-use safe_regex::{regex, IsMatch, Matcher2};
+use safe_regex::{regex, Matcher2};
 let matcher: Matcher2<_> =
     regex!(br"([abc])([0-9]*)");
 let (prefix, digits) =
     matcher.match_all(b"a42").unwrap();
-assert_eq!(b"a", prefix.unwrap());
-assert_eq!(b"42", digits.unwrap());
+assert_eq!(b"a", prefix);
+assert_eq!(b"42", digits);
 ```
 
 ## Changelog
-- v0.2.1 - Non-capturing groups, big fixes
+- v0.2.2 - Simplify `match_all` return type
+- v0.2.1 - Non-capturing groups, bug fixes
 - v0.2.0
   - Linear-time & constant-memory algorithm! :)
   - Work around rustc optimizer hang on regexes with exponential execution paths like "a{,30}".
@@ -105,13 +106,6 @@ assert_eq!(b"42", digits.unwrap());
 - v0.1.0 - First published version
 
 ## TO DO
-- DONE - Read about regular expressions
-- DONE - Read about NFAs, <https://swtch.com/~rsc/regexp/>
-- DONE - Design API
-- DONE - Implement
-- DONE - Add integration tests
-- Simplify `match_all` return type
-- Non-capturing groups
 - 11+ capturing groups
 - Increase coverage
 - Add fuzzing tests

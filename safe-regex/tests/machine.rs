@@ -235,9 +235,9 @@ fn group() {
         }
         accept.map(|(r0,)| {
             (if r0.start != usize::MAX && r0.end != usize::MAX {
-                Some(&data[r0])
+                &data[r0]
             } else {
-                None
+                &[]
             },)
         })
     });
@@ -246,7 +246,7 @@ fn group() {
     assert_eq!(None, re.match_all(b"aX"));
     assert_eq!(None, re.match_all(b"Xa"));
     assert_eq!(None, re.match_all(b"aa"));
-    assert_eq!("a", escape_ascii(re.match_all(b"a").unwrap().0.unwrap()));
+    assert_eq!("a", escape_ascii(re.match_all(b"a").unwrap().0));
 }
 
 #[test]
@@ -290,14 +290,14 @@ fn groups_nested() {
         accept.map(|(r0, r1)| {
             (
                 if r0.start != usize::MAX && r0.end != usize::MAX {
-                    Some(&data[r0])
+                    &data[r0]
                 } else {
-                    None
+                    &[]
                 },
                 if r1.start != usize::MAX && r1.end != usize::MAX {
-                    Some(&data[r1])
+                    &data[r1]
                 } else {
-                    None
+                    &[]
                 },
             )
         })
@@ -308,8 +308,8 @@ fn groups_nested() {
     assert_eq!(None, re.match_all(b"Xa"));
     assert_eq!(None, re.match_all(b"aa"));
     let groups = re.match_all(b"ab").unwrap();
-    assert_eq!("ab", escape_ascii(groups.0.unwrap()));
-    assert_eq!("b", escape_ascii(groups.1.unwrap()));
+    assert_eq!("ab", escape_ascii(groups.0));
+    assert_eq!("b", escape_ascii(groups.1));
     assert_eq!(None, re.match_all(b"ba"));
     assert_eq!(None, re.match_all(b"bb"));
     assert_eq!(None, re.match_all(b"Xab"));
@@ -524,30 +524,30 @@ fn optionals_in_groups() {
         accept.map(|(r0, r1)| {
             (
                 if r0.start != usize::MAX && r0.end != usize::MAX {
-                    Some(&data[r0])
+                    &data[r0]
                 } else {
-                    None
+                    &[]
                 },
                 if r1.start != usize::MAX && r1.end != usize::MAX {
-                    Some(&data[r1])
+                    &data[r1]
                 } else {
-                    None
+                    &[]
                 },
             )
         })
     });
     let groups = re.match_all(b"").unwrap();
-    assert_eq!("", escape_ascii(groups.0.unwrap()));
-    assert_eq!("", escape_ascii(groups.1.unwrap()));
+    assert_eq!("", escape_ascii(groups.0));
+    assert_eq!("", escape_ascii(groups.1));
     assert!(!re.is_match(b"X"));
     let groups = re.match_all(b"a").unwrap();
-    assert_eq!("a", escape_ascii(groups.0.unwrap()));
-    assert_eq!("", escape_ascii(groups.1.unwrap()));
+    assert_eq!("a", escape_ascii(groups.0));
+    assert_eq!("", escape_ascii(groups.1));
     assert!(!re.is_match(b"Xa"));
     assert!(!re.is_match(b"aX"));
     let groups = re.match_all(b"aa").unwrap();
-    assert_eq!("a", escape_ascii(groups.0.unwrap()));
-    assert_eq!("a", escape_ascii(groups.1.unwrap()));
+    assert_eq!("a", escape_ascii(groups.0));
+    assert_eq!("a", escape_ascii(groups.1));
     assert!(!re.is_match(b"Xaa"));
     assert!(!re.is_match(b"aXa"));
     assert!(!re.is_match(b"aaX"));
@@ -698,9 +698,9 @@ fn seq_in_group() {
         }
         accept.map(|(r0,)| {
             (if r0.start != usize::MAX && r0.end != usize::MAX {
-                Some(&data[r0])
+                &data[r0]
             } else {
-                None
+                &[]
             },)
         })
     });
@@ -712,10 +712,7 @@ fn seq_in_group() {
     assert!(!re.is_match(b"cd"));
     assert!(!re.is_match(b"abc"));
     assert!(!re.is_match(b"acd"));
-    assert_eq!(
-        "abc",
-        escape_ascii(re.match_all(b"abcd").unwrap().0.unwrap())
-    );
+    assert_eq!("abc", escape_ascii(re.match_all(b"abcd").unwrap().0));
     assert!(!re.is_match(b"abcda"));
     assert!(!re.is_match(b"abcdabcd"));
     assert!(!re.is_match(b"Xabcd"));
@@ -765,16 +762,16 @@ fn alt_in_group() {
         }
         accept.map(|(r0,)| {
             (if r0.start != usize::MAX && r0.end != usize::MAX {
-                Some(&data[r0])
+                &data[r0]
             } else {
-                None
+                &[]
             },)
         })
     });
     assert!(!re.is_match(b""));
     assert!(!re.is_match(b"X"));
-    assert_eq!("a", escape_ascii(re.match_all(b"a").unwrap().0.unwrap()));
-    assert_eq!("b", escape_ascii(re.match_all(b"b").unwrap().0.unwrap()));
+    assert_eq!("a", escape_ascii(re.match_all(b"a").unwrap().0));
+    assert_eq!("b", escape_ascii(re.match_all(b"b").unwrap().0));
     assert!(!re.is_match(b"aX"));
     assert!(!re.is_match(b"Xa"));
     assert!(!re.is_match(b"bX"));

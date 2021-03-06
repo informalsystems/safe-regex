@@ -60,17 +60,18 @@
 //! ```
 //!
 //! ```rust
-//! use safe_regex::{regex, IsMatch, Matcher2};
+//! use safe_regex::{regex, Matcher2};
 //! let matcher: Matcher2<_> =
 //!     regex!(br"([abc])([0-9]*)");
 //! let (prefix, digits) =
 //!     matcher.match_all(b"a42").unwrap();
-//! assert_eq!(b"a", prefix.unwrap());
-//! assert_eq!(b"42", digits.unwrap());
+//! assert_eq!(b"a", prefix);
+//! assert_eq!(b"42", digits);
 //! ```
 //!
 //! # Changelog
-//! - v0.2.1 - Non-capturing groups, big fixes
+//! - v0.2.2 - Simplify `match_all` return type
+//! - v0.2.1 - Non-capturing groups, bug fixes
 //! - v0.2.0
 //!   - Linear-time & constant-memory algorithm! :)
 //!   - Work around rustc optimizer hang on regexes with exponential execution paths like "a{,30}".
@@ -79,13 +80,6 @@
 //! - v0.1.0 - First published version
 //!
 //! # TO DO
-//! - DONE - Read about regular expressions
-//! - DONE - Read about NFAs, <https://swtch.com/~rsc/regexp/>
-//! - DONE - Design API
-//! - DONE - Implement
-//! - DONE - Add integration tests
-//! - Simplify `match_all` return type
-//! - Non-capturing groups
 //! - 11+ capturing groups
 //! - Increase coverage
 //! - Add fuzzing tests
@@ -153,11 +147,12 @@ where
     ///
     /// # Example
     /// ```rust
-    /// use safe_regex::{regex, IsMatch, Matcher2};
-    /// let matcher: Matcher2<_> = regex!(br"([abc])([0-9]*)");
-    /// let (prefix, digits) = matcher.match_all(b"a42").unwrap();
-    /// assert_eq!(b"a", prefix.unwrap());
-    /// assert_eq!(b"42", digits.unwrap());
+    /// use safe_regex::{regex, Matcher3};
+    /// let matcher: Matcher3<_> = regex!(br"([abc])([0-9]*)(suffix)?");
+    /// let (prefix, digits, suffix) = matcher.match_all(b"a42").unwrap();
+    /// assert_eq!(b"a", prefix);
+    /// assert_eq!(b"42", digits);
+    /// assert!(suffix.is_empty());
     /// ```
     #[must_use]
     pub fn match_all(&self, data: &[u8]) -> Option<()> {
@@ -187,13 +182,13 @@ where
 /// This struct holds that type.
 pub struct Matcher1<F>
 where
-    F: for<'d> Fn(&'d [u8]) -> Option<(Option<&'d [u8]>,)>,
+    F: for<'d> Fn(&'d [u8]) -> Option<(&'d [u8],)>,
 {
     f: F,
 }
 impl<F> Matcher1<F>
 where
-    F: for<'d> Fn(&'d [u8]) -> Option<(Option<&'d [u8]>,)>,
+    F: for<'d> Fn(&'d [u8]) -> Option<(&'d [u8],)>,
 {
     /// Executes the regular expression against the byte string `data`.
     ///
@@ -207,14 +202,15 @@ where
     ///
     /// # Example
     /// ```rust
-    /// use safe_regex::{regex, IsMatch, Matcher2};
-    /// let matcher: Matcher2<_> = regex!(br"([abc])([0-9]*)");
-    /// let (prefix, digits) = matcher.match_all(b"a42").unwrap();
-    /// assert_eq!(b"a", prefix.unwrap());
-    /// assert_eq!(b"42", digits.unwrap());
+    /// use safe_regex::{regex, Matcher3};
+    /// let matcher: Matcher3<_> = regex!(br"([abc])([0-9]*)(suffix)?");
+    /// let (prefix, digits, suffix) = matcher.match_all(b"a42").unwrap();
+    /// assert_eq!(b"a", prefix);
+    /// assert_eq!(b"42", digits);
+    /// assert!(suffix.is_empty());
     /// ```
     #[must_use]
-    pub fn match_all<'d>(&self, data: &'d [u8]) -> Option<(Option<&'d [u8]>,)> {
+    pub fn match_all<'d>(&self, data: &'d [u8]) -> Option<(&'d [u8],)> {
         (self.f)(data)
     }
     /// This is used internally by the `regex!` macro.
@@ -225,7 +221,7 @@ where
 }
 impl<F> IsMatch for Matcher1<F>
 where
-    F: for<'d> Fn(&'d [u8]) -> Option<(Option<&'d [u8]>,)>,
+    F: for<'d> Fn(&'d [u8]) -> Option<(&'d [u8],)>,
 {
     fn is_match(&self, data: &[u8]) -> bool {
         (self.f)(data).is_some()
@@ -239,13 +235,13 @@ where
 /// This struct holds that type.
 pub struct Matcher2<F>
 where
-    F: for<'d> Fn(&'d [u8]) -> Option<(Option<&'d [u8]>, Option<&'d [u8]>)>,
+    F: for<'d> Fn(&'d [u8]) -> Option<(&'d [u8], &'d [u8])>,
 {
     f: F,
 }
 impl<F> Matcher2<F>
 where
-    F: for<'d> Fn(&'d [u8]) -> Option<(Option<&'d [u8]>, Option<&'d [u8]>)>,
+    F: for<'d> Fn(&'d [u8]) -> Option<(&'d [u8], &'d [u8])>,
 {
     /// Executes the regular expression against the byte string `data`.
     ///
@@ -259,14 +255,15 @@ where
     ///
     /// # Example
     /// ```rust
-    /// use safe_regex::{regex, IsMatch, Matcher2};
-    /// let matcher: Matcher2<_> = regex!(br"([abc])([0-9]*)");
-    /// let (prefix, digits) = matcher.match_all(b"a42").unwrap();
-    /// assert_eq!(b"a", prefix.unwrap());
-    /// assert_eq!(b"42", digits.unwrap());
+    /// use safe_regex::{regex, Matcher3};
+    /// let matcher: Matcher3<_> = regex!(br"([abc])([0-9]*)(suffix)?");
+    /// let (prefix, digits, suffix) = matcher.match_all(b"a42").unwrap();
+    /// assert_eq!(b"a", prefix);
+    /// assert_eq!(b"42", digits);
+    /// assert!(suffix.is_empty());
     /// ```
     #[must_use]
-    pub fn match_all<'d>(&self, data: &'d [u8]) -> Option<(Option<&'d [u8]>, Option<&'d [u8]>)> {
+    pub fn match_all<'d>(&self, data: &'d [u8]) -> Option<(&'d [u8], &'d [u8])> {
         (self.f)(data)
     }
     /// This is used internally by the `regex!` macro.
@@ -277,7 +274,7 @@ where
 }
 impl<F> IsMatch for Matcher2<F>
 where
-    F: for<'d> Fn(&'d [u8]) -> Option<(Option<&'d [u8]>, Option<&'d [u8]>)>,
+    F: for<'d> Fn(&'d [u8]) -> Option<(&'d [u8], &'d [u8])>,
 {
     fn is_match(&self, data: &[u8]) -> bool {
         (self.f)(data).is_some()
@@ -291,13 +288,13 @@ where
 /// This struct holds that type.
 pub struct Matcher3<F>
 where
-    F: for<'d> Fn(&'d [u8]) -> Option<(Option<&'d [u8]>, Option<&'d [u8]>, Option<&'d [u8]>)>,
+    F: for<'d> Fn(&'d [u8]) -> Option<(&'d [u8], &'d [u8], &'d [u8])>,
 {
     f: F,
 }
 impl<F> Matcher3<F>
 where
-    F: for<'d> Fn(&'d [u8]) -> Option<(Option<&'d [u8]>, Option<&'d [u8]>, Option<&'d [u8]>)>,
+    F: for<'d> Fn(&'d [u8]) -> Option<(&'d [u8], &'d [u8], &'d [u8])>,
 {
     #[must_use]
     /// Executes the regular expression against the byte string `data`.
@@ -312,17 +309,15 @@ where
     ///
     /// # Example
     /// ```rust
-    /// use safe_regex::{regex, IsMatch, Matcher2};
-    /// let matcher: Matcher2<_> = regex!(br"([abc])([0-9]*)");
-    /// let (prefix, digits) = matcher.match_all(b"a42").unwrap();
-    /// assert_eq!(b"a", prefix.unwrap());
-    /// assert_eq!(b"42", digits.unwrap());
+    /// use safe_regex::{regex, Matcher3};
+    /// let matcher: Matcher3<_> = regex!(br"([abc])([0-9]*)(suffix)?");
+    /// let (prefix, digits, suffix) = matcher.match_all(b"a42").unwrap();
+    /// assert_eq!(b"a", prefix);
+    /// assert_eq!(b"42", digits);
+    /// assert!(suffix.is_empty());
     /// ```
     #[must_use]
-    pub fn match_all<'d>(
-        &self,
-        data: &'d [u8],
-    ) -> Option<(Option<&'d [u8]>, Option<&'d [u8]>, Option<&'d [u8]>)> {
+    pub fn match_all<'d>(&self, data: &'d [u8]) -> Option<(&'d [u8], &'d [u8], &'d [u8])> {
         (self.f)(data)
     }
     /// This is used internally by the `regex!` macro.
@@ -333,7 +328,7 @@ where
 }
 impl<F> IsMatch for Matcher3<F>
 where
-    F: for<'d> Fn(&'d [u8]) -> Option<(Option<&'d [u8]>, Option<&'d [u8]>, Option<&'d [u8]>)>,
+    F: for<'d> Fn(&'d [u8]) -> Option<(&'d [u8], &'d [u8], &'d [u8])>,
 {
     #[must_use]
     fn is_match(&self, data: &[u8]) -> bool {
@@ -348,27 +343,13 @@ where
 /// This struct holds that type.
 pub struct Matcher4<F>
 where
-    F: for<'d> Fn(
-        &'d [u8],
-    ) -> Option<(
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-    )>,
+    F: for<'d> Fn(&'d [u8]) -> Option<(&'d [u8], &'d [u8], &'d [u8], &'d [u8])>,
 {
     f: F,
 }
 impl<F> Matcher4<F>
 where
-    F: for<'d> Fn(
-        &'d [u8],
-    ) -> Option<(
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-    )>,
+    F: for<'d> Fn(&'d [u8]) -> Option<(&'d [u8], &'d [u8], &'d [u8], &'d [u8])>,
 {
     /// Executes the regular expression against the byte string `data`.
     ///
@@ -382,22 +363,18 @@ where
     ///
     /// # Example
     /// ```rust
-    /// use safe_regex::{regex, IsMatch, Matcher2};
-    /// let matcher: Matcher2<_> = regex!(br"([abc])([0-9]*)");
-    /// let (prefix, digits) = matcher.match_all(b"a42").unwrap();
-    /// assert_eq!(b"a", prefix.unwrap());
-    /// assert_eq!(b"42", digits.unwrap());
+    /// use safe_regex::{regex, Matcher3};
+    /// let matcher: Matcher3<_> = regex!(br"([abc])([0-9]*)(suffix)?");
+    /// let (prefix, digits, suffix) = matcher.match_all(b"a42").unwrap();
+    /// assert_eq!(b"a", prefix);
+    /// assert_eq!(b"42", digits);
+    /// assert!(suffix.is_empty());
     /// ```
     #[must_use]
     pub fn match_all<'d>(
         &self,
         data: &'d [u8],
-    ) -> Option<(
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-    )> {
+    ) -> Option<(&'d [u8], &'d [u8], &'d [u8], &'d [u8])> {
         (self.f)(data)
     }
     /// This is used internally by the `regex!` macro.
@@ -408,14 +385,7 @@ where
 }
 impl<F> IsMatch for Matcher4<F>
 where
-    F: for<'d> Fn(
-        &'d [u8],
-    ) -> Option<(
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-    )>,
+    F: for<'d> Fn(&'d [u8]) -> Option<(&'d [u8], &'d [u8], &'d [u8], &'d [u8])>,
 {
     #[must_use]
     fn is_match(&self, data: &[u8]) -> bool {
@@ -430,29 +400,13 @@ where
 /// This struct holds that type.
 pub struct Matcher5<F>
 where
-    F: for<'d> Fn(
-        &'d [u8],
-    ) -> Option<(
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-    )>,
+    F: for<'d> Fn(&'d [u8]) -> Option<(&'d [u8], &'d [u8], &'d [u8], &'d [u8], &'d [u8])>,
 {
     f: F,
 }
 impl<F> Matcher5<F>
 where
-    F: for<'d> Fn(
-        &'d [u8],
-    ) -> Option<(
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-    )>,
+    F: for<'d> Fn(&'d [u8]) -> Option<(&'d [u8], &'d [u8], &'d [u8], &'d [u8], &'d [u8])>,
 {
     /// Executes the regular expression against the byte string `data`.
     ///
@@ -466,23 +420,18 @@ where
     ///
     /// # Example
     /// ```rust
-    /// use safe_regex::{regex, IsMatch, Matcher2};
-    /// let matcher: Matcher2<_> = regex!(br"([abc])([0-9]*)");
-    /// let (prefix, digits) = matcher.match_all(b"a42").unwrap();
-    /// assert_eq!(b"a", prefix.unwrap());
-    /// assert_eq!(b"42", digits.unwrap());
+    /// use safe_regex::{regex, Matcher3};
+    /// let matcher: Matcher3<_> = regex!(br"([abc])([0-9]*)(suffix)?");
+    /// let (prefix, digits, suffix) = matcher.match_all(b"a42").unwrap();
+    /// assert_eq!(b"a", prefix);
+    /// assert_eq!(b"42", digits);
+    /// assert!(suffix.is_empty());
     /// ```
     #[must_use]
     pub fn match_all<'d>(
         &self,
         data: &'d [u8],
-    ) -> Option<(
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-    )> {
+    ) -> Option<(&'d [u8], &'d [u8], &'d [u8], &'d [u8], &'d [u8])> {
         (self.f)(data)
     }
     /// This is used internally by the `regex!` macro.
@@ -493,15 +442,7 @@ where
 }
 impl<F> IsMatch for Matcher5<F>
 where
-    F: for<'d> Fn(
-        &'d [u8],
-    ) -> Option<(
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-    )>,
+    F: for<'d> Fn(&'d [u8]) -> Option<(&'d [u8], &'d [u8], &'d [u8], &'d [u8], &'d [u8])>,
 {
     #[must_use]
     fn is_match(&self, data: &[u8]) -> bool {
@@ -516,31 +457,13 @@ where
 /// This struct holds that type.
 pub struct Matcher6<F>
 where
-    F: for<'d> Fn(
-        &'d [u8],
-    ) -> Option<(
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-    )>,
+    F: for<'d> Fn(&'d [u8]) -> Option<(&'d [u8], &'d [u8], &'d [u8], &'d [u8], &'d [u8], &'d [u8])>,
 {
     f: F,
 }
 impl<F> Matcher6<F>
 where
-    F: for<'d> Fn(
-        &'d [u8],
-    ) -> Option<(
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-    )>,
+    F: for<'d> Fn(&'d [u8]) -> Option<(&'d [u8], &'d [u8], &'d [u8], &'d [u8], &'d [u8], &'d [u8])>,
 {
     /// Executes the regular expression against the byte string `data`.
     ///
@@ -554,24 +477,18 @@ where
     ///
     /// # Example
     /// ```rust
-    /// use safe_regex::{regex, IsMatch, Matcher2};
-    /// let matcher: Matcher2<_> = regex!(br"([abc])([0-9]*)");
-    /// let (prefix, digits) = matcher.match_all(b"a42").unwrap();
-    /// assert_eq!(b"a", prefix.unwrap());
-    /// assert_eq!(b"42", digits.unwrap());
+    /// use safe_regex::{regex, Matcher3};
+    /// let matcher: Matcher3<_> = regex!(br"([abc])([0-9]*)(suffix)?");
+    /// let (prefix, digits, suffix) = matcher.match_all(b"a42").unwrap();
+    /// assert_eq!(b"a", prefix);
+    /// assert_eq!(b"42", digits);
+    /// assert!(suffix.is_empty());
     /// ```
     #[must_use]
     pub fn match_all<'d>(
         &self,
         data: &'d [u8],
-    ) -> Option<(
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-    )> {
+    ) -> Option<(&'d [u8], &'d [u8], &'d [u8], &'d [u8], &'d [u8], &'d [u8])> {
         (self.f)(data)
     }
     /// This is used internally by the `regex!` macro.
@@ -582,16 +499,7 @@ where
 }
 impl<F> IsMatch for Matcher6<F>
 where
-    F: for<'d> Fn(
-        &'d [u8],
-    ) -> Option<(
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-    )>,
+    F: for<'d> Fn(&'d [u8]) -> Option<(&'d [u8], &'d [u8], &'d [u8], &'d [u8], &'d [u8], &'d [u8])>,
 {
     #[must_use]
     fn is_match(&self, data: &[u8]) -> bool {
@@ -609,13 +517,13 @@ where
     F: for<'d> Fn(
         &'d [u8],
     ) -> Option<(
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
     )>,
 {
     f: F,
@@ -625,13 +533,13 @@ where
     F: for<'d> Fn(
         &'d [u8],
     ) -> Option<(
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
     )>,
 {
     /// Executes the regular expression against the byte string `data`.
@@ -646,24 +554,25 @@ where
     ///
     /// # Example
     /// ```rust
-    /// use safe_regex::{regex, IsMatch, Matcher2};
-    /// let matcher: Matcher2<_> = regex!(br"([abc])([0-9]*)");
-    /// let (prefix, digits) = matcher.match_all(b"a42").unwrap();
-    /// assert_eq!(b"a", prefix.unwrap());
-    /// assert_eq!(b"42", digits.unwrap());
+    /// use safe_regex::{regex, Matcher3};
+    /// let matcher: Matcher3<_> = regex!(br"([abc])([0-9]*)(suffix)?");
+    /// let (prefix, digits, suffix) = matcher.match_all(b"a42").unwrap();
+    /// assert_eq!(b"a", prefix);
+    /// assert_eq!(b"42", digits);
+    /// assert!(suffix.is_empty());
     /// ```
     #[must_use]
     pub fn match_all<'d>(
         &self,
         data: &'d [u8],
     ) -> Option<(
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
     )> {
         (self.f)(data)
     }
@@ -678,13 +587,13 @@ where
     F: for<'d> Fn(
         &'d [u8],
     ) -> Option<(
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
     )>,
 {
     #[must_use]
@@ -703,14 +612,14 @@ where
     F: for<'d> Fn(
         &'d [u8],
     ) -> Option<(
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
     )>,
 {
     f: F,
@@ -720,14 +629,14 @@ where
     F: for<'d> Fn(
         &'d [u8],
     ) -> Option<(
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
     )>,
 {
     /// Executes the regular expression against the byte string `data`.
@@ -742,25 +651,26 @@ where
     ///
     /// # Example
     /// ```rust
-    /// use safe_regex::{regex, IsMatch, Matcher2};
-    /// let matcher: Matcher2<_> = regex!(br"([abc])([0-9]*)");
-    /// let (prefix, digits) = matcher.match_all(b"a42").unwrap();
-    /// assert_eq!(b"a", prefix.unwrap());
-    /// assert_eq!(b"42", digits.unwrap());
+    /// use safe_regex::{regex, Matcher3};
+    /// let matcher: Matcher3<_> = regex!(br"([abc])([0-9]*)(suffix)?");
+    /// let (prefix, digits, suffix) = matcher.match_all(b"a42").unwrap();
+    /// assert_eq!(b"a", prefix);
+    /// assert_eq!(b"42", digits);
+    /// assert!(suffix.is_empty());
     /// ```
     #[must_use]
     pub fn match_all<'d>(
         &self,
         data: &'d [u8],
     ) -> Option<(
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
     )> {
         (self.f)(data)
     }
@@ -775,14 +685,14 @@ where
     F: for<'d> Fn(
         &'d [u8],
     ) -> Option<(
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
     )>,
 {
     #[must_use]
@@ -801,15 +711,15 @@ where
     F: for<'d> Fn(
         &'d [u8],
     ) -> Option<(
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
     )>,
 {
     f: F,
@@ -819,15 +729,15 @@ where
     F: for<'d> Fn(
         &'d [u8],
     ) -> Option<(
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
     )>,
 {
     /// Executes the regular expression against the byte string `data`.
@@ -842,26 +752,27 @@ where
     ///
     /// # Example
     /// ```rust
-    /// use safe_regex::{regex, IsMatch, Matcher2};
-    /// let matcher: Matcher2<_> = regex!(br"([abc])([0-9]*)");
-    /// let (prefix, digits) = matcher.match_all(b"a42").unwrap();
-    /// assert_eq!(b"a", prefix.unwrap());
-    /// assert_eq!(b"42", digits.unwrap());
+    /// use safe_regex::{regex, Matcher3};
+    /// let matcher: Matcher3<_> = regex!(br"([abc])([0-9]*)(suffix)?");
+    /// let (prefix, digits, suffix) = matcher.match_all(b"a42").unwrap();
+    /// assert_eq!(b"a", prefix);
+    /// assert_eq!(b"42", digits);
+    /// assert!(suffix.is_empty());
     /// ```
     #[must_use]
     pub fn match_all<'d>(
         &self,
         data: &'d [u8],
     ) -> Option<(
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
     )> {
         (self.f)(data)
     }
@@ -876,15 +787,15 @@ where
     F: for<'d> Fn(
         &'d [u8],
     ) -> Option<(
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
     )>,
 {
     #[must_use]
@@ -903,16 +814,16 @@ where
     F: for<'d> Fn(
         &'d [u8],
     ) -> Option<(
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
     )>,
 {
     f: F,
@@ -922,16 +833,16 @@ where
     F: for<'d> Fn(
         &'d [u8],
     ) -> Option<(
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
     )>,
 {
     /// Executes the regular expression against the byte string `data`.
@@ -946,27 +857,28 @@ where
     ///
     /// # Example
     /// ```rust
-    /// use safe_regex::{regex, IsMatch, Matcher2};
-    /// let matcher: Matcher2<_> = regex!(br"([abc])([0-9]*)");
-    /// let (prefix, digits) = matcher.match_all(b"a42").unwrap();
-    /// assert_eq!(b"a", prefix.unwrap());
-    /// assert_eq!(b"42", digits.unwrap());
+    /// use safe_regex::{regex, Matcher3};
+    /// let matcher: Matcher3<_> = regex!(br"([abc])([0-9]*)(suffix)?");
+    /// let (prefix, digits, suffix) = matcher.match_all(b"a42").unwrap();
+    /// assert_eq!(b"a", prefix);
+    /// assert_eq!(b"42", digits);
+    /// assert!(suffix.is_empty());
     /// ```
     #[must_use]
     pub fn match_all<'d>(
         &self,
         data: &'d [u8],
     ) -> Option<(
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
     )> {
         (self.f)(data)
     }
@@ -981,16 +893,16 @@ where
     F: for<'d> Fn(
         &'d [u8],
     ) -> Option<(
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
-        Option<&'d [u8]>,
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
     )>,
 {
     #[must_use]

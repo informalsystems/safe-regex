@@ -37,11 +37,11 @@
 /// ```
 ///
 /// ```rust
-/// use safe_regex::{regex, IsMatch, Matcher2};
+/// use safe_regex::{regex, Matcher2};
 /// let matcher: Matcher2<_> = regex!(br"([abc])([0-9]*)");
 /// let (prefix, digits) = matcher.match_all(b"a42").unwrap();
-/// assert_eq!(b"a", prefix.unwrap());
-/// assert_eq!(b"42", digits.unwrap());
+/// assert_eq!(b"a", prefix);
+/// assert_eq!(b"42", digits);
 /// ```
 #[proc_macro]
 pub fn regex(input: proc_macro::TokenStream) -> proc_macro::TokenStream {

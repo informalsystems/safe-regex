@@ -222,9 +222,9 @@ fn group() {
         }
         accept.map(|(r0,)| {
             (if r0.start != usize::MAX && r0.end != usize::MAX {
-                Some(&data[r0])
+                &data[r0]
             } else {
-                None
+                &[]
             },)
         })
     }) };
@@ -274,14 +274,14 @@ fn groups_nested() {
         accept.map(|(r0, r1)| {
             (
                 if r0.start != usize::MAX && r0.end != usize::MAX {
-                    Some(&data[r0])
+                    &data[r0]
                 } else {
-                    None
+                    &[]
                 },
                 if r1.start != usize::MAX && r1.end != usize::MAX {
-                    Some(&data[r1])
+                    &data[r1]
                 } else {
-                    None
+                    &[]
                 },
             )
         })
@@ -464,14 +464,14 @@ fn optionals_in_groups() {
         accept.map(|(r0, r1)| {
             (
                 if r0.start != usize::MAX && r0.end != usize::MAX {
-                    Some(&data[r0])
+                    &data[r0]
                 } else {
-                    None
+                    &[]
                 },
                 if r1.start != usize::MAX && r1.end != usize::MAX {
-                    Some(&data[r1])
+                    &data[r1]
                 } else {
-                    None
+                    &[]
                 },
             )
         })
@@ -592,9 +592,9 @@ fn seq_in_group() {
         }
         accept.map(|(r0,)| {
             (if r0.start != usize::MAX && r0.end != usize::MAX {
-                Some(&data[r0])
+                &data[r0]
             } else {
-                None
+                &[]
             },)
         })
     }) };
@@ -643,9 +643,9 @@ fn alt_in_group() {
         }
         accept.map(|(r0,)| {
             (if r0.start != usize::MAX && r0.end != usize::MAX {
-                Some(&data[r0])
+                &data[r0]
             } else {
-                None
+                &[]
             },)
         })
     }) };

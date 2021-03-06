@@ -504,9 +504,9 @@ pub fn generate(final_node: &FinalNode) -> safe_proc_macro2::TokenStream {
                     (
                         #(
                             if #range_names.start != usize::MAX && #range_names.end != usize::MAX {
-                                Some(&data[#range_names])
+                                &data[#range_names]
                             } else {
-                                None
+                                &[]
                             },
                          )*
                     )
