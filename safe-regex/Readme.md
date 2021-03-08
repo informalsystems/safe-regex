@@ -104,6 +104,7 @@ assert_eq!(0..0_usize, suffix_r);
 ## Changelog
 - v0.2.3
   - Rename `match_all` -> `match_slices`.
+  - Add `match_ranges`.
 - v0.2.2 - Simplify `match_all` return type
 - v0.2.1 - Non-capturing groups, bug fixes
 - v0.2.0
