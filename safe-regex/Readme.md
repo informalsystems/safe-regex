@@ -90,12 +90,14 @@ use safe_regex::{regex, Matcher2};
 let matcher: Matcher2<_> =
     regex!(br"([abc])([0-9]*)");
 let (prefix, digits) =
-    matcher.match_all(b"a42").unwrap();
+    matcher.match_slices(b"a42").unwrap();
 assert_eq!(b"a", prefix);
 assert_eq!(b"42", digits);
 ```
 
 ## Changelog
+- v0.2.3
+  - Rename `match_all` -> `match_slices`.
 - v0.2.2 - Simplify `match_all` return type
 - v0.2.1 - Non-capturing groups, bug fixes
 - v0.2.0

@@ -72,7 +72,7 @@ fn string_search_100_regex(b: &mut Bencher) {
 fn string_search_100_safe_regex(b: &mut Bencher) {
     let re: Matcher0<_> = regex!(br".*2G8H81RFNZ.*");
     let data: Vec<u8> = rand_bytes_without_z(100);
-    b.iter(|| re.match_all(&data));
+    b.iter(|| re.match_slices(&data));
 }
 
 #[bench]
@@ -86,7 +86,7 @@ fn string_search_1kb_regex(b: &mut Bencher) {
 fn string_search_1kb_safe_regex(b: &mut Bencher) {
     let re: Matcher0<_> = regex!(br".*2G8H81RFNZ.*");
     let data: Vec<u8> = rand_bytes_without_z(1024);
-    b.iter(|| re.match_all(&data));
+    b.iter(|| re.match_slices(&data));
 }
 
 #[bench]
@@ -100,7 +100,7 @@ fn string_search_10kb_regex(b: &mut Bencher) {
 fn string_search_10kb_safe_regex(b: &mut Bencher) {
     let re: Matcher0<_> = regex!(br".*2G8H81RFNZ.*");
     let data: Vec<u8> = rand_bytes_without_z(10 * 1024);
-    b.iter(|| re.match_all(&data));
+    b.iter(|| re.match_slices(&data));
 }
 
 #[bench]
@@ -114,7 +114,7 @@ fn string_search_100kb_regex(b: &mut Bencher) {
 fn string_search_100kb_safe_regex(b: &mut Bencher) {
     let re: Matcher0<_> = regex!(br".*2G8H81RFNZ.*");
     let data: Vec<u8> = rand_bytes_without_z(100 * 1024);
-    b.iter(|| re.match_all(&data));
+    b.iter(|| re.match_slices(&data));
 }
 
 //////////////
@@ -128,7 +128,7 @@ fn repeat10_regex(b: &mut Bencher) {
 #[bench]
 fn repeat10_safe_regex(b: &mut Bencher) {
     let re: Matcher0<_> = regex!(br"a{10,20}");
-    b.iter(|| re.match_all(b"aaaaaaaaaa"));
+    b.iter(|| re.match_slices(b"aaaaaaaaaa"));
 }
 
 #[bench]
@@ -141,7 +141,7 @@ fn repeat20_regex(b: &mut Bencher) {
 #[bench]
 fn repeat20_safe_regex(b: &mut Bencher) {
     let re: Matcher0<_> = regex!(br"a{20,40}");
-    b.iter(|| re.match_all(b"aaaaaaaaaaaaaaaaaaaa"));
+    b.iter(|| re.match_slices(b"aaaaaaaaaaaaaaaaaaaa"));
 }
 
 #[bench]
@@ -153,7 +153,7 @@ fn repeat30_regex(b: &mut Bencher) {
 #[bench]
 fn repeat30_safe_regex(b: &mut Bencher) {
     let re: Matcher0<_> = regex!(br"a{30,60}");
-    b.iter(|| re.match_all(b"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"));
+    b.iter(|| re.match_slices(b"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"));
 }
 
 //////////////
@@ -167,7 +167,7 @@ fn repeat_capture10_regex(b: &mut Bencher) {
 #[bench]
 fn repeat_capture10_safe_regex(b: &mut Bencher) {
     let re: Matcher1<_> = regex!(br"(a{10,20})");
-    b.iter(|| re.match_all(b"aaaaaaaaaa"));
+    b.iter(|| re.match_slices(b"aaaaaaaaaa"));
 }
 
 #[bench]
@@ -179,7 +179,7 @@ fn repeat_capture20_regex(b: &mut Bencher) {
 #[bench]
 fn repeat_capture20_safe_regex(b: &mut Bencher) {
     let re: Matcher1<_> = regex!(br"(a{20,40})");
-    b.iter(|| re.match_all(b"aaaaaaaaaaaaaaaaaaaa"));
+    b.iter(|| re.match_slices(b"aaaaaaaaaaaaaaaaaaaa"));
 }
 
 #[bench]
@@ -191,7 +191,7 @@ fn repeat_capture30_regex(b: &mut Bencher) {
 #[bench]
 fn repeat_capture30_safe_regex(b: &mut Bencher) {
     let re: Matcher1<_> = regex!(br"(a{30,60})");
-    b.iter(|| re.match_all(b"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"));
+    b.iter(|| re.match_slices(b"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"));
 }
 
 //////////////
@@ -205,7 +205,7 @@ fn capture10_regex(b: &mut Bencher) {
 #[bench]
 fn capture10_safe_regex(b: &mut Bencher) {
     let re: Matcher10<_> = regex!(br"(a?)(a?)(a?)(a?)(a?)(a?)(a?)(a?)(a?)(a?)aaaaaaaaaa");
-    b.iter(|| re.match_all(b"aaaaaaaaaa"));
+    b.iter(|| re.match_slices(b"aaaaaaaaaa"));
 }
 
 // #[bench]
@@ -217,7 +217,7 @@ fn capture10_safe_regex(b: &mut Bencher) {
 // #[bench]
 // fn capture20_safe_regex(b: &mut Bencher) {
 //     let re: Matcher<_> = regex!(br"(a?)(a?)(a?)(a?)(a?)(a?)(a?)(a?)(a?)(a?)(a?)(a?)(a?)(a?)(a?)(a?)(a?)(a?)(a?)(a?)aaaaaaaaaaaaaaaaaaaa");
-//     b.iter(|| re.match_all(b"aaaaaaaaaaaaaaaaaaaa"));
+//     b.iter(|| re.match_slices(b"aaaaaaaaaaaaaaaaaaaa"));
 // }
 
 // TODO(mleonhard) Add tests for star: (a*)(a*)(a*), (a*)(b*)(c*), etc.
@@ -235,7 +235,7 @@ fn datetime_capture_100_regex(b: &mut Bencher) {
 fn datetime_capture_100_safe_regex(b: &mut Bencher) {
     let re: Matcher5<_> = regex!(br".*([0-9]+)-([0-9]+)-([0-9]+) ([0-9]+):([0-9]+).*");
     let data: Vec<u8> = rand_bytes_without_z(100);
-    b.iter(|| re.match_all(&data));
+    b.iter(|| re.match_slices(&data));
 }
 
 #[bench]
@@ -249,7 +249,7 @@ fn datetime_capture_1kb_regex(b: &mut Bencher) {
 fn datetime_capture_1kb_safe_regex(b: &mut Bencher) {
     let re: Matcher5<_> = regex!(br".*([0-9]+)-([0-9]+)-([0-9]+) ([0-9]+):([0-9]+).*");
     let data: Vec<u8> = rand_bytes_without_z(1024);
-    b.iter(|| re.match_all(&data));
+    b.iter(|| re.match_slices(&data));
 }
 
 #[bench]
@@ -263,7 +263,7 @@ fn datetime_capture_10kb_regex(b: &mut Bencher) {
 fn datetime_capture_10kb_safe_regex(b: &mut Bencher) {
     let re: Matcher5<_> = regex!(br".*([0-9]+)-([0-9]+)-([0-9]+) ([0-9]+):([0-9]+).*");
     let data: Vec<u8> = rand_bytes_without_z(10 * 1024);
-    b.iter(|| re.match_all(&data));
+    b.iter(|| re.match_slices(&data));
 }
 
 //////////////
@@ -278,7 +278,7 @@ fn datetime_parse_regex(b: &mut Bencher) {
 #[bench]
 fn datetime_parse_safe_regex(b: &mut Bencher) {
     let re: Matcher5<_> = regex!(br"([0-9]+)-([0-9]+)-([0-9]+) ([0-9]+):([0-9]+)");
-    b.iter(|| re.match_all(DATE_TIME));
+    b.iter(|| re.match_slices(DATE_TIME));
 }
 
 //////////////
@@ -294,7 +294,7 @@ fn pem_base64_regex(b: &mut Bencher) {
 #[bench]
 fn pem_base64_safe_regex(b: &mut Bencher) {
     let re: Matcher0<_> = regex!(br"[a-zA-Z0-9+/]{0,64}=*");
-    b.iter(|| re.match_all(PEM_BASE64_LINE));
+    b.iter(|| re.match_slices(PEM_BASE64_LINE));
 }
 
 //////////////
@@ -303,7 +303,7 @@ fn pem_base64_safe_regex(b: &mut Bencher) {
 fn phone_capture_1kb_safe_regex(b: &mut Bencher) {
     let re: Matcher3<_> = regex!(br".*([0-9]{3})[-. ]?([0-9]{3})[-. ]?([0-9]{4}).*");
     let data: Vec<u8> = rand_bytes_without_z(1024);
-    b.iter(|| re.match_all(&data));
+    b.iter(|| re.match_slices(&data));
 }
 
 #[bench]
@@ -317,7 +317,7 @@ fn phone_capture_1kb_regex(b: &mut Bencher) {
 fn phone_capture_10kb_safe_regex(b: &mut Bencher) {
     let re: Matcher3<_> = regex!(br".*([0-9]{3})[-. ]?([0-9]{3})[-. ]?([0-9]{4}).*");
     let data: Vec<u8> = rand_bytes_without_z(10 * 1024);
-    b.iter(|| re.match_all(&data));
+    b.iter(|| re.match_slices(&data));
 }
 
 #[bench]
@@ -331,7 +331,7 @@ fn phone_capture_10kb_regex(b: &mut Bencher) {
 fn phone_capture_100kb_safe_regex(b: &mut Bencher) {
     let re: Matcher3<_> = regex!(br".*([0-9]{3})[-. ]?([0-9]{3})[-. ]?([0-9]{4}).*");
     let data: Vec<u8> = rand_bytes_without_z(100 * 1024);
-    b.iter(|| re.match_all(&data));
+    b.iter(|| re.match_slices(&data));
 }
 
 #[bench]
@@ -352,5 +352,5 @@ fn phone_capture_1mb_regex(b: &mut Bencher) {
 fn phone_capture_1mb_safe_regex(b: &mut Bencher) {
     let re: Matcher3<_> = regex!(br".*([0-9]{3})[-. ]?([0-9]{3})[-. ]?([0-9]{4}).*");
     let data: Vec<u8> = rand_bytes_without_z(1024 * 1024);
-    b.iter(|| re.match_all(&data));
+    b.iter(|| re.match_slices(&data));
 }

@@ -241,12 +241,12 @@ fn group() {
             },)
         })
     });
-    assert_eq!(None, re.match_all(b""));
-    assert_eq!(None, re.match_all(b"X"));
-    assert_eq!(None, re.match_all(b"aX"));
-    assert_eq!(None, re.match_all(b"Xa"));
-    assert_eq!(None, re.match_all(b"aa"));
-    assert_eq!("a", escape_ascii(re.match_all(b"a").unwrap().0));
+    assert_eq!(None, re.match_slices(b""));
+    assert_eq!(None, re.match_slices(b"X"));
+    assert_eq!(None, re.match_slices(b"aX"));
+    assert_eq!(None, re.match_slices(b"Xa"));
+    assert_eq!(None, re.match_slices(b"aa"));
+    assert_eq!("a", escape_ascii(re.match_slices(b"a").unwrap().0));
 }
 
 #[test]
@@ -302,22 +302,22 @@ fn groups_nested() {
             )
         })
     });
-    assert_eq!(None, re.match_all(b""));
-    assert_eq!(None, re.match_all(b"X"));
-    assert_eq!(None, re.match_all(b"aX"));
-    assert_eq!(None, re.match_all(b"Xa"));
-    assert_eq!(None, re.match_all(b"aa"));
-    let groups = re.match_all(b"ab").unwrap();
+    assert_eq!(None, re.match_slices(b""));
+    assert_eq!(None, re.match_slices(b"X"));
+    assert_eq!(None, re.match_slices(b"aX"));
+    assert_eq!(None, re.match_slices(b"Xa"));
+    assert_eq!(None, re.match_slices(b"aa"));
+    let groups = re.match_slices(b"ab").unwrap();
     assert_eq!("ab", escape_ascii(groups.0));
     assert_eq!("b", escape_ascii(groups.1));
-    assert_eq!(None, re.match_all(b"ba"));
-    assert_eq!(None, re.match_all(b"bb"));
-    assert_eq!(None, re.match_all(b"Xab"));
-    assert_eq!(None, re.match_all(b"aXb"));
-    assert_eq!(None, re.match_all(b"abX"));
-    assert_eq!(None, re.match_all(b"aba"));
-    assert_eq!(None, re.match_all(b"abab"));
-    assert_eq!(None, re.match_all(b"abXab"));
+    assert_eq!(None, re.match_slices(b"ba"));
+    assert_eq!(None, re.match_slices(b"bb"));
+    assert_eq!(None, re.match_slices(b"Xab"));
+    assert_eq!(None, re.match_slices(b"aXb"));
+    assert_eq!(None, re.match_slices(b"abX"));
+    assert_eq!(None, re.match_slices(b"aba"));
+    assert_eq!(None, re.match_slices(b"abab"));
+    assert_eq!(None, re.match_slices(b"abXab"));
 }
 
 #[test]
@@ -536,16 +536,16 @@ fn optionals_in_groups() {
             )
         })
     });
-    let groups = re.match_all(b"").unwrap();
+    let groups = re.match_slices(b"").unwrap();
     assert_eq!("", escape_ascii(groups.0));
     assert_eq!("", escape_ascii(groups.1));
     assert!(!re.is_match(b"X"));
-    let groups = re.match_all(b"a").unwrap();
+    let groups = re.match_slices(b"a").unwrap();
     assert_eq!("a", escape_ascii(groups.0));
     assert_eq!("", escape_ascii(groups.1));
     assert!(!re.is_match(b"Xa"));
     assert!(!re.is_match(b"aX"));
-    let groups = re.match_all(b"aa").unwrap();
+    let groups = re.match_slices(b"aa").unwrap();
     assert_eq!("a", escape_ascii(groups.0));
     assert_eq!("a", escape_ascii(groups.1));
     assert!(!re.is_match(b"Xaa"));
@@ -712,7 +712,7 @@ fn seq_in_group() {
     assert!(!re.is_match(b"cd"));
     assert!(!re.is_match(b"abc"));
     assert!(!re.is_match(b"acd"));
-    assert_eq!("abc", escape_ascii(re.match_all(b"abcd").unwrap().0));
+    assert_eq!("abc", escape_ascii(re.match_slices(b"abcd").unwrap().0));
     assert!(!re.is_match(b"abcda"));
     assert!(!re.is_match(b"abcdabcd"));
     assert!(!re.is_match(b"Xabcd"));
@@ -770,8 +770,8 @@ fn alt_in_group() {
     });
     assert!(!re.is_match(b""));
     assert!(!re.is_match(b"X"));
-    assert_eq!("a", escape_ascii(re.match_all(b"a").unwrap().0));
-    assert_eq!("b", escape_ascii(re.match_all(b"b").unwrap().0));
+    assert_eq!("a", escape_ascii(re.match_slices(b"a").unwrap().0));
+    assert_eq!("b", escape_ascii(re.match_slices(b"b").unwrap().0));
     assert!(!re.is_match(b"aX"));
     assert!(!re.is_match(b"Xa"));
     assert!(!re.is_match(b"bX"));

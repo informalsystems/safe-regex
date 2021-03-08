@@ -64,12 +64,14 @@
 //! let matcher: Matcher2<_> =
 //!     regex!(br"([abc])([0-9]*)");
 //! let (prefix, digits) =
-//!     matcher.match_all(b"a42").unwrap();
+//!     matcher.match_slices(b"a42").unwrap();
 //! assert_eq!(b"a", prefix);
 //! assert_eq!(b"42", digits);
 //! ```
 //!
 //! # Changelog
+//! - v0.2.3
+//!   - Rename `match_all` -> `match_slices`.
 //! - v0.2.2 - Simplify `match_all` return type
 //! - v0.2.1 - Non-capturing groups, bug fixes
 //! - v0.2.0
@@ -149,13 +151,13 @@ where
     /// ```rust
     /// use safe_regex::{regex, Matcher3};
     /// let matcher: Matcher3<_> = regex!(br"([abc])([0-9]*)(suffix)?");
-    /// let (prefix, digits, suffix) = matcher.match_all(b"a42").unwrap();
+    /// let (prefix, digits, suffix) = matcher.match_slices(b"a42").unwrap();
     /// assert_eq!(b"a", prefix);
     /// assert_eq!(b"42", digits);
     /// assert!(suffix.is_empty());
     /// ```
     #[must_use]
-    pub fn match_all(&self, data: &[u8]) -> Option<()> {
+    pub fn match_slices(&self, data: &[u8]) -> Option<()> {
         (self.f)(data)
     }
     /// This is used internally by the `regex!` macro.
@@ -204,13 +206,13 @@ where
     /// ```rust
     /// use safe_regex::{regex, Matcher3};
     /// let matcher: Matcher3<_> = regex!(br"([abc])([0-9]*)(suffix)?");
-    /// let (prefix, digits, suffix) = matcher.match_all(b"a42").unwrap();
+    /// let (prefix, digits, suffix) = matcher.match_slices(b"a42").unwrap();
     /// assert_eq!(b"a", prefix);
     /// assert_eq!(b"42", digits);
     /// assert!(suffix.is_empty());
     /// ```
     #[must_use]
-    pub fn match_all<'d>(&self, data: &'d [u8]) -> Option<(&'d [u8],)> {
+    pub fn match_slices<'d>(&self, data: &'d [u8]) -> Option<(&'d [u8],)> {
         (self.f)(data)
     }
     /// This is used internally by the `regex!` macro.
@@ -257,13 +259,13 @@ where
     /// ```rust
     /// use safe_regex::{regex, Matcher3};
     /// let matcher: Matcher3<_> = regex!(br"([abc])([0-9]*)(suffix)?");
-    /// let (prefix, digits, suffix) = matcher.match_all(b"a42").unwrap();
+    /// let (prefix, digits, suffix) = matcher.match_slices(b"a42").unwrap();
     /// assert_eq!(b"a", prefix);
     /// assert_eq!(b"42", digits);
     /// assert!(suffix.is_empty());
     /// ```
     #[must_use]
-    pub fn match_all<'d>(&self, data: &'d [u8]) -> Option<(&'d [u8], &'d [u8])> {
+    pub fn match_slices<'d>(&self, data: &'d [u8]) -> Option<(&'d [u8], &'d [u8])> {
         (self.f)(data)
     }
     /// This is used internally by the `regex!` macro.
@@ -311,13 +313,13 @@ where
     /// ```rust
     /// use safe_regex::{regex, Matcher3};
     /// let matcher: Matcher3<_> = regex!(br"([abc])([0-9]*)(suffix)?");
-    /// let (prefix, digits, suffix) = matcher.match_all(b"a42").unwrap();
+    /// let (prefix, digits, suffix) = matcher.match_slices(b"a42").unwrap();
     /// assert_eq!(b"a", prefix);
     /// assert_eq!(b"42", digits);
     /// assert!(suffix.is_empty());
     /// ```
     #[must_use]
-    pub fn match_all<'d>(&self, data: &'d [u8]) -> Option<(&'d [u8], &'d [u8], &'d [u8])> {
+    pub fn match_slices<'d>(&self, data: &'d [u8]) -> Option<(&'d [u8], &'d [u8], &'d [u8])> {
         (self.f)(data)
     }
     /// This is used internally by the `regex!` macro.
@@ -365,13 +367,13 @@ where
     /// ```rust
     /// use safe_regex::{regex, Matcher3};
     /// let matcher: Matcher3<_> = regex!(br"([abc])([0-9]*)(suffix)?");
-    /// let (prefix, digits, suffix) = matcher.match_all(b"a42").unwrap();
+    /// let (prefix, digits, suffix) = matcher.match_slices(b"a42").unwrap();
     /// assert_eq!(b"a", prefix);
     /// assert_eq!(b"42", digits);
     /// assert!(suffix.is_empty());
     /// ```
     #[must_use]
-    pub fn match_all<'d>(
+    pub fn match_slices<'d>(
         &self,
         data: &'d [u8],
     ) -> Option<(&'d [u8], &'d [u8], &'d [u8], &'d [u8])> {
@@ -422,13 +424,13 @@ where
     /// ```rust
     /// use safe_regex::{regex, Matcher3};
     /// let matcher: Matcher3<_> = regex!(br"([abc])([0-9]*)(suffix)?");
-    /// let (prefix, digits, suffix) = matcher.match_all(b"a42").unwrap();
+    /// let (prefix, digits, suffix) = matcher.match_slices(b"a42").unwrap();
     /// assert_eq!(b"a", prefix);
     /// assert_eq!(b"42", digits);
     /// assert!(suffix.is_empty());
     /// ```
     #[must_use]
-    pub fn match_all<'d>(
+    pub fn match_slices<'d>(
         &self,
         data: &'d [u8],
     ) -> Option<(&'d [u8], &'d [u8], &'d [u8], &'d [u8], &'d [u8])> {
@@ -479,13 +481,13 @@ where
     /// ```rust
     /// use safe_regex::{regex, Matcher3};
     /// let matcher: Matcher3<_> = regex!(br"([abc])([0-9]*)(suffix)?");
-    /// let (prefix, digits, suffix) = matcher.match_all(b"a42").unwrap();
+    /// let (prefix, digits, suffix) = matcher.match_slices(b"a42").unwrap();
     /// assert_eq!(b"a", prefix);
     /// assert_eq!(b"42", digits);
     /// assert!(suffix.is_empty());
     /// ```
     #[must_use]
-    pub fn match_all<'d>(
+    pub fn match_slices<'d>(
         &self,
         data: &'d [u8],
     ) -> Option<(&'d [u8], &'d [u8], &'d [u8], &'d [u8], &'d [u8], &'d [u8])> {
@@ -556,13 +558,13 @@ where
     /// ```rust
     /// use safe_regex::{regex, Matcher3};
     /// let matcher: Matcher3<_> = regex!(br"([abc])([0-9]*)(suffix)?");
-    /// let (prefix, digits, suffix) = matcher.match_all(b"a42").unwrap();
+    /// let (prefix, digits, suffix) = matcher.match_slices(b"a42").unwrap();
     /// assert_eq!(b"a", prefix);
     /// assert_eq!(b"42", digits);
     /// assert!(suffix.is_empty());
     /// ```
     #[must_use]
-    pub fn match_all<'d>(
+    pub fn match_slices<'d>(
         &self,
         data: &'d [u8],
     ) -> Option<(
@@ -653,13 +655,13 @@ where
     /// ```rust
     /// use safe_regex::{regex, Matcher3};
     /// let matcher: Matcher3<_> = regex!(br"([abc])([0-9]*)(suffix)?");
-    /// let (prefix, digits, suffix) = matcher.match_all(b"a42").unwrap();
+    /// let (prefix, digits, suffix) = matcher.match_slices(b"a42").unwrap();
     /// assert_eq!(b"a", prefix);
     /// assert_eq!(b"42", digits);
     /// assert!(suffix.is_empty());
     /// ```
     #[must_use]
-    pub fn match_all<'d>(
+    pub fn match_slices<'d>(
         &self,
         data: &'d [u8],
     ) -> Option<(
@@ -754,13 +756,13 @@ where
     /// ```rust
     /// use safe_regex::{regex, Matcher3};
     /// let matcher: Matcher3<_> = regex!(br"([abc])([0-9]*)(suffix)?");
-    /// let (prefix, digits, suffix) = matcher.match_all(b"a42").unwrap();
+    /// let (prefix, digits, suffix) = matcher.match_slices(b"a42").unwrap();
     /// assert_eq!(b"a", prefix);
     /// assert_eq!(b"42", digits);
     /// assert!(suffix.is_empty());
     /// ```
     #[must_use]
-    pub fn match_all<'d>(
+    pub fn match_slices<'d>(
         &self,
         data: &'d [u8],
     ) -> Option<(
@@ -859,13 +861,13 @@ where
     /// ```rust
     /// use safe_regex::{regex, Matcher3};
     /// let matcher: Matcher3<_> = regex!(br"([abc])([0-9]*)(suffix)?");
-    /// let (prefix, digits, suffix) = matcher.match_all(b"a42").unwrap();
+    /// let (prefix, digits, suffix) = matcher.match_slices(b"a42").unwrap();
     /// assert_eq!(b"a", prefix);
     /// assert_eq!(b"42", digits);
     /// assert!(suffix.is_empty());
     /// ```
     #[must_use]
-    pub fn match_all<'d>(
+    pub fn match_slices<'d>(
         &self,
         data: &'d [u8],
     ) -> Option<(
