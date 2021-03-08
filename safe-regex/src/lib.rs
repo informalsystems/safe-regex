@@ -52,7 +52,7 @@
 //!
 //! # Examples
 //! ```rust
-//! use safe_regex::{regex, IsMatch, Matcher0};
+//! use safe_regex::{regex, Matcher0};
 //! let matcher: Matcher0<_> =
 //!     regex!(br"[abc][0-9]*");
 //! assert!(matcher.is_match(b"a42"));
@@ -105,24 +105,6 @@
 #![allow(clippy::type_complexity)]
 pub use safe_regex_macro::regex;
 
-/// Provides an `is_match` function.
-pub trait IsMatch {
-    /// Returns `true` if `data` matches the regular expression,
-    /// otherwise returns `false`.
-    ///
-    /// This is a whole-string match.
-    /// For sub-string search, put `.*` at the beginning and end of the regex.
-    ///
-    /// # Example
-    /// ```rust
-    /// use safe_regex::{regex, IsMatch, Matcher0};
-    /// let matcher: Matcher0<_> = regex!(br"[abc][0-9]*");
-    /// assert!(matcher.is_match(b"a42"));
-    /// assert!(!matcher.is_match(b"X"));
-    /// ```
-    fn is_match(&self, data: &[u8]) -> bool;
-}
-
 /// A compiled regular expression with no capturing groups.
 ///
 /// This is a zero-length type.
@@ -166,13 +148,22 @@ where
     pub fn new(f: F) -> Self {
         Self { f }
     }
-}
-impl<F> IsMatch for Matcher0<F>
-where
-    F: Fn(&[u8]) -> Option<()>,
-{
+
+    /// Returns `true` if `data` matches the regular expression,
+    /// otherwise returns `false`.
+    ///
+    /// This is a whole-string match.
+    /// For sub-string search, put `.*` at the beginning and end of the regex.
+    ///
+    /// # Example
+    /// ```rust
+    /// use safe_regex::{regex, Matcher0};
+    /// let matcher: Matcher0<_> = regex!(br"[abc][0-9]*");
+    /// assert!(matcher.is_match(b"a42"));
+    /// assert!(!matcher.is_match(b"X"));
+    /// ```
     #[must_use]
-    fn is_match(&self, data: &[u8]) -> bool {
+    pub fn is_match(&self, data: &[u8]) -> bool {
         (self.f)(data).is_some()
     }
 }
@@ -220,12 +211,22 @@ where
     pub fn new(f: F) -> Self {
         Self { f }
     }
-}
-impl<F> IsMatch for Matcher1<F>
-where
-    F: for<'d> Fn(&'d [u8]) -> Option<(&'d [u8],)>,
-{
-    fn is_match(&self, data: &[u8]) -> bool {
+
+    /// Returns `true` if `data` matches the regular expression,
+    /// otherwise returns `false`.
+    ///
+    /// This is a whole-string match.
+    /// For sub-string search, put `.*` at the beginning and end of the regex.
+    ///
+    /// # Example
+    /// ```rust
+    /// use safe_regex::{regex, Matcher0};
+    /// let matcher: Matcher0<_> = regex!(br"[abc][0-9]*");
+    /// assert!(matcher.is_match(b"a42"));
+    /// assert!(!matcher.is_match(b"X"));
+    /// ```
+    #[must_use]
+    pub fn is_match(&self, data: &[u8]) -> bool {
         (self.f)(data).is_some()
     }
 }
@@ -273,12 +274,22 @@ where
     pub fn new(f: F) -> Self {
         Self { f }
     }
-}
-impl<F> IsMatch for Matcher2<F>
-where
-    F: for<'d> Fn(&'d [u8]) -> Option<(&'d [u8], &'d [u8])>,
-{
-    fn is_match(&self, data: &[u8]) -> bool {
+
+    /// Returns `true` if `data` matches the regular expression,
+    /// otherwise returns `false`.
+    ///
+    /// This is a whole-string match.
+    /// For sub-string search, put `.*` at the beginning and end of the regex.
+    ///
+    /// # Example
+    /// ```rust
+    /// use safe_regex::{regex, Matcher0};
+    /// let matcher: Matcher0<_> = regex!(br"[abc][0-9]*");
+    /// assert!(matcher.is_match(b"a42"));
+    /// assert!(!matcher.is_match(b"X"));
+    /// ```
+    #[must_use]
+    pub fn is_match(&self, data: &[u8]) -> bool {
         (self.f)(data).is_some()
     }
 }
@@ -327,13 +338,22 @@ where
     pub fn new(f: F) -> Self {
         Self { f }
     }
-}
-impl<F> IsMatch for Matcher3<F>
-where
-    F: for<'d> Fn(&'d [u8]) -> Option<(&'d [u8], &'d [u8], &'d [u8])>,
-{
+
+    /// Returns `true` if `data` matches the regular expression,
+    /// otherwise returns `false`.
+    ///
+    /// This is a whole-string match.
+    /// For sub-string search, put `.*` at the beginning and end of the regex.
+    ///
+    /// # Example
+    /// ```rust
+    /// use safe_regex::{regex, Matcher0};
+    /// let matcher: Matcher0<_> = regex!(br"[abc][0-9]*");
+    /// assert!(matcher.is_match(b"a42"));
+    /// assert!(!matcher.is_match(b"X"));
+    /// ```
     #[must_use]
-    fn is_match(&self, data: &[u8]) -> bool {
+    pub fn is_match(&self, data: &[u8]) -> bool {
         (self.f)(data).is_some()
     }
 }
@@ -384,13 +404,22 @@ where
     pub fn new(f: F) -> Self {
         Self { f }
     }
-}
-impl<F> IsMatch for Matcher4<F>
-where
-    F: for<'d> Fn(&'d [u8]) -> Option<(&'d [u8], &'d [u8], &'d [u8], &'d [u8])>,
-{
+
+    /// Returns `true` if `data` matches the regular expression,
+    /// otherwise returns `false`.
+    ///
+    /// This is a whole-string match.
+    /// For sub-string search, put `.*` at the beginning and end of the regex.
+    ///
+    /// # Example
+    /// ```rust
+    /// use safe_regex::{regex, Matcher0};
+    /// let matcher: Matcher0<_> = regex!(br"[abc][0-9]*");
+    /// assert!(matcher.is_match(b"a42"));
+    /// assert!(!matcher.is_match(b"X"));
+    /// ```
     #[must_use]
-    fn is_match(&self, data: &[u8]) -> bool {
+    pub fn is_match(&self, data: &[u8]) -> bool {
         (self.f)(data).is_some()
     }
 }
@@ -441,13 +470,22 @@ where
     pub fn new(f: F) -> Self {
         Self { f }
     }
-}
-impl<F> IsMatch for Matcher5<F>
-where
-    F: for<'d> Fn(&'d [u8]) -> Option<(&'d [u8], &'d [u8], &'d [u8], &'d [u8], &'d [u8])>,
-{
+
+    /// Returns `true` if `data` matches the regular expression,
+    /// otherwise returns `false`.
+    ///
+    /// This is a whole-string match.
+    /// For sub-string search, put `.*` at the beginning and end of the regex.
+    ///
+    /// # Example
+    /// ```rust
+    /// use safe_regex::{regex, Matcher0};
+    /// let matcher: Matcher0<_> = regex!(br"[abc][0-9]*");
+    /// assert!(matcher.is_match(b"a42"));
+    /// assert!(!matcher.is_match(b"X"));
+    /// ```
     #[must_use]
-    fn is_match(&self, data: &[u8]) -> bool {
+    pub fn is_match(&self, data: &[u8]) -> bool {
         (self.f)(data).is_some()
     }
 }
@@ -498,13 +536,22 @@ where
     pub fn new(f: F) -> Self {
         Self { f }
     }
-}
-impl<F> IsMatch for Matcher6<F>
-where
-    F: for<'d> Fn(&'d [u8]) -> Option<(&'d [u8], &'d [u8], &'d [u8], &'d [u8], &'d [u8], &'d [u8])>,
-{
+
+    /// Returns `true` if `data` matches the regular expression,
+    /// otherwise returns `false`.
+    ///
+    /// This is a whole-string match.
+    /// For sub-string search, put `.*` at the beginning and end of the regex.
+    ///
+    /// # Example
+    /// ```rust
+    /// use safe_regex::{regex, Matcher0};
+    /// let matcher: Matcher0<_> = regex!(br"[abc][0-9]*");
+    /// assert!(matcher.is_match(b"a42"));
+    /// assert!(!matcher.is_match(b"X"));
+    /// ```
     #[must_use]
-    fn is_match(&self, data: &[u8]) -> bool {
+    pub fn is_match(&self, data: &[u8]) -> bool {
         (self.f)(data).is_some()
     }
 }
@@ -583,23 +630,22 @@ where
     pub fn new(f: F) -> Self {
         Self { f }
     }
-}
-impl<F> IsMatch for Matcher7<F>
-where
-    F: for<'d> Fn(
-        &'d [u8],
-    ) -> Option<(
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-    )>,
-{
+
+    /// Returns `true` if `data` matches the regular expression,
+    /// otherwise returns `false`.
+    ///
+    /// This is a whole-string match.
+    /// For sub-string search, put `.*` at the beginning and end of the regex.
+    ///
+    /// # Example
+    /// ```rust
+    /// use safe_regex::{regex, Matcher0};
+    /// let matcher: Matcher0<_> = regex!(br"[abc][0-9]*");
+    /// assert!(matcher.is_match(b"a42"));
+    /// assert!(!matcher.is_match(b"X"));
+    /// ```
     #[must_use]
-    fn is_match(&self, data: &[u8]) -> bool {
+    pub fn is_match(&self, data: &[u8]) -> bool {
         (self.f)(data).is_some()
     }
 }
@@ -681,24 +727,22 @@ where
     pub fn new(f: F) -> Self {
         Self { f }
     }
-}
-impl<F> IsMatch for Matcher8<F>
-where
-    F: for<'d> Fn(
-        &'d [u8],
-    ) -> Option<(
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-    )>,
-{
+
+    /// Returns `true` if `data` matches the regular expression,
+    /// otherwise returns `false`.
+    ///
+    /// This is a whole-string match.
+    /// For sub-string search, put `.*` at the beginning and end of the regex.
+    ///
+    /// # Example
+    /// ```rust
+    /// use safe_regex::{regex, Matcher0};
+    /// let matcher: Matcher0<_> = regex!(br"[abc][0-9]*");
+    /// assert!(matcher.is_match(b"a42"));
+    /// assert!(!matcher.is_match(b"X"));
+    /// ```
     #[must_use]
-    fn is_match(&self, data: &[u8]) -> bool {
+    pub fn is_match(&self, data: &[u8]) -> bool {
         (self.f)(data).is_some()
     }
 }
@@ -783,25 +827,22 @@ where
     pub fn new(f: F) -> Self {
         Self { f }
     }
-}
-impl<F> IsMatch for Matcher9<F>
-where
-    F: for<'d> Fn(
-        &'d [u8],
-    ) -> Option<(
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-    )>,
-{
+
+    /// Returns `true` if `data` matches the regular expression,
+    /// otherwise returns `false`.
+    ///
+    /// This is a whole-string match.
+    /// For sub-string search, put `.*` at the beginning and end of the regex.
+    ///
+    /// # Example
+    /// ```rust
+    /// use safe_regex::{regex, Matcher0};
+    /// let matcher: Matcher0<_> = regex!(br"[abc][0-9]*");
+    /// assert!(matcher.is_match(b"a42"));
+    /// assert!(!matcher.is_match(b"X"));
+    /// ```
     #[must_use]
-    fn is_match(&self, data: &[u8]) -> bool {
+    pub fn is_match(&self, data: &[u8]) -> bool {
         (self.f)(data).is_some()
     }
 }
@@ -889,26 +930,22 @@ where
     pub fn new(f: F) -> Self {
         Self { f }
     }
-}
-impl<F> IsMatch for Matcher10<F>
-where
-    F: for<'d> Fn(
-        &'d [u8],
-    ) -> Option<(
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-    )>,
-{
+
+    /// Returns `true` if `data` matches the regular expression,
+    /// otherwise returns `false`.
+    ///
+    /// This is a whole-string match.
+    /// For sub-string search, put `.*` at the beginning and end of the regex.
+    ///
+    /// # Example
+    /// ```rust
+    /// use safe_regex::{regex, Matcher0};
+    /// let matcher: Matcher0<_> = regex!(br"[abc][0-9]*");
+    /// assert!(matcher.is_match(b"a42"));
+    /// assert!(!matcher.is_match(b"X"));
+    /// ```
     #[must_use]
-    fn is_match(&self, data: &[u8]) -> bool {
+    pub fn is_match(&self, data: &[u8]) -> bool {
         (self.f)(data).is_some()
     }
 }

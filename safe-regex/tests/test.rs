@@ -1,8 +1,6 @@
 #![forbid(unsafe_code)]
 use safe_regex::internal::escape_ascii;
-use safe_regex::{
-    regex, IsMatch, Matcher0, Matcher1, Matcher2, Matcher3, Matcher4, Matcher5, Matcher7,
-};
+use safe_regex::{regex, Matcher0, Matcher1, Matcher2, Matcher3, Matcher4, Matcher5, Matcher7};
 
 // TODO(mleonhard) Test regexes that could match the empty string:
 // - ""
@@ -25,6 +23,67 @@ use safe_regex::{
 // TODO(mleonhard) Test greediness
 
 // TODO(mleonhard) Test alternate with empty arm, br"a{0}|b"
+
+trait IsMatch {
+    fn is_match(&self, data: &[u8]) -> bool;
+}
+impl<F: Fn(&[u8]) -> Option<()>> IsMatch for Matcher0<F> {
+    fn is_match(&self, data: &[u8]) -> bool {
+        self.is_match(data)
+    }
+}
+impl<F: for<'d> Fn(&'d [u8]) -> Option<(&'d [u8],)>> IsMatch for Matcher1<F> {
+    fn is_match(&self, data: &[u8]) -> bool {
+        self.is_match(data)
+    }
+}
+impl<F: for<'d> Fn(&'d [u8]) -> Option<(&'d [u8], &'d [u8])>> IsMatch for Matcher2<F> {
+    fn is_match(&self, data: &[u8]) -> bool {
+        self.is_match(data)
+    }
+}
+impl<F> IsMatch for Matcher3<F>
+where
+    F: for<'d> Fn(&'d [u8]) -> Option<(&'d [u8], &'d [u8], &'d [u8])>,
+{
+    fn is_match(&self, data: &[u8]) -> bool {
+        self.is_match(data)
+    }
+}
+impl<F> IsMatch for Matcher4<F>
+where
+    F: for<'d> Fn(&'d [u8]) -> Option<(&'d [u8], &'d [u8], &'d [u8], &'d [u8])>,
+{
+    fn is_match(&self, data: &[u8]) -> bool {
+        self.is_match(data)
+    }
+}
+impl<F> IsMatch for Matcher5<F>
+where
+    F: for<'d> Fn(&'d [u8]) -> Option<(&'d [u8], &'d [u8], &'d [u8], &'d [u8], &'d [u8])>,
+{
+    fn is_match(&self, data: &[u8]) -> bool {
+        self.is_match(data)
+    }
+}
+impl<F> IsMatch for Matcher7<F>
+where
+    F: for<'d> Fn(
+        &'d [u8],
+    ) -> Option<(
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+        &'d [u8],
+    )>,
+{
+    fn is_match(&self, data: &[u8]) -> bool {
+        self.is_match(data)
+    }
+}
 
 #[must_use]
 fn check_non_matching_permutations(

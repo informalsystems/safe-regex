@@ -78,7 +78,7 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 ```
 ## Examples
 ```rust
-use safe_regex::{regex, IsMatch, Matcher0};
+use safe_regex::{regex, Matcher0};
 let matcher: Matcher0<_> =
     regex!(br"[abc][0-9]*");
 assert!(matcher.is_match(b"a42"));

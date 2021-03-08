@@ -3,7 +3,7 @@
 #![allow(unused_assignments)]
 #![allow(clippy::unseparated_literal_suffix)]
 use safe_regex::internal::escape_ascii;
-use safe_regex::{IsMatch, Matcher0, Matcher1, Matcher2};
+use safe_regex::{Matcher0, Matcher1, Matcher2};
 
 #[test]
 fn byte() {
