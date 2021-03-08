@@ -8,7 +8,7 @@ license = "Apache-2.0"
 name = "safe-regex-compiler"
 readme = "Readme.md"
 repository = "https://gitlab.com/leonhard-llc/safe-regex-rs"
-version = "0.2.2"
+version = "0.2.3"
 
 [dependencies]
 safe-proc-macro2 = { version = "1", path = "../safe-proc-macro2/" }
