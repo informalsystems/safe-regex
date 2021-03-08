@@ -221,11 +221,13 @@ fn group() {
             n = n + 1;
         }
         accept.map(|(r0,)| {
-            (if r0.start != usize::MAX && r0.end != usize::MAX {
-                &data[r0]
-            } else {
-                &[]
-            },)
+            [
+                if r0.start == usize::MAX || r0.end == usize::MAX || r0.is_empty() {
+                    0..0usize
+                } else {
+                    r0
+                },
+            ]
         })
     }) };
     assert_eq!(
@@ -272,18 +274,18 @@ fn groups_nested() {
             n = n + 1;
         }
         accept.map(|(r0, r1)| {
-            (
-                if r0.start != usize::MAX && r0.end != usize::MAX {
-                    &data[r0]
+            [
+                if r0.start == usize::MAX || r0.end == usize::MAX || r0.is_empty() {
+                    0..0usize
                 } else {
-                    &[]
+                    r0
                 },
-                if r1.start != usize::MAX && r1.end != usize::MAX {
-                    &data[r1]
+                if r1.start == usize::MAX || r1.end == usize::MAX || r1.is_empty() {
+                    0..0usize
                 } else {
-                    &[]
+                    r1
                 },
-            )
+            ]
         })
     }) };
     assert_eq!(
@@ -462,18 +464,18 @@ fn optionals_in_groups() {
             n = n + 1;
         }
         accept.map(|(r0, r1)| {
-            (
-                if r0.start != usize::MAX && r0.end != usize::MAX {
-                    &data[r0]
+            [
+                if r0.start == usize::MAX || r0.end == usize::MAX || r0.is_empty() {
+                    0..0usize
                 } else {
-                    &[]
+                    r0
                 },
-                if r1.start != usize::MAX && r1.end != usize::MAX {
-                    &data[r1]
+                if r1.start == usize::MAX || r1.end == usize::MAX || r1.is_empty() {
+                    0..0usize
                 } else {
-                    &[]
+                    r1
                 },
-            )
+            ]
         })
     }) };
     assert_eq!(
@@ -591,11 +593,13 @@ fn seq_in_group() {
             n = n + 1;
         }
         accept.map(|(r0,)| {
-            (if r0.start != usize::MAX && r0.end != usize::MAX {
-                &data[r0]
-            } else {
-                &[]
-            },)
+            [
+                if r0.start == usize::MAX || r0.end == usize::MAX || r0.is_empty() {
+                    0..0usize
+                } else {
+                    r0
+                },
+            ]
         })
     }) };
     assert_eq!(
@@ -642,11 +646,13 @@ fn alt_in_group() {
             n = n + 1;
         }
         accept.map(|(r0,)| {
-            (if r0.start != usize::MAX && r0.end != usize::MAX {
-                &data[r0]
-            } else {
-                &[]
-            },)
+            [
+                if r0.start == usize::MAX || r0.end == usize::MAX || r0.is_empty() {
+                    0..0usize
+                } else {
+                    r0
+                },
+            ]
         })
     }) };
     assert_eq!(

@@ -80,19 +80,25 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 ```rust
 use safe_regex::{regex, Matcher0};
 let matcher: Matcher0<_> =
-    regex!(br"[abc][0-9]*");
+    regex!(br"[ab][0-9]*");
 assert!(matcher.is_match(b"a42"));
 assert!(!matcher.is_match(b"X"));
 ```
 
 ```rust
-use safe_regex::{regex, Matcher2};
-let matcher: Matcher2<_> =
-    regex!(br"([abc])([0-9]*)");
-let (prefix, digits) =
+use safe_regex::{regex, Matcher3};
+let matcher: Matcher3<_> =
+    regex!(br"([ab])([0-9]*)(suffix)?");
+let (prefix, digits, suffix) =
     matcher.match_slices(b"a42").unwrap();
 assert_eq!(b"a", prefix);
 assert_eq!(b"42", digits);
+assert_eq!(b"", suffix);
+let (prefix_range, digits_r, suffix_r)
+    = matcher.match_ranges(b"a42").unwrap();
+assert_eq!(0..1_usize, prefix_range);
+assert_eq!(1..3_usize, digits_r);
+assert_eq!(0..0_usize, suffix_r);
 ```
 
 ## Changelog

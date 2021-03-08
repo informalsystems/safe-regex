@@ -54,19 +54,25 @@
 //! ```rust
 //! use safe_regex::{regex, Matcher0};
 //! let matcher: Matcher0<_> =
-//!     regex!(br"[abc][0-9]*");
+//!     regex!(br"[ab][0-9]*");
 //! assert!(matcher.is_match(b"a42"));
 //! assert!(!matcher.is_match(b"X"));
 //! ```
 //!
 //! ```rust
-//! use safe_regex::{regex, Matcher2};
-//! let matcher: Matcher2<_> =
-//!     regex!(br"([abc])([0-9]*)");
-//! let (prefix, digits) =
+//! use safe_regex::{regex, Matcher3};
+//! let matcher: Matcher3<_> =
+//!     regex!(br"([ab])([0-9]*)(suffix)?");
+//! let (prefix, digits, suffix) =
 //!     matcher.match_slices(b"a42").unwrap();
 //! assert_eq!(b"a", prefix);
 //! assert_eq!(b"42", digits);
+//! assert_eq!(b"", suffix);
+//! let (prefix_range, digits_r, suffix_r)
+//!     = matcher.match_ranges(b"a42").unwrap();
+//! assert_eq!(0..1_usize, prefix_range);
+//! assert_eq!(1..3_usize, digits_r);
+//! assert_eq!(0..0_usize, suffix_r);
 //! ```
 //!
 //! # Changelog
@@ -103,7 +109,18 @@
 
 #![forbid(unsafe_code)]
 #![allow(clippy::type_complexity)]
+use core::ops::Range;
 pub use safe_regex_macro::regex;
+
+/// Provides an `is_match` function.
+pub trait IsMatch {
+    /// Returns `true` if `data` matches the regular expression,
+    /// otherwise returns `false`.
+    ///
+    /// This is a whole-string match.
+    /// For sub-string search, put `.*` at the beginning and end of the regex.
+    fn is_match(&self, data: &[u8]) -> bool;
+}
 
 /// A compiled regular expression with no capturing groups.
 ///
@@ -120,9 +137,36 @@ impl<F> Matcher0<F>
 where
     F: Fn(&[u8]) -> Option<()>,
 {
+    /// This is used internally by the `regex!` macro.
+    #[must_use]
+    pub fn new(f: F) -> Self {
+        Self { f }
+    }
+
+    /// Returns `true` if `data` matches the regular expression,
+    /// otherwise returns `false`.
+    ///
+    /// This is a whole-string match.
+    /// For sub-string search, put `.*` at the beginning and end of the regex.
+    ///
+    /// # Example
+    /// ```rust
+    /// use safe_regex::{regex, Matcher0};
+    /// let matcher: Matcher0<_> = regex!(br"[abc][0-9]*");
+    /// assert!(matcher.is_match(b"a42"));
+    /// assert!(!matcher.is_match(b"X"));
+    /// ```
+    #[must_use]
+    pub fn is_match(&self, data: &[u8]) -> bool {
+        (self.f)(data).is_some()
+    }
+
     /// Executes the regular expression against the byte string `data`.
     ///
-    /// Returns `Some` if the expression matched all of the bytes in `data`.
+    /// Returns `Some((&[u8],&[u8],...))`
+    /// if the expression matched all of the bytes in `data`.
+    /// The tuple fields are slices of `data` that matched
+    /// capturing groups in the expression.
     ///
     /// This is a whole-string match.
     /// For sub-string search, put `.*` at the beginning and end of the regex.
@@ -142,7 +186,55 @@ where
     pub fn match_slices(&self, data: &[u8]) -> Option<()> {
         (self.f)(data)
     }
-    /// This is used internally by the `regex!` macro.
+
+    /// Executes the regular expression against the byte string `data`.
+    ///
+    /// Returns `Some((Range<u32>,Range<u32>,...))` if the expression matched all of the bytes in `data`.
+    /// The tuple fields are ranges of bytes in `data` that matched capturing
+    /// groups in the expression.
+    /// A capturing group that matches no bytes will produce as a zero-length
+    /// range.
+    ///
+    /// This is a whole-string match.
+    /// For sub-string search, put `.*` at the beginning and end of the regex.
+    ///
+    /// Returns `None` if the expression did not match `data`.
+    ///
+    /// # Example
+    /// ```rust
+    /// use safe_regex::{regex, Matcher3};
+    /// let matcher: Matcher3<_> = regex!(br"([abc])([0-9]*)(suffix)?");
+    /// let (prefix, digits, suffix) = matcher.match_ranges(b"a42").unwrap();
+    /// assert_eq!(0..1_usize, prefix);
+    /// assert_eq!(1..3_usize, digits);
+    /// assert_eq!(0..0_usize, suffix);
+    /// ```
+    #[must_use]
+    pub fn match_ranges(&self, data: &[u8]) -> Option<()> {
+        (self.f)(data)
+    }
+}
+impl<F: Fn(&[u8]) -> Option<()>> IsMatch for Matcher0<F> {
+    fn is_match(&self, data: &[u8]) -> bool {
+        self.is_match(data)
+    }
+}
+
+/// A compiled regular expression with 1 capturing groups.
+///
+/// This is a zero-length type.
+/// The `regex!` macro generates a Rust type that implements the regular expression.
+/// This struct holds that type.
+pub struct Matcher1<F>
+where
+    F: Fn(&[u8]) -> Option<[Range<usize>; 1]>,
+{
+    f: F,
+}
+impl<F> Matcher1<F>
+where
+    F: Fn(&[u8]) -> Option<[Range<usize>; 1]>,
+{
     /// This is used internally by the `regex!` macro.
     #[must_use]
     pub fn new(f: F) -> Self {
@@ -166,27 +258,41 @@ where
     pub fn is_match(&self, data: &[u8]) -> bool {
         (self.f)(data).is_some()
     }
-}
 
-/// A compiled regular expression with 1 capturing group.
-///
-/// This is a zero-length type.
-/// The `regex!` macro generates a Rust type that implements the regular expression.
-/// This struct holds that type.
-pub struct Matcher1<F>
-where
-    F: for<'d> Fn(&'d [u8]) -> Option<(&'d [u8],)>,
-{
-    f: F,
-}
-impl<F> Matcher1<F>
-where
-    F: for<'d> Fn(&'d [u8]) -> Option<(&'d [u8],)>,
-{
     /// Executes the regular expression against the byte string `data`.
     ///
-    /// Returns `Some(T)` if the expression matched all of the bytes in `data`.
-    /// The value `T` is a tuple of captured group slices.
+    /// Returns `Some((Range<u32>,Range<u32>,...))` if the expression matched all of the bytes in `data`.
+    /// The tuple fields are ranges of bytes in `data` that matched capturing
+    /// groups in the expression.
+    /// A capturing group that matches no bytes will produce as a zero-length
+    /// range.
+    ///
+    /// This is a whole-string match.
+    /// For sub-string search, put `.*` at the beginning and end of the regex.
+    ///
+    /// Returns `None` if the expression did not match `data`.
+    ///
+    /// # Example
+    /// ```rust
+    /// use safe_regex::{regex, Matcher3};
+    /// let matcher: Matcher3<_> = regex!(br"([abc])([0-9]*)(suffix)?");
+    /// let (prefix, digits, suffix) = matcher.match_ranges(b"a42").unwrap();
+    /// assert_eq!(0..1_usize, prefix);
+    /// assert_eq!(1..3_usize, digits);
+    /// assert_eq!(0..0_usize, suffix);
+    /// ```
+    #[must_use]
+    pub fn match_ranges(&self, data: &[u8]) -> Option<(Range<usize>,)> {
+        let [r0] = (self.f)(data)?;
+        Some((r0,))
+    }
+
+    /// Executes the regular expression against the byte string `data`.
+    ///
+    /// Returns `Some((&[u8],&[u8],...))`
+    /// if the expression matched all of the bytes in `data`.
+    /// The tuple fields are slices of `data` that matched
+    /// capturing groups in the expression.
     ///
     /// This is a whole-string match.
     /// For sub-string search, put `.*` at the beginning and end of the regex.
@@ -204,8 +310,31 @@ where
     /// ```
     #[must_use]
     pub fn match_slices<'d>(&self, data: &'d [u8]) -> Option<(&'d [u8],)> {
-        (self.f)(data)
+        let [r0] = (self.f)(data)?;
+        Some((&data[r0],))
     }
+}
+impl<F: Fn(&[u8]) -> Option<[Range<usize>; 1]>> IsMatch for Matcher1<F> {
+    fn is_match(&self, data: &[u8]) -> bool {
+        self.is_match(data)
+    }
+}
+
+/// A compiled regular expression with 2 capturing groups.
+///
+/// This is a zero-length type.
+/// The `regex!` macro generates a Rust type that implements the regular expression.
+/// This struct holds that type.
+pub struct Matcher2<F>
+where
+    F: Fn(&[u8]) -> Option<[Range<usize>; 2]>,
+{
+    f: F,
+}
+impl<F> Matcher2<F>
+where
+    F: Fn(&[u8]) -> Option<[Range<usize>; 2]>,
+{
     /// This is used internally by the `regex!` macro.
     #[must_use]
     pub fn new(f: F) -> Self {
@@ -229,27 +358,41 @@ where
     pub fn is_match(&self, data: &[u8]) -> bool {
         (self.f)(data).is_some()
     }
-}
 
-/// A compiled regular expression with 2 capturing groups.
-///
-/// This is a zero-length type.
-/// The `regex!` macro generates a Rust type that implements the regular expression.
-/// This struct holds that type.
-pub struct Matcher2<F>
-where
-    F: for<'d> Fn(&'d [u8]) -> Option<(&'d [u8], &'d [u8])>,
-{
-    f: F,
-}
-impl<F> Matcher2<F>
-where
-    F: for<'d> Fn(&'d [u8]) -> Option<(&'d [u8], &'d [u8])>,
-{
     /// Executes the regular expression against the byte string `data`.
     ///
-    /// Returns `Some(T)` if the expression matched all of the bytes in `data`.
-    /// The value `T` is a tuple of captured group slices.
+    /// Returns `Some((Range<u32>,Range<u32>,...))` if the expression matched all of the bytes in `data`.
+    /// The tuple fields are ranges of bytes in `data` that matched capturing
+    /// groups in the expression.
+    /// A capturing group that matches no bytes will produce as a zero-length
+    /// range.
+    ///
+    /// This is a whole-string match.
+    /// For sub-string search, put `.*` at the beginning and end of the regex.
+    ///
+    /// Returns `None` if the expression did not match `data`.
+    ///
+    /// # Example
+    /// ```rust
+    /// use safe_regex::{regex, Matcher3};
+    /// let matcher: Matcher3<_> = regex!(br"([abc])([0-9]*)(suffix)?");
+    /// let (prefix, digits, suffix) = matcher.match_ranges(b"a42").unwrap();
+    /// assert_eq!(0..1_usize, prefix);
+    /// assert_eq!(1..3_usize, digits);
+    /// assert_eq!(0..0_usize, suffix);
+    /// ```
+    #[must_use]
+    pub fn match_ranges(&self, data: &[u8]) -> Option<(Range<usize>, Range<usize>)> {
+        let [r0, r1] = (self.f)(data)?;
+        Some((r0, r1))
+    }
+
+    /// Executes the regular expression against the byte string `data`.
+    ///
+    /// Returns `Some((&[u8],&[u8],...))`
+    /// if the expression matched all of the bytes in `data`.
+    /// The tuple fields are slices of `data` that matched
+    /// capturing groups in the expression.
     ///
     /// This is a whole-string match.
     /// For sub-string search, put `.*` at the beginning and end of the regex.
@@ -267,8 +410,31 @@ where
     /// ```
     #[must_use]
     pub fn match_slices<'d>(&self, data: &'d [u8]) -> Option<(&'d [u8], &'d [u8])> {
-        (self.f)(data)
+        let [r0, r1] = (self.f)(data)?;
+        Some((&data[r0], &data[r1]))
     }
+}
+impl<F: Fn(&[u8]) -> Option<[Range<usize>; 2]>> IsMatch for Matcher2<F> {
+    fn is_match(&self, data: &[u8]) -> bool {
+        self.is_match(data)
+    }
+}
+
+/// A compiled regular expression with 3 capturing groups.
+///
+/// This is a zero-length type.
+/// The `regex!` macro generates a Rust type that implements the regular expression.
+/// This struct holds that type.
+pub struct Matcher3<F>
+where
+    F: Fn(&[u8]) -> Option<[Range<usize>; 3]>,
+{
+    f: F,
+}
+impl<F> Matcher3<F>
+where
+    F: Fn(&[u8]) -> Option<[Range<usize>; 3]>,
+{
     /// This is used internally by the `regex!` macro.
     #[must_use]
     pub fn new(f: F) -> Self {
@@ -292,28 +458,41 @@ where
     pub fn is_match(&self, data: &[u8]) -> bool {
         (self.f)(data).is_some()
     }
-}
 
-/// A compiled regular expression with 3 capturing groups.
-///
-/// This is a zero-length type.
-/// The `regex!` macro generates a Rust type that implements the regular expression.
-/// This struct holds that type.
-pub struct Matcher3<F>
-where
-    F: for<'d> Fn(&'d [u8]) -> Option<(&'d [u8], &'d [u8], &'d [u8])>,
-{
-    f: F,
-}
-impl<F> Matcher3<F>
-where
-    F: for<'d> Fn(&'d [u8]) -> Option<(&'d [u8], &'d [u8], &'d [u8])>,
-{
-    #[must_use]
     /// Executes the regular expression against the byte string `data`.
     ///
-    /// Returns `Some(T)` if the expression matched all of the bytes in `data`.
-    /// The value `T` is a tuple of captured group slices.
+    /// Returns `Some((Range<u32>,Range<u32>,...))` if the expression matched all of the bytes in `data`.
+    /// The tuple fields are ranges of bytes in `data` that matched capturing
+    /// groups in the expression.
+    /// A capturing group that matches no bytes will produce as a zero-length
+    /// range.
+    ///
+    /// This is a whole-string match.
+    /// For sub-string search, put `.*` at the beginning and end of the regex.
+    ///
+    /// Returns `None` if the expression did not match `data`.
+    ///
+    /// # Example
+    /// ```rust
+    /// use safe_regex::{regex, Matcher3};
+    /// let matcher: Matcher3<_> = regex!(br"([abc])([0-9]*)(suffix)?");
+    /// let (prefix, digits, suffix) = matcher.match_ranges(b"a42").unwrap();
+    /// assert_eq!(0..1_usize, prefix);
+    /// assert_eq!(1..3_usize, digits);
+    /// assert_eq!(0..0_usize, suffix);
+    /// ```
+    #[must_use]
+    pub fn match_ranges(&self, data: &[u8]) -> Option<(Range<usize>, Range<usize>, Range<usize>)> {
+        let [r0, r1, r2] = (self.f)(data)?;
+        Some((r0, r1, r2))
+    }
+
+    /// Executes the regular expression against the byte string `data`.
+    ///
+    /// Returns `Some((&[u8],&[u8],...))`
+    /// if the expression matched all of the bytes in `data`.
+    /// The tuple fields are slices of `data` that matched
+    /// capturing groups in the expression.
     ///
     /// This is a whole-string match.
     /// For sub-string search, put `.*` at the beginning and end of the regex.
@@ -331,8 +510,31 @@ where
     /// ```
     #[must_use]
     pub fn match_slices<'d>(&self, data: &'d [u8]) -> Option<(&'d [u8], &'d [u8], &'d [u8])> {
-        (self.f)(data)
+        let [r0, r1, r2] = (self.f)(data)?;
+        Some((&data[r0], &data[r1], &data[r2]))
     }
+}
+impl<F: Fn(&[u8]) -> Option<[Range<usize>; 3]>> IsMatch for Matcher3<F> {
+    fn is_match(&self, data: &[u8]) -> bool {
+        self.is_match(data)
+    }
+}
+
+/// A compiled regular expression with 4 capturing groups.
+///
+/// This is a zero-length type.
+/// The `regex!` macro generates a Rust type that implements the regular expression.
+/// This struct holds that type.
+pub struct Matcher4<F>
+where
+    F: Fn(&[u8]) -> Option<[Range<usize>; 4]>,
+{
+    f: F,
+}
+impl<F> Matcher4<F>
+where
+    F: Fn(&[u8]) -> Option<[Range<usize>; 4]>,
+{
     /// This is used internally by the `regex!` macro.
     #[must_use]
     pub fn new(f: F) -> Self {
@@ -356,27 +558,44 @@ where
     pub fn is_match(&self, data: &[u8]) -> bool {
         (self.f)(data).is_some()
     }
-}
 
-/// A compiled regular expression with 4 capturing groups.
-///
-/// This is a zero-length type.
-/// The `regex!` macro generates a Rust type that implements the regular expression.
-/// This struct holds that type.
-pub struct Matcher4<F>
-where
-    F: for<'d> Fn(&'d [u8]) -> Option<(&'d [u8], &'d [u8], &'d [u8], &'d [u8])>,
-{
-    f: F,
-}
-impl<F> Matcher4<F>
-where
-    F: for<'d> Fn(&'d [u8]) -> Option<(&'d [u8], &'d [u8], &'d [u8], &'d [u8])>,
-{
     /// Executes the regular expression against the byte string `data`.
     ///
-    /// Returns `Some(T)` if the expression matched all of the bytes in `data`.
-    /// The value `T` is a tuple of captured group slices.
+    /// Returns `Some((Range<u32>,Range<u32>,...))` if the expression matched all of the bytes in `data`.
+    /// The tuple fields are ranges of bytes in `data` that matched capturing
+    /// groups in the expression.
+    /// A capturing group that matches no bytes will produce as a zero-length
+    /// range.
+    ///
+    /// This is a whole-string match.
+    /// For sub-string search, put `.*` at the beginning and end of the regex.
+    ///
+    /// Returns `None` if the expression did not match `data`.
+    ///
+    /// # Example
+    /// ```rust
+    /// use safe_regex::{regex, Matcher3};
+    /// let matcher: Matcher3<_> = regex!(br"([abc])([0-9]*)(suffix)?");
+    /// let (prefix, digits, suffix) = matcher.match_ranges(b"a42").unwrap();
+    /// assert_eq!(0..1_usize, prefix);
+    /// assert_eq!(1..3_usize, digits);
+    /// assert_eq!(0..0_usize, suffix);
+    /// ```
+    #[must_use]
+    pub fn match_ranges(
+        &self,
+        data: &[u8],
+    ) -> Option<(Range<usize>, Range<usize>, Range<usize>, Range<usize>)> {
+        let [r0, r1, r2, r3] = (self.f)(data)?;
+        Some((r0, r1, r2, r3))
+    }
+
+    /// Executes the regular expression against the byte string `data`.
+    ///
+    /// Returns `Some((&[u8],&[u8],...))`
+    /// if the expression matched all of the bytes in `data`.
+    /// The tuple fields are slices of `data` that matched
+    /// capturing groups in the expression.
     ///
     /// This is a whole-string match.
     /// For sub-string search, put `.*` at the beginning and end of the regex.
@@ -397,8 +616,31 @@ where
         &self,
         data: &'d [u8],
     ) -> Option<(&'d [u8], &'d [u8], &'d [u8], &'d [u8])> {
-        (self.f)(data)
+        let [r0, r1, r2, r3] = (self.f)(data)?;
+        Some((&data[r0], &data[r1], &data[r2], &data[r3]))
     }
+}
+impl<F: Fn(&[u8]) -> Option<[Range<usize>; 4]>> IsMatch for Matcher4<F> {
+    fn is_match(&self, data: &[u8]) -> bool {
+        self.is_match(data)
+    }
+}
+
+/// A compiled regular expression with 5 capturing groups.
+///
+/// This is a zero-length type.
+/// The `regex!` macro generates a Rust type that implements the regular expression.
+/// This struct holds that type.
+pub struct Matcher5<F>
+where
+    F: Fn(&[u8]) -> Option<[Range<usize>; 5]>,
+{
+    f: F,
+}
+impl<F> Matcher5<F>
+where
+    F: Fn(&[u8]) -> Option<[Range<usize>; 5]>,
+{
     /// This is used internally by the `regex!` macro.
     #[must_use]
     pub fn new(f: F) -> Self {
@@ -422,27 +664,50 @@ where
     pub fn is_match(&self, data: &[u8]) -> bool {
         (self.f)(data).is_some()
     }
-}
 
-/// A compiled regular expression with 5 capturing groups.
-///
-/// This is a zero-length type.
-/// The `regex!` macro generates a Rust type that implements the regular expression.
-/// This struct holds that type.
-pub struct Matcher5<F>
-where
-    F: for<'d> Fn(&'d [u8]) -> Option<(&'d [u8], &'d [u8], &'d [u8], &'d [u8], &'d [u8])>,
-{
-    f: F,
-}
-impl<F> Matcher5<F>
-where
-    F: for<'d> Fn(&'d [u8]) -> Option<(&'d [u8], &'d [u8], &'d [u8], &'d [u8], &'d [u8])>,
-{
     /// Executes the regular expression against the byte string `data`.
     ///
-    /// Returns `Some(T)` if the expression matched all of the bytes in `data`.
-    /// The value `T` is a tuple of captured group slices.
+    /// Returns `Some((Range<u32>,Range<u32>,...))` if the expression matched all of the bytes in `data`.
+    /// The tuple fields are ranges of bytes in `data` that matched capturing
+    /// groups in the expression.
+    /// A capturing group that matches no bytes will produce as a zero-length
+    /// range.
+    ///
+    /// This is a whole-string match.
+    /// For sub-string search, put `.*` at the beginning and end of the regex.
+    ///
+    /// Returns `None` if the expression did not match `data`.
+    ///
+    /// # Example
+    /// ```rust
+    /// use safe_regex::{regex, Matcher3};
+    /// let matcher: Matcher3<_> = regex!(br"([abc])([0-9]*)(suffix)?");
+    /// let (prefix, digits, suffix) = matcher.match_ranges(b"a42").unwrap();
+    /// assert_eq!(0..1_usize, prefix);
+    /// assert_eq!(1..3_usize, digits);
+    /// assert_eq!(0..0_usize, suffix);
+    /// ```
+    #[must_use]
+    pub fn match_ranges(
+        &self,
+        data: &[u8],
+    ) -> Option<(
+        Range<usize>,
+        Range<usize>,
+        Range<usize>,
+        Range<usize>,
+        Range<usize>,
+    )> {
+        let [r0, r1, r2, r3, r4] = (self.f)(data)?;
+        Some((r0, r1, r2, r3, r4))
+    }
+
+    /// Executes the regular expression against the byte string `data`.
+    ///
+    /// Returns `Some((&[u8],&[u8],...))`
+    /// if the expression matched all of the bytes in `data`.
+    /// The tuple fields are slices of `data` that matched
+    /// capturing groups in the expression.
     ///
     /// This is a whole-string match.
     /// For sub-string search, put `.*` at the beginning and end of the regex.
@@ -463,8 +728,31 @@ where
         &self,
         data: &'d [u8],
     ) -> Option<(&'d [u8], &'d [u8], &'d [u8], &'d [u8], &'d [u8])> {
-        (self.f)(data)
+        let [r0, r1, r2, r3, r4] = (self.f)(data)?;
+        Some((&data[r0], &data[r1], &data[r2], &data[r3], &data[r4]))
     }
+}
+impl<F: Fn(&[u8]) -> Option<[Range<usize>; 5]>> IsMatch for Matcher5<F> {
+    fn is_match(&self, data: &[u8]) -> bool {
+        self.is_match(data)
+    }
+}
+
+/// A compiled regular expression with 6 capturing groups.
+///
+/// This is a zero-length type.
+/// The `regex!` macro generates a Rust type that implements the regular expression.
+/// This struct holds that type.
+pub struct Matcher6<F>
+where
+    F: Fn(&[u8]) -> Option<[Range<usize>; 6]>,
+{
+    f: F,
+}
+impl<F> Matcher6<F>
+where
+    F: Fn(&[u8]) -> Option<[Range<usize>; 6]>,
+{
     /// This is used internally by the `regex!` macro.
     #[must_use]
     pub fn new(f: F) -> Self {
@@ -488,27 +776,51 @@ where
     pub fn is_match(&self, data: &[u8]) -> bool {
         (self.f)(data).is_some()
     }
-}
 
-/// A compiled regular expression with 6 capturing groups.
-///
-/// This is a zero-length type.
-/// The `regex!` macro generates a Rust type that implements the regular expression.
-/// This struct holds that type.
-pub struct Matcher6<F>
-where
-    F: for<'d> Fn(&'d [u8]) -> Option<(&'d [u8], &'d [u8], &'d [u8], &'d [u8], &'d [u8], &'d [u8])>,
-{
-    f: F,
-}
-impl<F> Matcher6<F>
-where
-    F: for<'d> Fn(&'d [u8]) -> Option<(&'d [u8], &'d [u8], &'d [u8], &'d [u8], &'d [u8], &'d [u8])>,
-{
     /// Executes the regular expression against the byte string `data`.
     ///
-    /// Returns `Some(T)` if the expression matched all of the bytes in `data`.
-    /// The value `T` is a tuple of captured group slices.
+    /// Returns `Some((Range<u32>,Range<u32>,...))` if the expression matched all of the bytes in `data`.
+    /// The tuple fields are ranges of bytes in `data` that matched capturing
+    /// groups in the expression.
+    /// A capturing group that matches no bytes will produce as a zero-length
+    /// range.
+    ///
+    /// This is a whole-string match.
+    /// For sub-string search, put `.*` at the beginning and end of the regex.
+    ///
+    /// Returns `None` if the expression did not match `data`.
+    ///
+    /// # Example
+    /// ```rust
+    /// use safe_regex::{regex, Matcher3};
+    /// let matcher: Matcher3<_> = regex!(br"([abc])([0-9]*)(suffix)?");
+    /// let (prefix, digits, suffix) = matcher.match_ranges(b"a42").unwrap();
+    /// assert_eq!(0..1_usize, prefix);
+    /// assert_eq!(1..3_usize, digits);
+    /// assert_eq!(0..0_usize, suffix);
+    /// ```
+    #[must_use]
+    pub fn match_ranges(
+        &self,
+        data: &[u8],
+    ) -> Option<(
+        Range<usize>,
+        Range<usize>,
+        Range<usize>,
+        Range<usize>,
+        Range<usize>,
+        Range<usize>,
+    )> {
+        let [r0, r1, r2, r3, r4, r5] = (self.f)(data)?;
+        Some((r0, r1, r2, r3, r4, r5))
+    }
+
+    /// Executes the regular expression against the byte string `data`.
+    ///
+    /// Returns `Some((&[u8],&[u8],...))`
+    /// if the expression matched all of the bytes in `data`.
+    /// The tuple fields are slices of `data` that matched
+    /// capturing groups in the expression.
     ///
     /// This is a whole-string match.
     /// For sub-string search, put `.*` at the beginning and end of the regex.
@@ -529,30 +841,15 @@ where
         &self,
         data: &'d [u8],
     ) -> Option<(&'d [u8], &'d [u8], &'d [u8], &'d [u8], &'d [u8], &'d [u8])> {
-        (self.f)(data)
+        let [r0, r1, r2, r3, r4, r5] = (self.f)(data)?;
+        Some((
+            &data[r0], &data[r1], &data[r2], &data[r3], &data[r4], &data[r5],
+        ))
     }
-    /// This is used internally by the `regex!` macro.
-    #[must_use]
-    pub fn new(f: F) -> Self {
-        Self { f }
-    }
-
-    /// Returns `true` if `data` matches the regular expression,
-    /// otherwise returns `false`.
-    ///
-    /// This is a whole-string match.
-    /// For sub-string search, put `.*` at the beginning and end of the regex.
-    ///
-    /// # Example
-    /// ```rust
-    /// use safe_regex::{regex, Matcher0};
-    /// let matcher: Matcher0<_> = regex!(br"[abc][0-9]*");
-    /// assert!(matcher.is_match(b"a42"));
-    /// assert!(!matcher.is_match(b"X"));
-    /// ```
-    #[must_use]
-    pub fn is_match(&self, data: &[u8]) -> bool {
-        (self.f)(data).is_some()
+}
+impl<F: Fn(&[u8]) -> Option<[Range<usize>; 6]>> IsMatch for Matcher6<F> {
+    fn is_match(&self, data: &[u8]) -> bool {
+        self.is_match(data)
     }
 }
 
@@ -563,38 +860,83 @@ where
 /// This struct holds that type.
 pub struct Matcher7<F>
 where
-    F: for<'d> Fn(
-        &'d [u8],
-    ) -> Option<(
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-    )>,
+    F: Fn(&[u8]) -> Option<[Range<usize>; 7]>,
 {
     f: F,
 }
 impl<F> Matcher7<F>
 where
-    F: for<'d> Fn(
-        &'d [u8],
-    ) -> Option<(
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-    )>,
+    F: Fn(&[u8]) -> Option<[Range<usize>; 7]>,
 {
+    /// This is used internally by the `regex!` macro.
+    #[must_use]
+    pub fn new(f: F) -> Self {
+        Self { f }
+    }
+
+    /// Returns `true` if `data` matches the regular expression,
+    /// otherwise returns `false`.
+    ///
+    /// This is a whole-string match.
+    /// For sub-string search, put `.*` at the beginning and end of the regex.
+    ///
+    /// # Example
+    /// ```rust
+    /// use safe_regex::{regex, Matcher0};
+    /// let matcher: Matcher0<_> = regex!(br"[abc][0-9]*");
+    /// assert!(matcher.is_match(b"a42"));
+    /// assert!(!matcher.is_match(b"X"));
+    /// ```
+    #[must_use]
+    pub fn is_match(&self, data: &[u8]) -> bool {
+        (self.f)(data).is_some()
+    }
+
     /// Executes the regular expression against the byte string `data`.
     ///
-    /// Returns `Some(T)` if the expression matched all of the bytes in `data`.
-    /// The value `T` is a tuple of captured group slices.
+    /// Returns `Some((Range<u32>,Range<u32>,...))` if the expression matched all of the bytes in `data`.
+    /// The tuple fields are ranges of bytes in `data` that matched capturing
+    /// groups in the expression.
+    /// A capturing group that matches no bytes will produce as a zero-length
+    /// range.
+    ///
+    /// This is a whole-string match.
+    /// For sub-string search, put `.*` at the beginning and end of the regex.
+    ///
+    /// Returns `None` if the expression did not match `data`.
+    ///
+    /// # Example
+    /// ```rust
+    /// use safe_regex::{regex, Matcher3};
+    /// let matcher: Matcher3<_> = regex!(br"([abc])([0-9]*)(suffix)?");
+    /// let (prefix, digits, suffix) = matcher.match_ranges(b"a42").unwrap();
+    /// assert_eq!(0..1_usize, prefix);
+    /// assert_eq!(1..3_usize, digits);
+    /// assert_eq!(0..0_usize, suffix);
+    /// ```
+    #[must_use]
+    pub fn match_ranges(
+        &self,
+        data: &[u8],
+    ) -> Option<(
+        Range<usize>,
+        Range<usize>,
+        Range<usize>,
+        Range<usize>,
+        Range<usize>,
+        Range<usize>,
+        Range<usize>,
+    )> {
+        let [r0, r1, r2, r3, r4, r5, r6] = (self.f)(data)?;
+        Some((r0, r1, r2, r3, r4, r5, r6))
+    }
+
+    /// Executes the regular expression against the byte string `data`.
+    ///
+    /// Returns `Some((&[u8],&[u8],...))`
+    /// if the expression matched all of the bytes in `data`.
+    /// The tuple fields are slices of `data` that matched
+    /// capturing groups in the expression.
     ///
     /// This is a whole-string match.
     /// For sub-string search, put `.*` at the beginning and end of the regex.
@@ -623,30 +965,15 @@ where
         &'d [u8],
         &'d [u8],
     )> {
-        (self.f)(data)
+        let [r0, r1, r2, r3, r4, r5, r6] = (self.f)(data)?;
+        Some((
+            &data[r0], &data[r1], &data[r2], &data[r3], &data[r4], &data[r5], &data[r6],
+        ))
     }
-    /// This is used internally by the `regex!` macro.
-    #[must_use]
-    pub fn new(f: F) -> Self {
-        Self { f }
-    }
-
-    /// Returns `true` if `data` matches the regular expression,
-    /// otherwise returns `false`.
-    ///
-    /// This is a whole-string match.
-    /// For sub-string search, put `.*` at the beginning and end of the regex.
-    ///
-    /// # Example
-    /// ```rust
-    /// use safe_regex::{regex, Matcher0};
-    /// let matcher: Matcher0<_> = regex!(br"[abc][0-9]*");
-    /// assert!(matcher.is_match(b"a42"));
-    /// assert!(!matcher.is_match(b"X"));
-    /// ```
-    #[must_use]
-    pub fn is_match(&self, data: &[u8]) -> bool {
-        (self.f)(data).is_some()
+}
+impl<F: Fn(&[u8]) -> Option<[Range<usize>; 7]>> IsMatch for Matcher7<F> {
+    fn is_match(&self, data: &[u8]) -> bool {
+        self.is_match(data)
     }
 }
 
@@ -657,40 +984,84 @@ where
 /// This struct holds that type.
 pub struct Matcher8<F>
 where
-    F: for<'d> Fn(
-        &'d [u8],
-    ) -> Option<(
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-    )>,
+    F: Fn(&[u8]) -> Option<[Range<usize>; 8]>,
 {
     f: F,
 }
 impl<F> Matcher8<F>
 where
-    F: for<'d> Fn(
-        &'d [u8],
-    ) -> Option<(
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-    )>,
+    F: Fn(&[u8]) -> Option<[Range<usize>; 8]>,
 {
+    /// This is used internally by the `regex!` macro.
+    #[must_use]
+    pub fn new(f: F) -> Self {
+        Self { f }
+    }
+
+    /// Returns `true` if `data` matches the regular expression,
+    /// otherwise returns `false`.
+    ///
+    /// This is a whole-string match.
+    /// For sub-string search, put `.*` at the beginning and end of the regex.
+    ///
+    /// # Example
+    /// ```rust
+    /// use safe_regex::{regex, Matcher0};
+    /// let matcher: Matcher0<_> = regex!(br"[abc][0-9]*");
+    /// assert!(matcher.is_match(b"a42"));
+    /// assert!(!matcher.is_match(b"X"));
+    /// ```
+    #[must_use]
+    pub fn is_match(&self, data: &[u8]) -> bool {
+        (self.f)(data).is_some()
+    }
+
     /// Executes the regular expression against the byte string `data`.
     ///
-    /// Returns `Some(T)` if the expression matched all of the bytes in `data`.
-    /// The value `T` is a tuple of captured group slices.
+    /// Returns `Some((Range<u32>,Range<u32>,...))` if the expression matched all of the bytes in `data`.
+    /// The tuple fields are ranges of bytes in `data` that matched capturing
+    /// groups in the expression.
+    /// A capturing group that matches no bytes will produce as a zero-length
+    /// range.
+    ///
+    /// This is a whole-string match.
+    /// For sub-string search, put `.*` at the beginning and end of the regex.
+    ///
+    /// Returns `None` if the expression did not match `data`.
+    ///
+    /// # Example
+    /// ```rust
+    /// use safe_regex::{regex, Matcher3};
+    /// let matcher: Matcher3<_> = regex!(br"([abc])([0-9]*)(suffix)?");
+    /// let (prefix, digits, suffix) = matcher.match_ranges(b"a42").unwrap();
+    /// assert_eq!(0..1_usize, prefix);
+    /// assert_eq!(1..3_usize, digits);
+    /// assert_eq!(0..0_usize, suffix);
+    /// ```
+    #[must_use]
+    pub fn match_ranges(
+        &self,
+        data: &[u8],
+    ) -> Option<(
+        Range<usize>,
+        Range<usize>,
+        Range<usize>,
+        Range<usize>,
+        Range<usize>,
+        Range<usize>,
+        Range<usize>,
+        Range<usize>,
+    )> {
+        let [r0, r1, r2, r3, r4, r5, r6, r7] = (self.f)(data)?;
+        Some((r0, r1, r2, r3, r4, r5, r6, r7))
+    }
+
+    /// Executes the regular expression against the byte string `data`.
+    ///
+    /// Returns `Some((&[u8],&[u8],...))`
+    /// if the expression matched all of the bytes in `data`.
+    /// The tuple fields are slices of `data` that matched
+    /// capturing groups in the expression.
     ///
     /// This is a whole-string match.
     /// For sub-string search, put `.*` at the beginning and end of the regex.
@@ -720,30 +1091,15 @@ where
         &'d [u8],
         &'d [u8],
     )> {
-        (self.f)(data)
+        let [r0, r1, r2, r3, r4, r5, r6, r7] = (self.f)(data)?;
+        Some((
+            &data[r0], &data[r1], &data[r2], &data[r3], &data[r4], &data[r5], &data[r6], &data[r7],
+        ))
     }
-    /// This is used internally by the `regex!` macro.
-    #[must_use]
-    pub fn new(f: F) -> Self {
-        Self { f }
-    }
-
-    /// Returns `true` if `data` matches the regular expression,
-    /// otherwise returns `false`.
-    ///
-    /// This is a whole-string match.
-    /// For sub-string search, put `.*` at the beginning and end of the regex.
-    ///
-    /// # Example
-    /// ```rust
-    /// use safe_regex::{regex, Matcher0};
-    /// let matcher: Matcher0<_> = regex!(br"[abc][0-9]*");
-    /// assert!(matcher.is_match(b"a42"));
-    /// assert!(!matcher.is_match(b"X"));
-    /// ```
-    #[must_use]
-    pub fn is_match(&self, data: &[u8]) -> bool {
-        (self.f)(data).is_some()
+}
+impl<F: Fn(&[u8]) -> Option<[Range<usize>; 8]>> IsMatch for Matcher8<F> {
+    fn is_match(&self, data: &[u8]) -> bool {
+        self.is_match(data)
     }
 }
 
@@ -754,42 +1110,85 @@ where
 /// This struct holds that type.
 pub struct Matcher9<F>
 where
-    F: for<'d> Fn(
-        &'d [u8],
-    ) -> Option<(
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-    )>,
+    F: Fn(&[u8]) -> Option<[Range<usize>; 9]>,
 {
     f: F,
 }
 impl<F> Matcher9<F>
 where
-    F: for<'d> Fn(
-        &'d [u8],
-    ) -> Option<(
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-    )>,
+    F: Fn(&[u8]) -> Option<[Range<usize>; 9]>,
 {
+    /// This is used internally by the `regex!` macro.
+    #[must_use]
+    pub fn new(f: F) -> Self {
+        Self { f }
+    }
+
+    /// Returns `true` if `data` matches the regular expression,
+    /// otherwise returns `false`.
+    ///
+    /// This is a whole-string match.
+    /// For sub-string search, put `.*` at the beginning and end of the regex.
+    ///
+    /// # Example
+    /// ```rust
+    /// use safe_regex::{regex, Matcher0};
+    /// let matcher: Matcher0<_> = regex!(br"[abc][0-9]*");
+    /// assert!(matcher.is_match(b"a42"));
+    /// assert!(!matcher.is_match(b"X"));
+    /// ```
+    #[must_use]
+    pub fn is_match(&self, data: &[u8]) -> bool {
+        (self.f)(data).is_some()
+    }
+
     /// Executes the regular expression against the byte string `data`.
     ///
-    /// Returns `Some(T)` if the expression matched all of the bytes in `data`.
-    /// The value `T` is a tuple of captured group slices.
+    /// Returns `Some((Range<u32>,Range<u32>,...))` if the expression matched all of the bytes in `data`.
+    /// The tuple fields are ranges of bytes in `data` that matched capturing
+    /// groups in the expression.
+    /// A capturing group that matches no bytes will produce as a zero-length
+    /// range.
+    ///
+    /// This is a whole-string match.
+    /// For sub-string search, put `.*` at the beginning and end of the regex.
+    ///
+    /// Returns `None` if the expression did not match `data`.
+    ///
+    /// # Example
+    /// ```rust
+    /// use safe_regex::{regex, Matcher3};
+    /// let matcher: Matcher3<_> = regex!(br"([abc])([0-9]*)(suffix)?");
+    /// let (prefix, digits, suffix) = matcher.match_ranges(b"a42").unwrap();
+    /// assert_eq!(0..1_usize, prefix);
+    /// assert_eq!(1..3_usize, digits);
+    /// assert_eq!(0..0_usize, suffix);
+    /// ```
+    #[must_use]
+    pub fn match_ranges(
+        &self,
+        data: &[u8],
+    ) -> Option<(
+        Range<usize>,
+        Range<usize>,
+        Range<usize>,
+        Range<usize>,
+        Range<usize>,
+        Range<usize>,
+        Range<usize>,
+        Range<usize>,
+        Range<usize>,
+    )> {
+        let [r0, r1, r2, r3, r4, r5, r6, r7, r8] = (self.f)(data)?;
+        Some((r0, r1, r2, r3, r4, r5, r6, r7, r8))
+    }
+
+    /// Executes the regular expression against the byte string `data`.
+    ///
+    /// Returns `Some((&[u8],&[u8],...))`
+    /// if the expression matched all of the bytes in `data`.
+    /// The tuple fields are slices of `data` that matched
+    /// capturing groups in the expression.
     ///
     /// This is a whole-string match.
     /// For sub-string search, put `.*` at the beginning and end of the regex.
@@ -820,30 +1219,16 @@ where
         &'d [u8],
         &'d [u8],
     )> {
-        (self.f)(data)
+        let [r0, r1, r2, r3, r4, r5, r6, r7, r8] = (self.f)(data)?;
+        Some((
+            &data[r0], &data[r1], &data[r2], &data[r3], &data[r4], &data[r5], &data[r6], &data[r7],
+            &data[r8],
+        ))
     }
-    /// This is used internally by the `regex!` macro.
-    #[must_use]
-    pub fn new(f: F) -> Self {
-        Self { f }
-    }
-
-    /// Returns `true` if `data` matches the regular expression,
-    /// otherwise returns `false`.
-    ///
-    /// This is a whole-string match.
-    /// For sub-string search, put `.*` at the beginning and end of the regex.
-    ///
-    /// # Example
-    /// ```rust
-    /// use safe_regex::{regex, Matcher0};
-    /// let matcher: Matcher0<_> = regex!(br"[abc][0-9]*");
-    /// assert!(matcher.is_match(b"a42"));
-    /// assert!(!matcher.is_match(b"X"));
-    /// ```
-    #[must_use]
-    pub fn is_match(&self, data: &[u8]) -> bool {
-        (self.f)(data).is_some()
+}
+impl<F: Fn(&[u8]) -> Option<[Range<usize>; 9]>> IsMatch for Matcher9<F> {
+    fn is_match(&self, data: &[u8]) -> bool {
+        self.is_match(data)
     }
 }
 
@@ -854,44 +1239,86 @@ where
 /// This struct holds that type.
 pub struct Matcher10<F>
 where
-    F: for<'d> Fn(
-        &'d [u8],
-    ) -> Option<(
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-    )>,
+    F: Fn(&[u8]) -> Option<[Range<usize>; 10]>,
 {
     f: F,
 }
 impl<F> Matcher10<F>
 where
-    F: for<'d> Fn(
-        &'d [u8],
-    ) -> Option<(
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-        &'d [u8],
-    )>,
+    F: Fn(&[u8]) -> Option<[Range<usize>; 10]>,
 {
+    /// This is used internally by the `regex!` macro.
+    #[must_use]
+    pub fn new(f: F) -> Self {
+        Self { f }
+    }
+
+    /// Returns `true` if `data` matches the regular expression,
+    /// otherwise returns `false`.
+    ///
+    /// This is a whole-string match.
+    /// For sub-string search, put `.*` at the beginning and end of the regex.
+    ///
+    /// # Example
+    /// ```rust
+    /// use safe_regex::{regex, Matcher0};
+    /// let matcher: Matcher0<_> = regex!(br"[abc][0-9]*");
+    /// assert!(matcher.is_match(b"a42"));
+    /// assert!(!matcher.is_match(b"X"));
+    /// ```
+    #[must_use]
+    pub fn is_match(&self, data: &[u8]) -> bool {
+        (self.f)(data).is_some()
+    }
+
     /// Executes the regular expression against the byte string `data`.
     ///
-    /// Returns `Some(T)` if the expression matched all of the bytes in `data`.
-    /// The value `T` is a tuple of captured group slices.
+    /// Returns `Some((Range<u32>,Range<u32>,...))` if the expression matched all of the bytes in `data`.
+    /// The tuple fields are ranges of bytes in `data` that matched capturing
+    /// groups in the expression.
+    /// A capturing group that matches no bytes will produce as a zero-length
+    /// range.
+    ///
+    /// This is a whole-string match.
+    /// For sub-string search, put `.*` at the beginning and end of the regex.
+    ///
+    /// Returns `None` if the expression did not match `data`.
+    ///
+    /// # Example
+    /// ```rust
+    /// use safe_regex::{regex, Matcher3};
+    /// let matcher: Matcher3<_> = regex!(br"([abc])([0-9]*)(suffix)?");
+    /// let (prefix, digits, suffix) = matcher.match_ranges(b"a42").unwrap();
+    /// assert_eq!(0..1_usize, prefix);
+    /// assert_eq!(1..3_usize, digits);
+    /// assert_eq!(0..0_usize, suffix);
+    /// ```
+    #[must_use]
+    pub fn match_ranges(
+        &self,
+        data: &[u8],
+    ) -> Option<(
+        Range<usize>,
+        Range<usize>,
+        Range<usize>,
+        Range<usize>,
+        Range<usize>,
+        Range<usize>,
+        Range<usize>,
+        Range<usize>,
+        Range<usize>,
+        Range<usize>,
+    )> {
+        let [r0, r1, r2, r3, r4, r5, r6, r7, r8, r9] = (self.f)(data)?;
+        Some((r0, r1, r2, r3, r4, r5, r6, r7, r8, r9))
+    }
+
+    /// Executes the regular expression against the byte string `data`.
+    ///
+    /// Returns `Some((&[u8],&[u8],...))`
+    /// if the expression matched all of the bytes in `data`.
+    /// The tuple fields are slices of `data` that matched
+    /// capturing groups in the expression.
     ///
     /// This is a whole-string match.
     /// For sub-string search, put `.*` at the beginning and end of the regex.
@@ -923,30 +1350,16 @@ where
         &'d [u8],
         &'d [u8],
     )> {
-        (self.f)(data)
+        let [r0, r1, r2, r3, r4, r5, r6, r7, r8, r9] = (self.f)(data)?;
+        Some((
+            &data[r0], &data[r1], &data[r2], &data[r3], &data[r4], &data[r5], &data[r6], &data[r7],
+            &data[r8], &data[r9],
+        ))
     }
-    /// This is used internally by the `regex!` macro.
-    #[must_use]
-    pub fn new(f: F) -> Self {
-        Self { f }
-    }
-
-    /// Returns `true` if `data` matches the regular expression,
-    /// otherwise returns `false`.
-    ///
-    /// This is a whole-string match.
-    /// For sub-string search, put `.*` at the beginning and end of the regex.
-    ///
-    /// # Example
-    /// ```rust
-    /// use safe_regex::{regex, Matcher0};
-    /// let matcher: Matcher0<_> = regex!(br"[abc][0-9]*");
-    /// assert!(matcher.is_match(b"a42"));
-    /// assert!(!matcher.is_match(b"X"));
-    /// ```
-    #[must_use]
-    pub fn is_match(&self, data: &[u8]) -> bool {
-        (self.f)(data).is_some()
+}
+impl<F: Fn(&[u8]) -> Option<[Range<usize>; 10]>> IsMatch for Matcher10<F> {
+    fn is_match(&self, data: &[u8]) -> bool {
+        self.is_match(data)
     }
 }
 

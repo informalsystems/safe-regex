@@ -501,15 +501,15 @@ pub fn generate(final_node: &FinalNode) -> safe_proc_macro2::TokenStream {
                     n = n + 1;
                 }
                 accept .map(|( #( #range_names ),* #extra_comma )| {
-                    (
+                    [
                         #(
-                            if #range_names.start != usize::MAX && #range_names.end != usize::MAX {
-                                &data[#range_names]
+                            if #range_names.start == usize::MAX || #range_names.end == usize::MAX || #range_names.is_empty() {
+                                0..0usize
                             } else {
-                                &[]
+                                #range_names
                             },
-                         )*
-                    )
+                        )*
+                    ]
                 })
             })
         }
