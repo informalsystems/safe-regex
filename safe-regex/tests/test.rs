@@ -22,8 +22,6 @@ use safe_regex::{
 // - (|a)
 // - a{,1}
 
-// TODO(mleonhard) Test greediness
-
 // TODO(mleonhard) Test alternate with empty arm, br"a{0}|b"
 
 #[must_use]
@@ -735,4 +733,14 @@ fn seq_in_star() {
     assert!(re.is_match(b"abcabcabc"));
     assert!(re.is_match(b"abcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabc"));
     assert!(!re.is_match(b"abcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcX"));
+}
+
+#[test]
+fn greediness() {
+    let re: Matcher1<_> = regex!(br"(.*)C.*");
+    assert_eq!(0..0_usize, re.match_ranges(b"C").unwrap().0);
+    assert_eq!(0..1_usize, re.match_ranges(b"aCX").unwrap().0);
+    assert_eq!(0..1_usize, re.match_ranges(b"CC").unwrap().0);
+    assert_eq!(0..3_usize, re.match_ranges(b"aCbC").unwrap().0);
+    assert_eq!(0..3_usize, re.match_ranges(b"aCbCX").unwrap().0);
 }
