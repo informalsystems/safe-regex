@@ -463,7 +463,7 @@ pub fn generate(final_node: &FinalNode) -> safe_proc_macro2::TokenStream {
                 loop {
                     #( #statements1 )*
                     if let Some(b) = data_iter.next() {
-                    #( #statements2 )*
+                        #( #statements2 )*
                         start = None;
                         if #( #var_names .is_none() )&&* {
                             return None;
@@ -481,7 +481,6 @@ pub fn generate(final_node: &FinalNode) -> safe_proc_macro2::TokenStream {
         } else {
             quote! {,}
         };
-        var_names.push(format_ident!("accept"));
         let range_types = core::iter::repeat(quote! { core::ops::Range<usize> }).take(num_groups);
         let range_type = quote! { Option<( #( #range_types ),* #extra_comma )> };
         let range_names: Vec<Ident> = (0..num_groups).map(|r| format_ident!("r{}", r)).collect();
@@ -490,6 +489,7 @@ pub fn generate(final_node: &FinalNode) -> safe_proc_macro2::TokenStream {
                 assert!(data.len() < usize::MAX - 2);
                 let mut start = Some(( #( #default_ranges ),* #extra_comma ));
                 #( let mut #var_names : #range_type = None; )*
+                let mut accept : #range_type = None;
                 let mut data_iter = data.iter();
                 let mut n = 0;
                 loop {
