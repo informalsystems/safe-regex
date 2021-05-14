@@ -552,6 +552,114 @@ fn star() {
 }
 
 #[test]
+fn group_star1() {
+    let expected = quote! { safe_regex::Matcher1::new(|data: &[u8]| {
+        assert!(data.len() < usize::MAX - 2);
+        let mut start = Some((usize::MAX..usize::MAX,));
+        let mut b2: Option<(core::ops::Range<usize>,)> = None;
+        let mut accept: Option<(core::ops::Range<usize>,)> = None;
+        let mut data_iter = data.iter();
+        let mut n = 0;
+        loop {
+            let star0 = start.clone().or_else(|| opt1.clone());
+            let opt1 = star0
+                .clone()
+                .map(|(r0,)| (n..n,))
+                .clone()
+                .or_else(|| b2.clone());
+            accept = star0.clone();
+            if let Some(b) = data_iter.next() {
+                b2 = star0
+                    .clone()
+                    .map(|(r0,)| (n..n,))
+                    .clone()
+                    .filter(|_| {
+                        //
+                        *b == 97u8
+                    })
+                    .map(|(r0,)| (r0.start..n + 1,));
+                start = None;
+                if b2.is_none() {
+                    return None;
+                }
+            } else {
+                break;
+            }
+            n = n + 1;
+        }
+        accept.map(|(r0,)| {
+            [
+                if r0.start == usize::MAX || r0.end == usize::MAX || r0.is_empty() {
+                    0..0usize
+                } else {
+                    r0
+                },
+            ]
+        })
+    }) };
+    assert_eq!(
+        format!("{}", expected),
+        format!("{}", impl_regex(quote! { br"(a?)*" }).unwrap())
+    );
+}
+
+#[test]
+fn group_star2() {
+    let expected = quote! { safe_regex::Matcher1::new(|data: &[u8]| {
+        assert!(data.len() < usize::MAX - 2);
+        let mut start = Some((usize::MAX..usize::MAX,));
+        let mut b1: Option<(core::ops::Range<usize>,)> = None;
+        let mut b3: Option<(core::ops::Range<usize>,)> = None;
+        let mut accept: Option<(core::ops::Range<usize>,)> = None;
+        let mut data_iter = data.iter();
+        let mut n = 0;
+        loop {
+            let star0 = start.clone().or_else(|| opt2.clone());
+            let opt2 = b1.clone().or_else(|| b3.clone());
+            accept = star0.clone();
+            if let Some(b) = data_iter.next() {
+                b3 = b1
+                    .clone()
+                    .filter(|_| {
+                        //
+                        *b == 97u8
+                    })
+                    .map(|(r0,)| (r0.start..n + 1,));
+                b1 = star0
+                    .clone()
+                    .map(|(r0,)| (n..n,))
+                    .clone()
+                    .filter(|_| {
+                        //
+                        *b == 98u8
+                    })
+                    .map(|(r0,)| (r0.start..n + 1,));
+                start = None;
+                if b1.is_none() && b3.is_none() {
+                    return None;
+                }
+            } else {
+                break;
+            }
+            n = n + 1;
+        }
+        accept.map(|(r0,)| {
+            [
+                if r0.start == usize::MAX || r0.end == usize::MAX || r0.is_empty() {
+                    0..0usize
+                } else {
+                    r0
+                },
+            ]
+        })
+    }) };
+    assert_eq!(
+        format!("{}", expected),
+        format!("{}", impl_regex(quote! { br"(ba?)*" }).unwrap())
+    );
+}
+
+#[test]
 fn seq_in_star() {
     let expected = quote! { safe_regex::Matcher0::new(|data: &[u8]| {
         let mut start = Some(());
