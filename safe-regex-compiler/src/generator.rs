@@ -465,6 +465,9 @@ pub fn generate(final_node: &FinalNode) -> safe_proc_macro2::TokenStream {
                     if let Some(b) = data_iter.next() {
                     #( #statements2 )*
                         start = None;
+                        if #( #var_names .is_none() )&&* {
+                            return None;
+                        }
                     } else {
                         return #accept_expr ;
                     }
@@ -495,6 +498,9 @@ pub fn generate(final_node: &FinalNode) -> safe_proc_macro2::TokenStream {
                     if let Some(b) = data_iter.next() {
                         #( #statements2 )*
                         start = None;
+                        if #( #var_names .is_none() )&&* {
+                            return None;
+                        }
                     } else {
                         break;
                     }

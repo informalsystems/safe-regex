@@ -76,6 +76,8 @@
 //! ```
 //!
 //! # Changelog
+//! - v0.2.4
+//!   - Speed improvements.
 //! - v0.2.3
 //!   - Rename `match_all` -> `match_slices`.
 //!   - Add `match_ranges`.
@@ -107,6 +109,7 @@
 //! 1. Run `../release.sh`
 
 // https://swtch.com/~rsc/regexp/regexp1.html
+// https://compiler.org/reason-re-nfa/src/index.html
 
 #![forbid(unsafe_code)]
 #![allow(clippy::type_complexity)]

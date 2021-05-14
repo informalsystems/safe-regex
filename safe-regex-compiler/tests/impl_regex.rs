@@ -51,6 +51,9 @@ fn byte() {
                     *b == 97u8
                 });
                 start = None;
+                if b0.is_none() {
+                    return None;
+                }
             } else {
                 return b0;
             }
@@ -72,6 +75,9 @@ fn any_byte() {
             if let Some(b) = data_iter.next() {
                 b0 = start.clone();
                 start = None;
+                if b0.is_none() {
+                    return None;
+                }
             } else {
                 return b0;
             }
@@ -95,6 +101,9 @@ fn class_inclusive() {
                     *b == 97u8 || *b == 98u8 || *b == 99u8 || (50u8..=52u8).contains(b)
                 });
                 start = None;
+                if b0.is_none() {
+                    return None;
+                }
             } else {
                 return b0;
             }
@@ -118,6 +127,9 @@ fn class_exclusive() {
                     *b != 97u8 && *b != 98u8 && *b != 99u8 && !(50u8..=52u8).contains(b)
                 });
                 start = None;
+                if b0.is_none() {
+                    return None;
+                }
             } else {
                 return b0;
             }
@@ -153,6 +165,9 @@ fn seq() {
                     *b == 97u8
                 });
                 start = None;
+                if b0.is_none() && b1.is_none() && b2.is_none() {
+                    return None;
+                }
             } else {
                 return b2;
             }
@@ -182,6 +197,9 @@ fn alt() {
                     *b == 97u8
                 });
                 start = None;
+                if b0.is_none() && b1.is_none() {
+                    return None;
+                }
             } else {
                 return None.or_else(|| b0.clone()).or_else(|| b1.clone());
             }
@@ -215,6 +233,9 @@ fn group() {
                     })
                     .map(|(r0,)| (r0.start..n + 1,));
                 start = None;
+                if b0.is_none() {
+                    return None;
+                }
             } else {
                 break;
             }
@@ -268,6 +289,9 @@ fn groups_nested() {
                     })
                     .map(|(r0, r1)| (r0.start..n + 1, r1));
                 start = None;
+                if b0.is_none() && b1.is_none() {
+                    return None;
+                }
             } else {
                 break;
             }
@@ -308,6 +332,9 @@ fn optional() {
                     *b == 97u8
                 });
                 start = None;
+                if b1.is_none() {
+                    return None;
+                }
             } else {
                 return opt0;
             }
@@ -338,6 +365,9 @@ fn optional_at_start() {
                     *b == 97u8
                 });
                 start = None;
+                if b1.is_none() && b2.is_none() {
+                    return None;
+                }
             } else {
                 return b2;
             }
@@ -368,6 +398,9 @@ fn optional_at_end() {
                     *b == 97u8
                 });
                 start = None;
+                if b0.is_none() && b2.is_none() {
+                    return None;
+                }
             } else {
                 return opt1;
             }
@@ -405,6 +438,9 @@ fn optionals_in_seq() {
                     *b == 97u8
                 });
                 start = None;
+                if b1.is_none() && b3.is_none() && b5.is_none() {
+                    return None;
+                }
             } else {
                 return opt4;
             }
@@ -458,6 +494,9 @@ fn optionals_in_groups() {
                     })
                     .map(|(r0, r1)| (r0.start..n + 1, r1));
                 start = None;
+                if b1.is_none() && b3.is_none() {
+                    return None;
+                }
             } else {
                 break;
             }
@@ -498,6 +537,9 @@ fn star() {
                     *b == 97u8
                 });
                 start = None;
+                if b1.is_none() {
+                    return None;
+                }
             } else {
                 return star0;
             }
@@ -533,6 +575,9 @@ fn seq_in_star() {
                     *b == 97u8
                 });
                 start = None;
+                if b1.is_none() && b2.is_none() && b3.is_none() {
+                    return None;
+                }
             } else {
                 return star0;
             }
@@ -587,6 +632,9 @@ fn seq_in_group() {
                     })
                     .map(|(r0,)| (r0.start..n + 1,));
                 start = None;
+                if b0.is_none() && b1.is_none() && b2.is_none() && b3.is_none() {
+                    return None;
+                }
             } else {
                 break;
             }
@@ -640,6 +688,9 @@ fn alt_in_group() {
                     })
                     .map(|(r0,)| (r0.start..n + 1,));
                 start = None;
+                if b0.is_none() && b1.is_none() {
+                    return None;
+                }
             } else {
                 break;
             }
