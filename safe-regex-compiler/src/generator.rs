@@ -6,7 +6,6 @@
 use crate::parser::{ClassItem, FinalNode};
 use safe_proc_macro2::{Ident, TokenStream};
 use safe_quote::{format_ident, quote};
-use std::iter::FromIterator;
 
 #[derive(Clone, PartialOrd, PartialEq)]
 pub enum Predicate {
@@ -45,12 +44,12 @@ impl OptimizedNode {
     pub fn non_capturing(&self) -> OptimizedNode {
         match self {
             OptimizedNode::Byte(_) => self.clone(),
-            OptimizedNode::Seq(nodes) => OptimizedNode::Seq(Vec::from_iter(
-                nodes.iter().map(|node| node.non_capturing()),
-            )),
-            OptimizedNode::Alt(nodes) => OptimizedNode::Alt(Vec::from_iter(
-                nodes.iter().map(|node| node.non_capturing()),
-            )),
+            OptimizedNode::Seq(nodes) => {
+                OptimizedNode::Seq(nodes.iter().map(OptimizedNode::non_capturing).collect())
+            }
+            OptimizedNode::Alt(nodes) => {
+                OptimizedNode::Alt(nodes.iter().map(OptimizedNode::non_capturing).collect())
+            }
             OptimizedNode::Optional(node) => {
                 OptimizedNode::Optional(Box::new(node.non_capturing()))
             }
@@ -119,7 +118,7 @@ impl OptimizedNode {
                 let node = OptimizedNode::from_final_node(inner_final_node)?;
                 let non_capturing_node = node.non_capturing();
                 let mut src_nodes =
-                    core::iter::once(node).chain(core::iter::repeat(non_capturing_node.clone()));
+                    core::iter::once(node).chain(core::iter::repeat(non_capturing_node));
                 let mut nodes = Vec::with_capacity(*max);
                 nodes.extend(src_nodes.by_ref().take(*min));
                 nodes.extend(
