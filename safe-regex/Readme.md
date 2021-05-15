@@ -34,10 +34,10 @@ A safe regular expression library.
   | `regex` | `safe_regex` | expression |
   | ----- | ---------- | ---------- |
   | 1 | 6 | find phone num `.*([0-9]{3})[-. ]?([0-9]{3})[-. ]?([0-9]{4}).*` |
-  | 1 | 18 | find date time `.*([0-9]+)-([0-9]+)-([0-9]+) ([0-9]+):([0-9]+).*` |
-  | 1 | 0.9 | parse date time `([0-9]+)-([0-9]+)-([0-9]+) ([0-9]+):([0-9]+)` |
-  | 1 | 30 | check PEM Base64 `[a-zA-Z0-9+/]{0,64}=*` |
-  | 1 | 20-400 | substring search `.*(2G8H81RFNZ).*` |
+  | 1 | 20 | find date time `.*([0-9]+)-([0-9]+)-([0-9]+) ([0-9]+):([0-9]+).*` |
+  | 1 | 0.75 | parse date time `([0-9]+)-([0-9]+)-([0-9]+) ([0-9]+):([0-9]+)` |
+  | 1 | 50 | check PEM Base64 `[a-zA-Z0-9+/]{0,64}=*` |
+  | 1 | 20-500 | substring search `.*(2G8H81RFNZ).*` |
 
 ## Alternatives
 - [`regex`](https://crates.io/crates/regex)
@@ -103,7 +103,8 @@ assert_eq!(0..0_usize, suffix_r);
 
 ## Changelog
 - v0.2.4
-  - Speed improvements.
+  - Bug fixes, reducing performance.
+  - Optimize non-match runtime.
 - v0.2.3
   - Rename `match_all` -> `match_slices`.
   - Add `match_ranges`.

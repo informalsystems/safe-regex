@@ -125,6 +125,7 @@ impl core::fmt::Debug for OptimizedNode {
     }
 }
 
+#[derive(Clone)]
 struct Counter {
     n: usize,
 }
@@ -154,61 +155,47 @@ fn test_counter() {
     assert_eq!(3, counter.get());
 }
 
+fn byte_and_prev_var_names(n: usize) -> (Ident, Ident) {
+    (format_ident!("b{}", n), format_ident!("prev_b{}", n))
+}
+
 #[derive(Clone, PartialOrd, PartialEq)]
 enum TaggedNode {
-    Byte(usize, Predicate),
+    Byte(Predicate),
     Seq(Vec<TaggedNode>),
     Alt(Vec<TaggedNode>),
-    Optional(usize, Box<TaggedNode>),
-    Star(usize, Box<TaggedNode>),
+    Optional(Box<TaggedNode>),
+    Star(Box<TaggedNode>),
     Group(usize, Box<TaggedNode>),
 }
 impl TaggedNode {
-    pub fn from_optimized(
-        var_counter: &mut Counter,
-        group_counter: &mut Counter,
-        source: &OptimizedNode,
-    ) -> Self {
+    pub fn from_optimized(group_counter: &mut Counter, source: &OptimizedNode) -> Self {
         match source {
-            OptimizedNode::Byte(predicate) => {
-                TaggedNode::Byte(var_counter.get_and_increment(), predicate.clone())
-            }
+            OptimizedNode::Byte(predicate) => TaggedNode::Byte(predicate.clone()),
             OptimizedNode::Seq(nodes) => TaggedNode::Seq(
                 nodes
                     .iter()
-                    .map(|node| TaggedNode::from_optimized(var_counter, group_counter, node))
+                    .map(|node| TaggedNode::from_optimized(group_counter, node))
                     .collect(),
             ),
             OptimizedNode::Alt(nodes) => TaggedNode::Alt(
                 nodes
                     .iter()
-                    .map(|node| TaggedNode::from_optimized(var_counter, group_counter, node))
+                    .map(|node| TaggedNode::from_optimized(group_counter, node))
                     .collect(),
             ),
-            OptimizedNode::Optional(node) => TaggedNode::Optional(
-                var_counter.get_and_increment(),
-                Box::new(TaggedNode::from_optimized(var_counter, group_counter, node)),
-            ),
-            OptimizedNode::Star(node) => TaggedNode::Star(
-                var_counter.get_and_increment(),
-                Box::new(TaggedNode::from_optimized(var_counter, group_counter, node)),
-            ),
+            OptimizedNode::Optional(node) => {
+                TaggedNode::Optional(Box::new(TaggedNode::from_optimized(group_counter, node)))
+            }
+            OptimizedNode::Star(node) => {
+                TaggedNode::Star(Box::new(TaggedNode::from_optimized(group_counter, node)))
+            }
             OptimizedNode::Group(node) => {
                 let this_group = group_counter.get_and_increment();
                 TaggedNode::Group(
                     this_group,
-                    Box::new(TaggedNode::from_optimized(var_counter, group_counter, node)),
+                    Box::new(TaggedNode::from_optimized(group_counter, node)),
                 )
-            }
-        }
-    }
-    pub fn var_name(&self) -> Ident {
-        match self {
-            TaggedNode::Byte(var_num, ..) => format_ident!("b{}", var_num),
-            TaggedNode::Optional(var_num, _) => format_ident!("opt{}", var_num),
-            TaggedNode::Star(var_num, _) => format_ident!("star{}", var_num),
-            TaggedNode::Seq(_) | TaggedNode::Alt(_) | TaggedNode::Group(..) => {
-                panic!("name called on {:?}", self)
             }
         }
     }
@@ -216,11 +203,11 @@ impl TaggedNode {
 impl core::fmt::Debug for TaggedNode {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
         match self {
-            TaggedNode::Byte(var_num, predicate) => write!(f, "Byte({},{:?})", var_num, predicate),
+            TaggedNode::Byte(predicate) => write!(f, "Byte({:?})", predicate),
             TaggedNode::Seq(nodes) => write!(f, "Seq({:?})", nodes),
             TaggedNode::Alt(nodes) => write!(f, "Alt({:?})", nodes),
-            TaggedNode::Optional(var_num, node) => write!(f, "Optional({},{:?})", var_num, node),
-            TaggedNode::Star(var_num, node) => write!(f, "Star({},{:?})", var_num, node),
+            TaggedNode::Optional(node) => write!(f, "Optional({:?})", node),
+            TaggedNode::Star(node) => write!(f, "Star({:?})", node),
             TaggedNode::Group(group_num, node) => {
                 write!(f, "Group({},{:?})", group_num, node)
             }
@@ -228,33 +215,20 @@ impl core::fmt::Debug for TaggedNode {
     }
 }
 
-fn collect_var_names(var_names: &mut Vec<Ident>, node: &TaggedNode) {
-    match node {
-        TaggedNode::Byte(..) => var_names.push(node.var_name()),
-        TaggedNode::Seq(nodes) | TaggedNode::Alt(nodes) => {
-            for node in nodes {
-                collect_var_names(var_names, node);
-            }
-        }
-        TaggedNode::Optional(_, node) | TaggedNode::Star(_, node) | TaggedNode::Group(_, node) => {
-            collect_var_names(var_names, node)
-        }
-    }
-}
-
 #[allow(clippy::too_many_lines)]
 fn build(
+    var_counter: &mut Counter,
     num_groups: usize,
     enclosing_groups: &[usize],
-    statements1: &mut Vec<TokenStream>,
     statements2_reversed: &mut Vec<TokenStream>,
     prev_state_expr: &TokenStream,
     node: &TaggedNode,
 ) -> TokenStream {
     crate::dprintln!("build {:?}", node);
     let result = match node {
-        TaggedNode::Byte(_, predicate) => {
-            let var_name = node.var_name();
+        TaggedNode::Byte(predicate) => {
+            let var_num = var_counter.get_and_increment();
+            let (var_name, prev_var_name) = byte_and_prev_var_names(var_num);
             let filter = match predicate {
                 Predicate::Any => quote! {},
                 Predicate::Incl(items) => {
@@ -300,16 +274,16 @@ fn build(
             statements2_reversed.push(quote! {
                 #var_name = #prev_state_expr .clone() #filter #update_groups ;
             });
-            quote! { #var_name }
+            quote! { #prev_var_name }
         }
         TaggedNode::Seq(inner_nodes) => {
             assert!(!inner_nodes.is_empty());
             let mut last_state_expr = prev_state_expr.clone();
             for node in inner_nodes {
                 last_state_expr = build(
+                    var_counter,
                     num_groups,
                     enclosing_groups,
-                    statements1,
                     statements2_reversed,
                     &last_state_expr,
                     node,
@@ -322,9 +296,9 @@ fn build(
             let mut arm_state_exprs: Vec<TokenStream> = Vec::new();
             for node in inner_nodes {
                 arm_state_exprs.push(build(
+                    var_counter,
                     num_groups,
                     enclosing_groups,
-                    statements1,
                     statements2_reversed,
                     prev_state_expr,
                     node,
@@ -332,47 +306,36 @@ fn build(
             }
             quote! { None #( .or_else(|| #arm_state_exprs.clone()) )* }
         }
-        TaggedNode::Optional(_, inner) => {
+        TaggedNode::Optional(inner) => {
             let node_state_expr = build(
+                var_counter,
                 num_groups,
                 enclosing_groups,
-                statements1,
                 statements2_reversed,
                 prev_state_expr,
                 inner,
             );
-            let var_name = node.var_name();
-            statements1.push(quote! {
-                let #var_name = #prev_state_expr .clone() .or_else(|| #node_state_expr .clone()) ;
-            });
-            quote! { #var_name }
+            quote! { #prev_state_expr .clone() .or_else(|| #node_state_expr .clone()) }
         }
         // See safe-regex/tests/machine::seq_in_star .
-        TaggedNode::Star(_, inner) => {
-            // Call `build` once to get the expression for the node, discarding
-            // any statements created.
-            let node_state_expr = build(
+        TaggedNode::Star(inner) => {
+            let first_expr = build(
+                &mut var_counter.clone(), // <-- discards
                 num_groups,
                 enclosing_groups,
                 &mut Vec::new(), // <-- discards
-                &mut Vec::new(), // <-- discards
-                prev_state_expr,
+                &quote! { #prev_state_expr },
                 inner,
             );
-            let var_name = node.var_name();
-            statements1.push(quote! {
-                let #var_name = #prev_state_expr .clone() .or_else(|| #node_state_expr .clone()) ;
-            });
-            // Call `build` again and keep all statements created.
-            build(
+            let expr = build(
+                var_counter,
                 num_groups,
                 enclosing_groups,
-                statements1,
                 statements2_reversed,
-                &quote! { #var_name },
+                &quote! { #prev_state_expr .clone() .or_else(|| #first_expr .clone()) },
                 inner,
             );
-            quote! { #var_name }
+            quote! { #prev_state_expr .clone() .or_else(|| #expr .clone()) }
         }
         TaggedNode::Group(group_num, inner) => {
             let inner_enclosing_groups: Vec<usize> = enclosing_groups
@@ -404,9 +367,9 @@ fn build(
                 }
             };
             build(
+                var_counter,
                 num_groups,
                 &inner_enclosing_groups,
-                statements1,
                 statements2_reversed,
                 &inner_prev_state_expr,
                 inner,
@@ -437,22 +400,28 @@ pub fn generate(final_node: &FinalNode) -> safe_proc_macro2::TokenStream {
         };
     };
     let mut group_counter = Counter::new();
-    let tagged_node =
-        TaggedNode::from_optimized(&mut Counter::new(), &mut group_counter, &optimized_node);
+    let tagged_node = TaggedNode::from_optimized(&mut group_counter, &optimized_node);
     let num_groups = group_counter.get();
     let matcher_type_name = format_ident!("Matcher{}", num_groups);
-    let mut var_names: Vec<Ident> = Vec::new();
-    collect_var_names(&mut var_names, &tagged_node);
-    let mut statements1: Vec<TokenStream> = Vec::new();
     let mut statements2_reversed: Vec<TokenStream> = Vec::new();
+    let mut var_counter = Counter::new();
     let accept_expr = build(
+        &mut var_counter,
         num_groups,
         &Vec::new(),
-        &mut statements1,
         &mut statements2_reversed,
         &quote! { start },
         &tagged_node,
     );
+    let mut var_names: Vec<Ident> = Vec::new();
+    let mut var_clone_statements: Vec<TokenStream> = Vec::new();
+    for n in 0..var_counter.get() {
+        let (var_name, prev_var_name) = byte_and_prev_var_names(n);
+        var_clone_statements.push(quote! {
+            let #prev_var_name = #var_name .clone() ;
+        });
+        var_names.push(var_name);
+    }
     let statements2 = statements2_reversed.iter().rev();
     let result = if num_groups == 0 {
         quote! {
@@ -461,7 +430,7 @@ pub fn generate(final_node: &FinalNode) -> safe_proc_macro2::TokenStream {
                 #( let mut #var_names : Option<()> = None; )*
                 let mut data_iter = data.iter();
                 loop {
-                    #( #statements1 )*
+                    #( #var_clone_statements )*
                     if let Some(b) = data_iter.next() {
                         #( #statements2 )*
                         start = None;
@@ -493,7 +462,7 @@ pub fn generate(final_node: &FinalNode) -> safe_proc_macro2::TokenStream {
                 let mut data_iter = data.iter();
                 let mut n = 0;
                 loop {
-                    #( #statements1 )*
+                    #( #var_clone_statements )*
                     accept = #accept_expr .clone() ;
                     if let Some(b) = data_iter.next() {
                         #( #statements2 )*

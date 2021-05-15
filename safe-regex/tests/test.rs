@@ -201,6 +201,54 @@ fn star() {
         &[b"aa", b"aaa", b"aaaa", b"aaaaa"],
     )
     .unwrap();
+    check_permutations(
+        &regex!(br"(a?)*"),
+        b"aX",
+        4,
+        &[b"", b"a", b"a", b"aa", b"aaa", b"aaaa"],
+    )
+    .unwrap();
+    check_permutations(
+        &regex!(br"(ab?)*"),
+        b"abX",
+        5,
+        &[
+            b"", b"a", b"ab", b"aa", b"aba", b"aab", b"abab", b"aaba", b"ababa", b"abaaa",
+            b"abaab", b"aabaa", b"aabab", b"aaaba", b"aaaaa",
+        ],
+    )
+    .unwrap();
+    check_permutations(
+        &regex!(br"(ab?c)*"),
+        b"abcX",
+        9,
+        &[
+            b"",
+            b"ac",
+            b"abc",
+            //
+            b"acac",
+            b"acabc",
+            b"abcac",
+            b"abcabc",
+            //
+            b"acacac",
+            b"acacabc",
+            b"acabcac",
+            b"acabcabc",
+            b"abcacac",
+            b"abcacabc",
+            b"abcabcac",
+            b"abcabcabc",
+            //
+            b"acacacac",
+            b"acacacabc",
+            b"acacabcac",
+            b"acabcacac",
+            b"abcacacac",
+        ],
+    )
+    .unwrap();
 }
 
 #[test]
@@ -716,6 +764,8 @@ fn non_capturing_group() {
 
 #[test]
 fn seq_in_star() {
+    check_permutations(&regex!(br"(?:aba)*"), b"abX", 6, &[b"", b"aba", b"abaaba"]).unwrap();
+    check_permutations(&regex!(br"(?:abc)*"), b"abcX", 6, &[b"", b"abc", b"abcabc"]).unwrap();
     let re: Matcher0<_> = regex!(br"(?:abc)*");
     assert!(re.is_match(b""));
     assert!(!re.is_match(b"X"));
