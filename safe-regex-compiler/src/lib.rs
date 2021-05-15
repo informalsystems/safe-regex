@@ -30,6 +30,7 @@ macro_rules! dprintln {
 }
 
 /// Converts the bytes into an ASCII string.
+#[allow(clippy::missing_panics_doc)]
 pub fn escape_ascii(input: impl AsRef<[u8]>) -> String {
     let mut result = String::new();
     for byte in input.as_ref() {

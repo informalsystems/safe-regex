@@ -36,6 +36,7 @@ pub enum Node {
 impl Node {
     #[allow(clippy::must_use_candidate)]
     #[allow(clippy::match_wildcard_for_single_variants)]
+    #[allow(clippy::missing_panics_doc)]
     pub fn unwrap_final(self) -> FinalNode {
         match self {
             Node::Final(node) => node,
@@ -45,6 +46,7 @@ impl Node {
 
     #[allow(clippy::must_use_candidate)]
     #[allow(clippy::match_wildcard_for_single_variants)]
+    #[allow(clippy::missing_panics_doc)]
     pub fn unwrap_non_final(self) -> NonFinalNode {
         match self {
             Node::NonFinal(node) => node,
@@ -166,6 +168,7 @@ impl NonFinalNode {
     /// Returns the contents of this `NonFinalNode::OpenClass(..)`.
     /// Panics if this is a different enum variant.
     #[allow(clippy::must_use_candidate)]
+    #[allow(clippy::missing_panics_doc)]
     pub fn unwrap_open_class(self) -> (bool, Vec<ClassItem>) {
         match self {
             NonFinalNode::OpenClass(incl, items) => (incl, items),
@@ -176,6 +179,7 @@ impl NonFinalNode {
     /// Returns the contents of this `NonFinalNode::OpenAlt(..)`.
     /// Panics if this is a different enum variant.
     #[allow(clippy::must_use_candidate)]
+    #[allow(clippy::missing_panics_doc)]
     pub fn unwrap_open_alt(self) -> Vec<FinalNode> {
         match self {
             NonFinalNode::OpenAlt(nodes) => nodes,
@@ -186,6 +190,7 @@ impl NonFinalNode {
     /// Returns the contents of this `NonFinalNode::RepeatMin(..)`.
     /// Panics if this is a different enum variant.
     #[allow(clippy::must_use_candidate)]
+    #[allow(clippy::missing_panics_doc)]
     pub fn unwrap_repeat_min(self) -> String {
         match self {
             NonFinalNode::RepeatMin(min) => min,
@@ -196,6 +201,7 @@ impl NonFinalNode {
     /// Returns the contents of this `NonFinalNode::RepeatMax(..)`.
     /// Panics if this is a different enum variant.
     #[allow(clippy::must_use_candidate)]
+    #[allow(clippy::missing_panics_doc)]
     pub fn unwrap_repeat_max(self) -> (String, String) {
         match self {
             NonFinalNode::RepeatMax(min, max) => (min, max),
@@ -504,6 +510,7 @@ impl FinalNode {
     /// Assumes this is a `FinalNode::Alt(_)` and returns its contents.
     /// Panics if this is a different enum variant.
     #[allow(clippy::must_use_candidate)]
+    #[allow(clippy::missing_panics_doc)]
     pub fn unwrap_alt(self) -> Vec<FinalNode> {
         match self {
             FinalNode::Alt(nodes) => nodes,
@@ -862,7 +869,8 @@ fn apply_rule_once(
         (_, Some(NonFinal(RepeatMin(_))), Some(b'}')) => {
             byte.take();
             let min = last.take().unwrap().unwrap_non_final().unwrap_repeat_min();
-            let min_usize = usize::from_str_radix(&min, 10)
+            let min_usize = min
+                .parse::<usize>()
                 .map_err(|e| format!("invalid repetition value `{{{}}}`: {}", min, e))?;
             Ok(Some(NonFinal(RepeatToken(
                 format!("{{{}}}", min),
@@ -881,13 +889,13 @@ fn apply_rule_once(
             let min_usize = if min.is_empty() {
                 0
             } else {
-                usize::from_str_radix(&min, 10)
+                min.parse::<usize>()
                     .map_err(|e| format!("invalid repetition value `{{{},{}}}`: {}", min, max, e))?
             };
             let max_opt_usize = if max.is_empty() {
                 None
             } else {
-                let max_usize = usize::from_str_radix(&max, 10).map_err(|e| {
+                let max_usize = max.parse::<usize>().map_err(|e| {
                     format!("invalid repetition value `{{{},{}}}`: {}", min, max, e)
                 })?;
                 if max_usize < min_usize {
@@ -987,6 +995,7 @@ fn apply_rule_once(
 /// );
 /// ```
 /// See [`FinalNode`](enum.FinalNode.html) variants for more examples.
+#[allow(clippy::missing_panics_doc)]
 pub fn parse(regex: &[u8]) -> Result<FinalNode, String> {
     if regex.is_empty() {
         return Ok(FinalNode::Seq(Vec::new()));

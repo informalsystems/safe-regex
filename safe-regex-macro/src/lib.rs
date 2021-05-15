@@ -53,6 +53,7 @@
 /// assert_eq!(0..0_usize, suffix_r);
 /// ```
 #[proc_macro]
+#[allow(clippy::missing_panics_doc)]
 pub fn regex(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input2 = safe_proc_macro2::TokenStream::from(input);
     let output2 = match safe_regex_compiler::impl_regex(input2) {

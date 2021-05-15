@@ -1370,6 +1370,7 @@ impl<F: Fn(&[u8]) -> Option<[Range<usize>; 10]>> IsMatch for Matcher10<F> {
 
 pub mod internal {
     /// Converts the bytes into an ASCII string.
+    #[allow(clippy::missing_panics_doc)]
     pub fn escape_ascii(input: impl AsRef<[u8]>) -> String {
         let mut result = String::new();
         for byte in input.as_ref() {
