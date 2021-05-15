@@ -6,6 +6,7 @@
 use crate::parser::{ClassItem, FinalNode};
 use safe_proc_macro2::{Ident, TokenStream};
 use safe_quote::{format_ident, quote};
+use std::iter::FromIterator;
 
 #[derive(Clone, PartialOrd, PartialEq)]
 pub enum Predicate {
@@ -41,6 +42,23 @@ enum OptimizedNode {
     Group(Box<OptimizedNode>),
 }
 impl OptimizedNode {
+    pub fn non_capturing(&self) -> OptimizedNode {
+        match self {
+            OptimizedNode::Byte(_) => self.clone(),
+            OptimizedNode::Seq(nodes) => OptimizedNode::Seq(Vec::from_iter(
+                nodes.iter().map(|node| node.non_capturing()),
+            )),
+            OptimizedNode::Alt(nodes) => OptimizedNode::Alt(Vec::from_iter(
+                nodes.iter().map(|node| node.non_capturing()),
+            )),
+            OptimizedNode::Optional(node) => {
+                OptimizedNode::Optional(Box::new(node.non_capturing()))
+            }
+            OptimizedNode::Star(node) => OptimizedNode::Star(Box::new(node.non_capturing())),
+            OptimizedNode::Group(node) => node.non_capturing(),
+        }
+    }
+
     pub fn from_final_node(final_node: &FinalNode) -> Option<Self> {
         match final_node {
             FinalNode::AnyByte => Some(OptimizedNode::Byte(Predicate::Any)),
@@ -86,9 +104,12 @@ impl OptimizedNode {
             ))),
             FinalNode::Repeat(inner_final_node, min, None) => {
                 let node = OptimizedNode::from_final_node(inner_final_node)?;
+                let non_capturing_node = node.non_capturing();
+                let mut src_nodes =
+                    core::iter::once(node).chain(core::iter::repeat(non_capturing_node.clone()));
                 let mut nodes = Vec::with_capacity(min + 1);
-                nodes.extend(core::iter::repeat(node.clone()).take(*min));
-                nodes.push(OptimizedNode::Star(Box::new(node)));
+                nodes.extend(src_nodes.by_ref().take(*min));
+                nodes.push(OptimizedNode::Star(Box::new(non_capturing_node)));
                 Some(OptimizedNode::Seq(nodes))
             }
             FinalNode::Repeat(_node, 0, Some(0)) => None,
@@ -96,10 +117,15 @@ impl OptimizedNode {
             FinalNode::Repeat(_node, min, Some(max)) if max < min => unreachable!(),
             FinalNode::Repeat(inner_final_node, min, Some(max)) => {
                 let node = OptimizedNode::from_final_node(inner_final_node)?;
+                let non_capturing_node = node.non_capturing();
+                let mut src_nodes =
+                    core::iter::once(node).chain(core::iter::repeat(non_capturing_node.clone()));
                 let mut nodes = Vec::with_capacity(*max);
-                nodes.extend(core::iter::repeat(node.clone()).take(*min));
+                nodes.extend(src_nodes.by_ref().take(*min));
                 nodes.extend(
-                    core::iter::repeat(OptimizedNode::Optional(Box::new(node))).take(max - min),
+                    src_nodes
+                        .map(|node| OptimizedNode::Optional(Box::new(node)))
+                        .take(max - min),
                 );
                 Some(OptimizedNode::Seq(nodes))
             }

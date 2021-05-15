@@ -763,6 +763,21 @@ fn non_capturing_group() {
 }
 
 #[test]
+fn group_repeat() {
+    let re: Matcher1<_> = regex!(br"(a){2,3}");
+    assert!(!re.is_match(b""));
+    assert!(!re.is_match(b"a"));
+    assert!(re.is_match(b"aa"));
+    assert!(re.is_match(b"aaa"));
+    assert!(!re.is_match(b"b"));
+    assert!(!re.is_match(b"ab"));
+    assert!(!re.is_match(b"ba"));
+    assert!(!re.is_match(b"aaaa"));
+    assert_eq!("a", escape_ascii(re.match_slices(b"aa").unwrap().0));
+    assert_eq!("a", escape_ascii(re.match_slices(b"aaa").unwrap().0));
+}
+
+#[test]
 fn seq_in_star() {
     check_permutations(&regex!(br"(?:aba)*"), b"abX", 6, &[b"", b"aba", b"abaaba"]).unwrap();
     check_permutations(&regex!(br"(?:abc)*"), b"abcX", 6, &[b"", b"abc", b"abcabc"]).unwrap();
