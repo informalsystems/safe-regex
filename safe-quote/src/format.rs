@@ -11,12 +11,12 @@
 /// of format types to traits is:
 ///
 /// * `{}` ⇒ [`IdentFragment`]
-/// * `{:o}` ⇒ [`Octal`](std::fmt::Octal)
-/// * `{:x}` ⇒ [`LowerHex`](std::fmt::LowerHex)
-/// * `{:X}` ⇒ [`UpperHex`](std::fmt::UpperHex)
-/// * `{:b}` ⇒ [`Binary`](std::fmt::Binary)
+/// * `{:o}` ⇒ [`Octal`](core::fmt::Octal)
+/// * `{:x}` ⇒ [`LowerHex`](core::fmt::LowerHex)
+/// * `{:X}` ⇒ [`UpperHex`](core::fmt::UpperHex)
+/// * `{:b}` ⇒ [`Binary`](core::fmt::Binary)
 ///
-/// See [`std::fmt`] for more information.
+/// See [`core::fmt`] for more information.
 ///
 /// <br>
 ///
@@ -111,14 +111,14 @@
 macro_rules! format_ident {
     ($fmt:expr) => {
         $crate::format_ident_impl!([
-            ::std::option::Option::None,
+            ::core::option::Option::None,
             $fmt
         ])
     };
 
     ($fmt:expr, $($rest:tt)*) => {
         $crate::format_ident_impl!([
-            ::std::option::Option::None,
+            ::core::option::Option::None,
             $fmt
         ] $($rest)*)
     };
@@ -138,7 +138,7 @@ macro_rules! format_ident_impl {
     };
     ([$old:expr, $($fmt:tt)*] span = $span:expr, $($rest:tt)*) => {
         $crate::format_ident_impl!([
-            ::std::option::Option::Some::<$crate::__private::Span>($span),
+            ::core::option::Option::Some::<$crate::__private::Span>($span),
             $($fmt)*
         ] $($rest)*)
     };

@@ -27,6 +27,11 @@
 #![forbid(unsafe_code)]
 use crate::escape_ascii;
 
+use alloc::boxed::Box;
+use alloc::string::{String, ToString};
+use alloc::vec::Vec;
+use alloc::{format, vec};
+
 /// An AST node used during parsing.
 #[derive(Clone, Debug, PartialOrd, PartialEq)]
 pub enum Node {

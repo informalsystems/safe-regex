@@ -1,8 +1,10 @@
 use super::TokenStreamExt;
 
-use std::borrow::Cow;
-use std::iter;
-use std::rc::Rc;
+use alloc::borrow::{Cow, ToOwned};
+use alloc::boxed::Box;
+use alloc::rc::Rc;
+use alloc::string::String;
+use core::iter;
 
 use safe_proc_macro2::{Group, Ident, Literal, Punct, Span, TokenStream, TokenTree};
 

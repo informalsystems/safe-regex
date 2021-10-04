@@ -1,6 +1,8 @@
+use alloc::borrow::Cow;
+use alloc::borrow::ToOwned;
+use alloc::string::{String, ToString};
+use core::fmt;
 use safe_proc_macro2::{Ident, Span};
-use std::borrow::Cow;
-use std::fmt;
 
 /// Specialized formatting trait used by `format_ident!`.
 ///

@@ -82,6 +82,7 @@
 //!     }
 //! };
 //! ```
+#![no_std]
 #![forbid(unsafe_code)]
 // Quote types in rustdoc of other crates get linked to here.
 #![doc(html_root_url = "https://docs.rs/quote/1.0.15")]
@@ -99,6 +100,8 @@
     feature = "proc-macro"
 ))]
 extern crate proc_macro;
+
+extern crate alloc;
 
 mod ext;
 mod format;
@@ -577,7 +580,7 @@ macro_rules! quote {
 /// input span of their type is highlighted in the error.
 ///
 /// ```text
-/// error[E0277]: the trait bound `*const (): std::marker::Sync` is not satisfied
+/// error[E0277]: the trait bound `*const (): core::marker::Sync` is not satisfied
 ///   --> src/main.rs:10:21
 ///    |
 /// 10 |     static ref PTR: *const () = &();

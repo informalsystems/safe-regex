@@ -1,6 +1,6 @@
 use super::ToTokens;
 
-use std::iter;
+use core::iter;
 
 use safe_proc_macro2::{TokenStream, TokenTree};
 

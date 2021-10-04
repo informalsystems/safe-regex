@@ -1,4 +1,5 @@
 use crate::ToTokens;
+use alloc::format;
 use safe_proc_macro2::{Span, TokenStream};
 
 pub trait Spanned {

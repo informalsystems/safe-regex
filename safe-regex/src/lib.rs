@@ -112,8 +112,12 @@
 // https://swtch.com/~rsc/regexp/regexp1.html
 // https://compiler.org/reason-re-nfa/src/index.html
 
+#![no_std]
 #![forbid(unsafe_code)]
 #![allow(clippy::type_complexity)]
+
+extern crate alloc;
+
 use core::ops::Range;
 pub use safe_regex_macro::regex;
 
@@ -1369,6 +1373,8 @@ impl<F: Fn(&[u8]) -> Option<[Range<usize>; 10]>> IsMatch for Matcher10<F> {
 }
 
 pub mod internal {
+    use alloc::string::String;
+
     /// Converts the bytes into an ASCII string.
     #[allow(clippy::missing_panics_doc)]
     pub fn escape_ascii(input: impl AsRef<[u8]>) -> String {

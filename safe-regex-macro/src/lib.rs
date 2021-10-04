@@ -18,6 +18,7 @@
 //! # Release Process
 //! 1. Edit `Cargo.toml` and bump version number.
 //! 1. Run `../release.sh`
+#![no_std]
 #![forbid(unsafe_code)]
 
 /// Compiles a regular expression into a Rust type.

@@ -4,6 +4,9 @@
 //! How-to develop proc macros: <https://github.com/dtolnay/proc-macro-workshop>
 #![forbid(unsafe_code)]
 use crate::parser::{ClassItem, FinalNode};
+use alloc::boxed::Box;
+use alloc::vec::Vec;
+use alloc::{format, vec};
 use safe_proc_macro2::{Ident, TokenStream};
 use safe_quote::{format_ident, quote};
 
