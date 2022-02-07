@@ -1,7 +1,7 @@
 [package]
 name = "safe-proc-macro2"
-version = "1.0.24" # remember to update html_root_url
-authors = ["Alex Crichton <alex@alexcrichton.com>", "David Tolnay <dtolnay@gmail.com>"]
+version = "1.0.36" # remember to update html_root_url
+authors = ["David Tolnay <dtolnay@gmail.com>", "Alex Crichton <alex@alexcrichton.com>"]
 license = "MIT OR Apache-2.0"
 readme = "README.md"
 keywords = ["macros"]
@@ -9,14 +9,15 @@ repository = "https://gitlab.com/leonhard-llc/safe-regex-rs"
 documentation = "https://docs.rs/safe-proc-macro2"
 categories = ["development-tools::procedural-macro-helpers"]
 edition = "2018"
+autobenches = false
+rust-version = "1.31"
 description = """
-A substitute implementation of the compiler's `proc_macro` API to decouple
-token-based libraries from the procedural macro use case.
+A fork of `proc_macro2` crate with unsafe code removed.
 """
 
 [package.metadata.docs.rs]
 rustc-args = ["--cfg", "procmacro2_semver_exempt"]
-rustdoc-args = ["--cfg", "procmacro2_semver_exempt"]
+rustdoc-args = ["--cfg", "procmacro2_semver_exempt", "--cfg", "doc_cfg"]
 targets = ["x86_64-unknown-linux-gnu"]
 
 [package.metadata.playground]
@@ -41,7 +42,7 @@ nightly = []
 
 #[workspace]
 #members = ["benches/bench-libproc-macro", "tests/ui"]
-
+#
 #[patch.crates-io]
 ## Our doc tests depend on quote which depends on proc-macro2. Without this line,
 ## the proc-macro2 dependency of quote would be the released version of

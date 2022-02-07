@@ -1,4 +1,7 @@
+#![allow(clippy::non_ascii_literal)]
+
 use safe_proc_macro2::{Ident, Literal, Punct, Spacing, Span, TokenStream, TokenTree};
+use std::panic;
 use std::str::{self, FromStr};
 
 #[test]
@@ -71,9 +74,24 @@ fn lifetime_number() {
 }
 
 #[test]
-#[should_panic(expected = r#""\'a#" is not a valid Ident"#)]
 fn lifetime_invalid() {
-    Ident::new("'a#", Span::call_site());
+    let result = panic::catch_unwind(|| Ident::new("'a#", Span::call_site()));
+    match result {
+        Err(box_any) => {
+            let message = box_any.downcast_ref::<String>().unwrap();
+            let expected1 = r#""\'a#" is not a valid Ident"#; // 1.31.0 .. 1.53.0
+            let expected2 = r#""'a#" is not a valid Ident"#; // 1.53.0 ..
+            assert!(
+                message == expected1 || message == expected2,
+                "panic message does not match expected string\n\
+                 \x20   panic message: `{:?}`\n\
+                 \x20expected message: `{:?}`",
+                message,
+                expected2,
+            );
+        }
+        Ok(_) => panic!("test did not panic as expected"),
+    }
 }
 
 #[test]
@@ -148,12 +166,33 @@ fn literal_iter_negative() {
 }
 
 #[test]
+fn literal_parse() {
+    assert!("1".parse::<Literal>().is_ok());
+    assert!("-1".parse::<Literal>().is_ok());
+    assert!("-1u12".parse::<Literal>().is_ok());
+    assert!("1.0".parse::<Literal>().is_ok());
+    assert!("-1.0".parse::<Literal>().is_ok());
+    assert!("-1.0f12".parse::<Literal>().is_ok());
+    assert!("'a'".parse::<Literal>().is_ok());
+    assert!("\"\n\"".parse::<Literal>().is_ok());
+    assert!("0 1".parse::<Literal>().is_err());
+    assert!(" 0".parse::<Literal>().is_err());
+    assert!("0 ".parse::<Literal>().is_err());
+    assert!("/* comment */0".parse::<Literal>().is_err());
+    assert!("0/* comment */".parse::<Literal>().is_err());
+    assert!("0// comment".parse::<Literal>().is_err());
+    assert!("- 1".parse::<Literal>().is_err());
+    assert!("- 1.0".parse::<Literal>().is_err());
+    assert!("-\"\"".parse::<Literal>().is_err());
+}
+
+#[test]
 fn roundtrip() {
     fn roundtrip(p: &str) {
         println!("parse: {}", p);
         let s = p.parse::<TokenStream>().unwrap().to_string();
         println!("first: {}", s);
-        let s2 = s.to_string().parse::<TokenStream>().unwrap().to_string();
+        let s2 = s.parse::<TokenStream>().unwrap().to_string();
         assert_eq!(s, s2);
     }
     roundtrip("a");
@@ -449,7 +488,7 @@ TokenStream [
 
 #[test]
 fn default_tokenstream_is_empty() {
-    let default_token_stream: TokenStream = Default::default();
+    let default_token_stream = <TokenStream as Default>::default();
 
     assert!(default_token_stream.is_empty());
 }

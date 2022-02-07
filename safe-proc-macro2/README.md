@@ -4,7 +4,7 @@
 [![Latest Version](https://img.shields.io/crates/v/safe-proc-macro2.svg)](https://crates.io/crates/safe-proc-macro2)
 [![Rust Documentation](https://img.shields.io/badge/api-rustdoc-blue.svg)](https://docs.rs/safe-proc-macro2)
 
-This is a fork of `proc_macro2` that simply adds `forbid(unsafe_code)`.
+This is a fork of `proc_macro2` that with unsafe code removed.
 See the [rejected PR](https://github.com/alexcrichton/proc-macro2/pull/261).
 
 ----
