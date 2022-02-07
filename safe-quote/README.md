@@ -51,7 +51,7 @@ The quote crate provides a [`quote!`] macro within which you can write Rust code
 that gets packaged into a [`TokenStream`] and can be treated as data. You should
 think of `TokenStream` as representing a fragment of Rust source code.
 
-[`TokenStream`]: https://docs.rs/proc-macro2/1.0/proc_macro2/struct.TokenStream.html
+[`TokenStream`]: https://docs.rs/proc-macro2/1.0/safe_proc_macro2/struct.TokenStream.html
 
 Within the `quote!` macro, interpolation is done with `#var`. Any type
 implementing the [`safe_quote::ToTokens`] trait can be interpolated. This includes
@@ -227,7 +227,7 @@ Any interpolated tokens preserve the `Span` information provided by their
 `ToTokens` implementation. Tokens that originate within a `quote!` invocation
 are spanned with [`Span::call_site()`].
 
-[`Span::call_site()`]: https://docs.rs/proc-macro2/1.0/proc_macro2/struct.Span.html#method.call_site
+[`Span::call_site()`]: https://docs.rs/proc-macro2/1.0/safe_proc_macro2/struct.Span.html#method.call_site
 
 A different span can be provided explicitly through the [`quote_spanned!`]
 macro.

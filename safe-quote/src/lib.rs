@@ -84,12 +84,14 @@
 //! ```
 #![forbid(unsafe_code)]
 // Quote types in rustdoc of other crates get linked to here.
-#![doc(html_root_url = "https://docs.rs/quote/1.0.9")]
+#![doc(html_root_url = "https://docs.rs/quote/1.0.15")]
 #![allow(
     clippy::doc_markdown,
     clippy::missing_errors_doc,
     clippy::missing_panics_doc,
-    clippy::module_name_repetitions
+    clippy::module_name_repetitions,
+    // false positive https://github.com/rust-lang/rust-clippy/issues/6983
+    clippy::wrong_self_convention,
 )]
 
 #[cfg(all(
@@ -124,7 +126,7 @@ pub mod spanned;
 /// Note: for returning tokens to the compiler in a procedural macro, use
 /// `.into()` on the result to convert to [`proc_macro::TokenStream`].
 ///
-/// [`TokenStream`]: https://docs.rs/proc-macro2/1.0/proc_macro2/struct.TokenStream.html
+/// [`TokenStream`]: https://docs.rs/proc-macro2/1.0/safe_proc_macro2/struct.TokenStream.html
 ///
 /// <br>
 ///
@@ -159,7 +161,7 @@ pub mod spanned;
 /// `ToTokens` implementation. Tokens that originate within the `quote!`
 /// invocation are spanned with [`Span::call_site()`].
 ///
-/// [`Span::call_site()`]: https://docs.rs/proc-macro2/1.0/proc_macro2/struct.Span.html#method.call_site
+/// [`Span::call_site()`]: https://docs.rs/proc-macro2/1.0/safe_proc_macro2/struct.Span.html#method.call_site
 ///
 /// A different span can be provided through the [`quote_spanned!`] macro.
 ///
@@ -175,9 +177,9 @@ pub mod spanned;
 ///
 /// The difference between the two types is that `proc_macro` types are entirely
 /// specific to procedural macros and cannot ever exist in code outside of a
-/// procedural macro, while `proc_macro2` types may exist anywhere including
+/// procedural macro, while `safe_proc_macro2` types may exist anywhere including
 /// tests and non-macro code like main.rs and build.rs. This is why even the
-/// procedural macro ecosystem is largely built around `proc_macro2`, because
+/// procedural macro ecosystem is largely built around `safe_proc_macro2`, because
 /// that ensures the libraries are unit testable and accessible in non-macro
 /// contexts.
 ///
@@ -501,7 +503,7 @@ macro_rules! quote {
 /// anything more than a few characters. There should be no space before the
 /// `=>` token.
 ///
-/// [`Span`]: https://docs.rs/proc-macro2/1.0/proc_macro2/struct.Span.html
+/// [`Span`]: https://docs.rs/proc-macro2/1.0/safe_proc_macro2/struct.Span.html
 ///
 /// ```
 /// # use safe_proc_macro2::Span;
@@ -746,9 +748,15 @@ macro_rules! quote_token_with_context {
         // warnings on anything below the loop. We use has_iter to detect and
         // fail to compile when there are no iterators, so here we just work
         // around the unneeded extra warning.
-        while true {
+        //
+        // FIXME: temporariliy working around Clippy regression.
+        // https://github.com/rust-lang/rust-clippy/issues/7768
+        loop {
             $crate::pounded_var_names!(quote_bind_next_or_break!() () $($inner)*);
             $crate::quote_each_token!($tokens $($inner)*);
+            if false {
+                break;
+            }
         }
     }};
     ($tokens:ident $b3:tt $b2:tt # (( $($inner:tt)* )) * $a2:tt $a3:tt) => {};
@@ -760,13 +768,16 @@ macro_rules! quote_token_with_context {
         let has_iter = $crate::__private::ThereIsNoIteratorInRepetition;
         $crate::pounded_var_names!(quote_bind_into_iter!(has_iter) () $($inner)*);
         let _: $crate::__private::HasIterator = has_iter;
-        while true {
+        loop {
             $crate::pounded_var_names!(quote_bind_next_or_break!() () $($inner)*);
             if _i > 0 {
                 $crate::quote_token!($tokens $sep);
             }
             _i += 1;
             $crate::quote_each_token!($tokens $($inner)*);
+            if false {
+                break;
+            }
         }
     }};
     ($tokens:ident $b3:tt $b2:tt # (( $($inner:tt)* )) $sep:tt * $a3:tt) => {};
@@ -802,9 +813,15 @@ macro_rules! quote_token_with_context_spanned {
         // warnings on anything below the loop. We use has_iter to detect and
         // fail to compile when there are no iterators, so here we just work
         // around the unneeded extra warning.
-        while true {
+        //
+        // FIXME: temporariliy working around Clippy regression.
+        // https://github.com/rust-lang/rust-clippy/issues/7768
+        loop {
             $crate::pounded_var_names!(quote_bind_next_or_break!() () $($inner)*);
             $crate::quote_each_token_spanned!($tokens $span $($inner)*);
+            if false {
+                break;
+            }
         }
     }};
     ($tokens:ident $span:ident $b3:tt $b2:tt # (( $($inner:tt)* )) * $a2:tt $a3:tt) => {};
@@ -816,13 +833,16 @@ macro_rules! quote_token_with_context_spanned {
         let has_iter = $crate::__private::ThereIsNoIteratorInRepetition;
         $crate::pounded_var_names!(quote_bind_into_iter!(has_iter) () $($inner)*);
         let _: $crate::__private::HasIterator = has_iter;
-        while true {
+        loop {
             $crate::pounded_var_names!(quote_bind_next_or_break!() () $($inner)*);
             if _i > 0 {
                 $crate::quote_token_spanned!($tokens $span $sep);
             }
             _i += 1;
             $crate::quote_each_token_spanned!($tokens $span $($inner)*);
+            if false {
+                break;
+            }
         }
     }};
     ($tokens:ident $span:ident $b3:tt $b2:tt # (( $($inner:tt)* )) $sep:tt * $a3:tt) => {};
@@ -1049,6 +1069,14 @@ macro_rules! quote_token {
         $crate::__private::push_ident(&mut $tokens, stringify!($ident));
     };
 
+    ($tokens:ident $lifetime:lifetime) => {
+        $crate::__private::push_lifetime(&mut $tokens, stringify!($lifetime));
+    };
+
+    ($tokens:ident _) => {
+        $crate::__private::push_underscore(&mut $tokens);
+    };
+
     ($tokens:ident $other:tt) => {
         $crate::__private::parse(&mut $tokens, stringify!($other));
     };
@@ -1262,6 +1290,14 @@ macro_rules! quote_token_spanned {
 
     ($tokens:ident $span:ident $ident:ident) => {
         $crate::__private::push_ident_spanned(&mut $tokens, $span, stringify!($ident));
+    };
+
+    ($tokens:ident $span:ident $lifetime:lifetime) => {
+        $crate::__private::push_lifetime_spanned(&mut $tokens, $span, stringify!($lifetime));
+    };
+
+    ($tokens:ident $span:ident _) => {
+        $crate::__private::push_underscore_spanned(&mut $tokens, $span);
     };
 
     ($tokens:ident $span:ident $other:tt) => {

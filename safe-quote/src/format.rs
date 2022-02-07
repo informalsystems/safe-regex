@@ -11,10 +11,10 @@
 /// of format types to traits is:
 ///
 /// * `{}` ⇒ [`IdentFragment`]
-/// * `{:o}` ⇒ [`Octal`](`std::fmt::Octal`)
-/// * `{:x}` ⇒ [`LowerHex`](`std::fmt::LowerHex`)
-/// * `{:X}` ⇒ [`UpperHex`](`std::fmt::UpperHex`)
-/// * `{:b}` ⇒ [`Binary`](`std::fmt::Binary`)
+/// * `{:o}` ⇒ [`Octal`](std::fmt::Octal)
+/// * `{:x}` ⇒ [`LowerHex`](std::fmt::LowerHex)
+/// * `{:X}` ⇒ [`UpperHex`](std::fmt::UpperHex)
+/// * `{:b}` ⇒ [`Binary`](std::fmt::Binary)
 ///
 /// See [`std::fmt`] for more information.
 ///
@@ -29,7 +29,8 @@
 ///    unsigned integers and strings.
 /// * [`Ident`] arguments will have their `r#` prefixes stripped, if present.
 ///
-/// [`Ident`]: `safe_proc_macro2::Ident`
+/// [`IdentFragment`]: crate::IdentFragment
+/// [`Ident`]: safe_proc_macro2::Ident
 ///
 /// <br>
 ///
@@ -59,8 +60,8 @@
 /// format_ident!("MyIdent", span = my_span);
 /// ```
 ///
-/// [`Span`]: `safe_proc_macro2::Span`
-/// [`Span::call_site`]: `safe_proc_macro2::Span::call_site`
+/// [`Span`]: safe_proc_macro2::Span
+/// [`Span::call_site`]: safe_proc_macro2::Span::call_site
 ///
 /// <p><br></p>
 ///
