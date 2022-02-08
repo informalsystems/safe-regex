@@ -411,7 +411,7 @@ fn build(
 #[must_use]
 #[allow(clippy::too_many_lines)]
 pub fn generate(final_node: &FinalNode) -> safe_proc_macro2::TokenStream {
-    let optimized_node = if let Some(node) = OptimizedNode::from_final_node(&final_node) {
+    let optimized_node = if let Some(node) = OptimizedNode::from_final_node(final_node) {
         node
     } else {
         return quote! {

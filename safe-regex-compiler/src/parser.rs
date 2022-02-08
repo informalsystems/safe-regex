@@ -568,7 +568,7 @@ fn apply_rule_once(
         OpenClassNeg, OpenExtendedGroup, OpenGroup, OpenNonCapturingGroup, RepeatMax, RepeatMin,
         RepeatToken,
     };
-    #[allow(clippy::match_same_arms)]
+    #[allow(clippy::match_same_arms, clippy::unnested_or_patterns)]
     match (&mut prev, &mut last, byte.map(|b| b)) {
         (Some(_), None, _) => unreachable!(),
         // Combine class nodes
@@ -653,10 +653,10 @@ fn apply_rule_once(
         {
             let node = last.take().unwrap().unwrap_final();
             if let Seq(ref mut seq_nodes) = nodes.last_mut().unwrap() {
-                seq_nodes.push(node)
+                seq_nodes.push(node);
             } else {
                 let prev_node = nodes.pop().unwrap();
-                nodes.push(Seq(vec![prev_node, node]))
+                nodes.push(Seq(vec![prev_node, node]));
             }
             Ok(None)
         }
