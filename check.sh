@@ -16,22 +16,25 @@ usage() {
 while :; do
   case "$1" in
   --skip-readme-check) skip_readme_check=1 ;;
+  +nightly) CARGO_CHANNEL=+nightly ;;
   '') break ;;
   -*) usage "bad argument '$1'" ;;
   *)
     [ -z "$DIR" ] || usage "unexpected argument: '$1'"
     DIR="$1"
+    cd "$script_dir/$1"
+    ;;
   esac
   shift
 done
 
-cd "$DIR"
+cargo="cargo $CARGO_CHANNEL"
 
 echo "Running cargo check."
 echo "PWD=$(pwd)"
 time (
   set -x
-  cargo check --verbose
+  $cargo check --verbose
   set +x
   echo -n "Cargo check done."
 )
@@ -46,7 +49,7 @@ else
   echo "PWD=$(pwd)"
   time (
     set -x
-    cargo fmt -- --check
+    $cargo fmt -- --check
     set +x
     echo -n "Finished cargo fmt check."
   )
@@ -54,10 +57,10 @@ else
   echo ''
   echo "Running cargo clippy."
   echo "PWD=$(pwd)"
-  package=$(cargo read-manifest | tr ',' '\n' | head -n 1 | cut -d: -f2 | cut -d '"' -f 2)
+  package=$($cargo read-manifest | tr ',' '\n' | head -n 1 | cut -d: -f2 | cut -d '"' -f 2)
   set -x
-  cargo clean --package "$package"
-  cargo clippy --all-features -- -D clippy::pedantic --no-deps
+  $cargo clean --package "$package"
+  $cargo clippy --all-features -- -D clippy::pedantic --no-deps
   set +x
 
   if [ -n "$skip_readme_check" ]; then
@@ -81,7 +84,7 @@ echo "Running cargo build."
 echo "PWD=$(pwd)"
 time (
   set -x
-  cargo build --verbose
+  $cargo build --verbose
   set +x
   echo -n "Finished cargo build."
 )
@@ -91,7 +94,7 @@ echo "Running cargo test."
 echo "PWD=$(pwd)"
 time (
   set -x
-  cargo test --verbose
+  $cargo test --verbose
   set +x
   echo -n "Finished cargo test."
 )
@@ -104,7 +107,7 @@ else
   echo "PWD=$(pwd)"
   time (
     set -x
-    cargo publish --dry-run --allow-dirty
+    $cargo publish --dry-run --allow-dirty
     set +x
     echo -n "Finished cargo publish dry run."
   )

@@ -1,5 +1,3 @@
-# safe-regex-macro
-
 [![crates.io version](https://img.shields.io/crates/v/safe-regex-macro.svg)](https://crates.io/crates/safe-regex-macro)
 [![license: Apache 2.0](https://gitlab.com/leonhard-llc/safe-regex-rs/-/raw/main/license-apache-2.0.svg)](http://www.apache.org/licenses/LICENSE-2.0)
 [![unsafe forbidden](https://gitlab.com/leonhard-llc/safe-regex-rs/-/raw/main/unsafe-forbidden-success.svg)](https://github.com/rust-secure-code/safety-dance/)
@@ -12,7 +10,7 @@ It is a thin wrapper around the
 [`safe-regex-compiler`](https://crates.io/crates/safe-regex-compiler)
 crate.
 
-## Cargo Geiger Safety Report
+# Cargo Geiger Safety Report
 ```
 
 Metric output format: x/y
@@ -37,10 +35,10 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 0/0        0/0          0/0    0/0     0/0    
 
 ```
-## Changelog
+# Changelog
 See [`safe_regex`](https://crates.io/crates/safe-regex) create.
 
-## Release Process
+# Release Process
 1. Edit `Cargo.toml` and bump version number.
 1. Run `../release.sh`
 

@@ -1,5 +1,3 @@
-# safe-regex
-
 [![crates.io version](https://img.shields.io/crates/v/safe-regex.svg)](https://crates.io/crates/safe-regex)
 [![license: Apache 2.0](https://gitlab.com/leonhard-llc/safe-regex-rs/-/raw/main/license-apache-2.0.svg)](http://www.apache.org/licenses/LICENSE-2.0)
 [![unsafe forbidden](https://gitlab.com/leonhard-llc/safe-regex-rs/-/raw/main/unsafe-forbidden-success.svg)](https://github.com/rust-secure-code/safety-dance/)
@@ -7,7 +5,7 @@
 
 A safe regular expression library.
 
-## Features
+# Features
 - `forbid(unsafe_code)`
 - Good test coverage (~80%)
 - Runtime is linear.
@@ -23,7 +21,7 @@ A safe regular expression library.
   - Capturing groups: `a(bc)?`
   - Non-capturing groups: `a(?:bc)?`
 
-## Limitations
+# Limitations
 - Only works on byte slices, not strings.
 - Partially optimized.  Runtime is about 10 times slower than
   [`regex`](https://crates.io/crates/regex) crate.
@@ -39,7 +37,7 @@ A safe regular expression library.
   | 1 | 50 | check PEM Base64 `[a-zA-Z0-9+/]{0,64}=*` |
   | 1 | 20-500 | substring search `.*(2G8H81RFNZ).*` |
 
-## Alternatives
+# Alternatives
 - [`regex`](https://crates.io/crates/regex)
   - Mature & Popular
   - Maintained by the core Rust language developers
@@ -50,7 +48,7 @@ A safe regular expression library.
   - No documentation
 - [`rec`](https://crates.io/crates/rec)
 
-## Cargo Geiger Safety Report
+# Cargo Geiger Safety Report
 ```
 
 Metric output format: x/y
@@ -76,7 +74,7 @@ Functions  Expressions  Impls  Traits  Methods  Dependency
 0/0        0/0          0/0    0/0     0/0    
 
 ```
-## Examples
+# Examples
 ```rust
 use safe_regex::{regex, Matcher0};
 let matcher: Matcher0<_> =
@@ -101,7 +99,7 @@ assert_eq!(1..3_usize, digits_r);
 assert_eq!(0..0_usize, suffix_r);
 ```
 
-## Changelog
+# Changelog
 - v0.2.4
   - Bug fixes, reducing performance.
   - Optimize non-match runtime.
@@ -117,7 +115,7 @@ assert_eq!(0..0_usize, suffix_r);
 - v0.1.1 - Bug fixes and more tests.
 - v0.1.0 - First published version
 
-## TO DO
+# TO DO
 - 11+ capturing groups
 - Increase coverage
 - Add fuzzing tests
@@ -131,7 +129,7 @@ assert_eq!(0..0_usize, suffix_r);
 - Once
   [trait bounds on `const fn` parameters are stable](https://github.com/rust-lang/rust/issues/57563),
   make the `MatcherN::new` functions `const`.
-## Release Process
+# Release Process
 1. Edit `Cargo.toml` and bump version number.
 1. Run `../release.sh`
 
