@@ -131,7 +131,7 @@ where
     /// This is used internally by the `regex!` macro.
     ///
     /// We can make this function `const` when
-    /// [trait bounds on \`const fn\` parameters are stable](https://github.com/rust-lang/rust/issues/57563).
+    /// [trait bounds on `const fn` parameters are stable](https://github.com/rust-lang/rust/issues/57563).
     #[must_use]
     pub fn new() -> Self {
         Self {

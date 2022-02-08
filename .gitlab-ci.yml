@@ -39,7 +39,9 @@ rust-stable:
     - mv "$CARGO_TARGET_DIR"/release/cargo-geiger "$CARGO_HOME"/bin/
 
     - cargo fmt --version || rustup component add rustfmt
+    - cargo fmt --version
     - cargo clippy --version || rustup component add clippy
+    - cargo clippy --version
     - ./check-all.sh
 
 rust-nightly:
@@ -54,6 +56,8 @@ rust-nightly:
     # "Include rustfmt and clippy" https://github.com/rust-lang/docker-rust-nightly/issues/25
     # "Include rustfmt and clippy components by default" https://github.com/rust-lang/docker-rust/issues/37
     - cargo fmt --version || rustup component add rustfmt || cargo +nightly install --git https://github.com/rust-lang/rustfmt.git --branch master --force --features "rustfmt cargo-fmt" rustfmt-nightly
+    - cargo fmt --version
     - cargo clippy --version || rustup component add clippy || cargo install --git https://github.com/rust-lang/rust-clippy/ --force clippy
+    - cargo clippy --version
     - ./check-all.sh +nightly
   allow_failure: true

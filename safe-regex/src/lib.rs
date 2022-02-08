@@ -103,7 +103,7 @@
 //! - Once [const generics](https://github.com/rust-lang/rust/issues/44580)
 //!   are stable, use the feature to simplify some types.
 //! - Once
-//!   [trait bounds on \`const fn\` parameters are stable](https://github.com/rust-lang/rust/issues/57563),
+//!   [trait bounds on `const fn` parameters are stable](https://github.com/rust-lang/rust/issues/57563),
 //!   make the `MatcherN::new` functions `const`.
 //! # Release Process
 //! 1. Edit `Cargo.toml` and bump version number.
