@@ -16,13 +16,8 @@
 //! # Release Process
 //! 1. Edit `Cargo.toml` and bump version number.
 //! 1. Run `../release.sh`
-#![no_std]
 #![forbid(unsafe_code)]
-
-extern crate alloc;
-
 use crate::generator::generate;
-use alloc::string::{String, ToString};
 use safe_proc_macro2::{TokenStream, TokenTree};
 
 pub mod generator;

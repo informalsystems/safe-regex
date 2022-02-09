@@ -1,7 +1,7 @@
 use crate::{IdentFragment, ToTokens, TokenStreamExt};
-use core::fmt;
-use core::iter;
-use core::ops::BitOr;
+use std::fmt;
+use std::iter;
+use std::ops::BitOr;
 
 pub use safe_proc_macro2::*;
 
@@ -46,9 +46,8 @@ pub mod ext {
     use super::RepInterp;
     use super::{HasIterator as HasIter, ThereIsNoIteratorInRepetition as DoesNotHaveIter};
     use crate::ToTokens;
-    use alloc::collections::btree_set::{self, BTreeSet};
-    use alloc::vec::Vec;
-    use core::slice;
+    use std::collections::btree_set::{self, BTreeSet};
+    use std::slice;
 
     /// Extension trait providing the `quote_into_iter` method on iterators.
     pub trait RepIteratorExt: Iterator + Sized {
